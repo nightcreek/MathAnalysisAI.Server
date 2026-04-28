@@ -1,7 +1,7 @@
-﻿using Microsoft.EntityFrameworkCore;
-using MathAnalysisAI.Models;
+using Microsoft.EntityFrameworkCore;
+using MathAnalysisAI.Server.Models;
 
-namespace MathAnalysisAI.Data
+namespace MathAnalysisAI.Server.Data
 {
     public class ApplicationDbContext : DbContext
     {

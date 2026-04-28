@@ -1,4 +1,4 @@
-﻿namespace MathAnalysisAI.Services
+namespace MathAnalysisAI.Services
 {
     public class MathpixService
     {

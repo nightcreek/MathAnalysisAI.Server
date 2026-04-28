@@ -1,5 +1,5 @@
-Ôªøusing MathAnalysisAI.Data;
-using MathAnalysisAI.Models;
+using MathAnalysisAI.Server.Data;
+using MathAnalysisAI.Server.Models;
 using Microsoft.AspNetCore.Mvc;
 using System.Diagnostics;
 using System.Text;
@@ -18,189 +18,152 @@ namespace MathAnalysisAI.Server.Controllers
         private const string P2T_PATH =
             @"C:\Users\zhoux\AppData\Roaming\Python\Python314\Scripts\p2t.exe";
 
+        //  π”√∆’Õ® Regex£¨≤ª“¿¿µ‘¥…˙≥…∆˜£¨±‹√‚ partial Œ Ã‚
+        private static readonly Regex AnsiRegex = new Regex(@"\x1B\[[0-9;]*[mK]", RegexOptions.Compiled);
+        private static readonly Regex OutsRegex = new Regex(@"Outs:\s*(.+)", RegexOptions.Singleline | RegexOptions.Compiled);
+        private static readonly Regex CodeBlockRegex = new Regex(@"^```json\s*|\s*```$", RegexOptions.Multiline | RegexOptions.Compiled);
+        private static readonly char[] NewLineChars = new[] { '\r', '\n' };
+
         public QuestionController(ApplicationDbContext db, IConfiguration config)
         {
             _db = db;
             _config = config;
         }
 
-        //---------------------------------------------------
-        // 1. ‰∏ä‰º†ÂõæÁâá + OCRËØÜÂà´
-        //---------------------------------------------------
         [HttpPost("upload")]
         public async Task<IActionResult> Upload(IFormFile file)
         {
             if (file == null || file.Length == 0)
-                return BadRequest("Êñá‰ª∂‰∏∫Á©∫");
+                return BadRequest("Œƒº˛Œ™ø’");
 
             try
             {
-                //-----------------------------------------
-                // ‰øùÂ≠òÂõæÁâá
-                //-----------------------------------------
-                var uploadsPath = Path.Combine(
-                    Directory.GetCurrentDirectory(),
-                    "wwwroot",
-                    "uploads"
-                );
-
+                var uploadsPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads");
                 if (!Directory.Exists(uploadsPath))
                     Directory.CreateDirectory(uploadsPath);
 
-                var fileName = Guid.NewGuid().ToString()
-                               + Path.GetExtension(file.FileName);
-
+                var fileName = Guid.NewGuid().ToString() + Path.GetExtension(file.FileName);
                 var filePath = Path.Combine(uploadsPath, fileName);
-
                 var relativePath = "/uploads/" + fileName;
 
                 using (var stream = new FileStream(filePath, FileMode.Create))
-                {
                     await file.CopyToAsync(stream);
-                }
 
-                //-----------------------------------------
-                // Ë∞ÉÁî® Pix2Text OCR
-                //-----------------------------------------
                 string rawLatex = await RunPix2Text(filePath);
-
                 string cleanLatex = NormalizeLatex(rawLatex);
 
-                //-----------------------------------------
-                // Â≠òÊï∞ÊçÆÂ∫ì
-                //-----------------------------------------
                 var question = new WrongQuestion
                 {
                     ImagePath = relativePath,
-
                     RawLatex = rawLatex,
                     CleanLatex = cleanLatex,
-
                     OverallEvaluation = "",
                     StudentAnswer = "",
                     ErrorAnalysis = "",
                     StandardSolution = "",
                     ImprovementSuggestion = "",
                     KnowledgePoint = "",
-
                     CreatedAt = DateTime.Now
                 };
 
                 _db.WrongQuestions.Add(question);
                 await _db.SaveChangesAsync();
 
-                return Ok(new
-                {
-                    question.Id,
-                    question.ImagePath,
-                    question.RawLatex,
-                    question.CleanLatex
-                });
+                return Ok(new { question.Id, question.ImagePath, question.RawLatex, question.CleanLatex });
             }
             catch (Exception ex)
             {
+                Console.Error.WriteLine($"…œ¥´ ß∞‹: {ex.Message}");
                 return StatusCode(500, ex.Message);
             }
         }
 
-        //---------------------------------------------------
-        // 2. AIÂàÜÊûê
-        //---------------------------------------------------
         [HttpPost("analyze/{id}")]
         public async Task<IActionResult> Analyze(int id)
         {
             var question = await _db.WrongQuestions.FindAsync(id);
-
-            if (question == null)
-                return NotFound("È¢òÁõÆ‰∏çÂ≠òÂú®");
+            if (question == null) return NotFound("Ã‚ƒø≤ª¥Ê‘⁄");
 
             try
             {
                 string apiKey = _config["DeepSeek:ApiKey"];
-
                 using var client = new HttpClient();
-
-                client.DefaultRequestHeaders.Add(
-                    "Authorization",
-                    $"Bearer {apiKey}"
-                );
+                client.DefaultRequestHeaders.Add("Authorization", $"Bearer {apiKey}");
 
                 var prompt = $@"
-‰Ω†ÊòØÊï∞Â≠¶AIÈîôÈ¢òËÄÅÂ∏à„ÄÇ
-
-ËØ∑ÂàÜÊûêËøôÈÅìÈ¢òÔºö
-
+ƒ„ « ˝—ßAI¥ÌÃ‚¿œ ¶°£«Î∑÷Œˆ’‚µ¿Ã‚£∫
 {question.CleanLatex}
 
-‰∏•Ê†ºÊåâÁÖßJSONËøîÂõûÔºö
-
+**—œ∏Ò**∑µªÿ¥øJSON£∫
 {{
-  ""overallEvaluation"": """",
-  ""knowledgePoint"": """",
-  ""studentAnswer"": """",
-  ""errorAnalysis"": """",
-  ""standardSolution"": """",
-  ""improvementSuggestion"": """"
-}}
-";
+  ""overallEvaluation"": ""..."",
+  ""knowledgePoint"": ""..."",
+  ""studentAnswer"": ""..."",
+  ""errorAnalysis"": ""..."",
+  ""standardSolution"": ""..."",
+  ""improvementSuggestion"": ""...""
+}}";
 
                 var requestBody = new
                 {
                     model = "deepseek-chat",
-                    messages = new[]
-                    {
-                        new {
-                            role="user",
-                            content=prompt
-                        }
-                    }
+                    messages = new[] { new { role = "user", content = prompt } }
                 };
-
-                var json = JsonSerializer.Serialize(requestBody);
 
                 var response = await client.PostAsync(
                     "https://api.deepseek.com/chat/completions",
-                    new StringContent(
-                        json,
-                        Encoding.UTF8,
-                        "application/json"
-                    )
+                    new StringContent(JsonSerializer.Serialize(requestBody), Encoding.UTF8, "application/json")
                 );
+                var resultJson = await response.Content.ReadAsStringAsync();
 
-                var result = await response.Content.ReadAsStringAsync();
+                using var doc = JsonDocument.Parse(resultJson);
+                var content = doc.RootElement
+                                .GetProperty("choices")[0]
+                                .GetProperty("message")
+                                .GetProperty("content")
+                                .GetString();
 
-                //-----------------------------------
-                // ÊöÇÊó∂ÂÖàÁõ¥Êé•Â≠òÂÆåÊï¥ËøîÂõû
-                //-----------------------------------
-                question.OverallEvaluation = result;
+                string cleanJson = CodeBlockRegex.Replace(content, "").Trim();
+                var analysis = JsonSerializer.Deserialize<WrongQuestion>(cleanJson);
+
+                question.OverallEvaluation = analysis?.OverallEvaluation;
+                question.KnowledgePoint = analysis?.KnowledgePoint;
+                question.StudentAnswer = analysis?.StudentAnswer;
+                question.ErrorAnalysis = analysis?.ErrorAnalysis;
+                question.StandardSolution = analysis?.StandardSolution;
+                question.ImprovementSuggestion = analysis?.ImprovementSuggestion;
 
                 await _db.SaveChangesAsync();
 
-                return Ok(result);
+                return Ok(new
+                {
+                    question.Id,
+                    question.OverallEvaluation,
+                    question.KnowledgePoint,
+                    question.StudentAnswer,
+                    question.ErrorAnalysis,
+                    question.StandardSolution,
+                    question.ImprovementSuggestion
+                });
             }
             catch (Exception ex)
             {
-                return StatusCode(500, ex.Message);
+                Console.Error.WriteLine($"AI∑÷Œˆ ß∞‹: {ex.Message}");
+                return StatusCode(500, "AI∑÷Œˆ ß∞‹£¨«Î…‘∫Û÷ÿ ‘");
             }
         }
 
-        //---------------------------------------------------
-        // 3. Ëé∑ÂèñÂÖ®ÈÉ®ÈîôÈ¢ò
-        //---------------------------------------------------
         [HttpGet("list")]
         public IActionResult GetList()
         {
             var list = _db.WrongQuestions
                 .OrderByDescending(x => x.Id)
                 .ToList();
-
             return Ok(list);
         }
 
-        //---------------------------------------------------
-        // OCRÊñπÊ≥ï
-        //---------------------------------------------------
-        private async Task<string> RunPix2Text(string filePath)
+        // ±Íº«Œ™ static œ˚≥˝ CA1822
+        private static async Task<string> RunPix2Text(string filePath)
         {
             var psi = new ProcessStartInfo
             {
@@ -213,62 +176,58 @@ namespace MathAnalysisAI.Server.Controllers
             };
 
             using var process = Process.Start(psi);
-
-            string output =
-                await process.StandardOutput.ReadToEndAsync();
-
-            string error =
-                await process.StandardError.ReadToEndAsync();
-
+            string output = await process.StandardOutput.ReadToEndAsync();
+            string error = await process.StandardError.ReadToEndAsync();
             process.WaitForExit();
 
             if (!string.IsNullOrWhiteSpace(error))
-            {
-                Console.WriteLine(error);
-            }
+                Console.Error.WriteLine($"OCR Error: {error}");
 
             return ExtractLatex(output);
         }
 
-        //---------------------------------------------------
-        // ÊèêÂèñlatex
-        //---------------------------------------------------
-        private string ExtractLatex(string raw)
+        private static string ExtractLatex(string raw)
         {
-            if (string.IsNullOrEmpty(raw))
-                return "";
+            if (string.IsNullOrEmpty(raw)) return "";
 
-            raw = Regex.Replace(
-                raw,
-                @"\x1B\[[0-9;]*[mK]",
-                ""
-            );
+            // »•µÙ ANSI ◊™“Â◊÷∑˚
+            raw = AnsiRegex.Replace(raw, "");
 
-            var match = Regex.Match(
-                raw,
-                @"Outs:\s*(.*?)(?=\[INFO|$)",
-                RegexOptions.Singleline
-            );
+            // ∞¥––∑÷∏Ó£¨π˝¬ÀµÙ√˜œ‘ «»’÷æµƒ––
+            var lines = raw.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries)
+                           .Select(line => line.Trim())
+                           .Where(line =>
+                               !string.IsNullOrWhiteSpace(line) &&
+                               !line.StartsWith("Loading") &&
+                               !line.StartsWith("Using ONNX") &&
+                               !line.StartsWith("[INFO]") &&
+                               !line.StartsWith("[DEBUG]") &&
+                               !line.Contains("ONN X Runtime")  // ”––©––ø…ƒ‹∞¸∫¨ "ONN X Runtime"
+                           )
+                           .ToList();
 
-            if (match.Success)
-                return match.Groups[1].Value.Trim();
+            // »Áπ˚÷ª £“ª––£¨÷±Ω”∑µªÿ
+            if (lines.Count == 1)
+                return lines[0];
 
-            return raw.Trim();
+            // »Áπ˚”–∂‡––£¨≥¢ ‘Ã·»°¡¨–¯µƒ∑«»’÷æƒ⁄»›øÈ
+            var contentLines = lines.Where(l =>
+                !l.StartsWith("Loading") &&
+                !l.StartsWith("Using") &&
+                !l.Contains("inference...")
+            ).ToList();
+
+            return string.Join("\n", contentLines).Trim();
         }
 
-        //---------------------------------------------------
-        // Ê∏ÖÊ¥ólatex
-        //---------------------------------------------------
-        private string NormalizeLatex(string text)
+        private static string NormalizeLatex(string text)
         {
-            if (string.IsNullOrEmpty(text))
-                return "";
-
-            text = text.Replace("\\\\", "\\");
-            text = text.Replace("$$", "");
-            text = text.Replace("$", "");
-
-            return text.Trim();
+            if (string.IsNullOrEmpty(text)) return "";
+            text = AnsiRegex.Replace(text, "");
+            text = text.Replace("\r\n", "\n").Replace('\r', '\n');
+            text = Regex.Replace(text, @"\n{3,}", "\n\n");
+            text = text.Trim();
+            return text;
         }
     }
 }

@@ -1,31 +1,30 @@
-ï»¿using MathAnalysisAI.Data;
+using MathAnalysisAI.Server.Data;
 using MathAnalysisAI.Server.Services;
-using MathAnalysisAI.Services;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// æ•°æ®åº“
+// Êı¾İ¿â
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-// æ§åˆ¶å™¨
+// ¿ØÖÆÆ÷
 builder.Services.AddControllers();
 
 // Swagger
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-// æœåŠ¡
+// ·şÎñ
 builder.Services.AddHttpClient();
 builder.Services.AddScoped<LLMService>();
 
 var app = builder.Build();
 
-app.UseDefaultFiles();   // è‡ªåŠ¨æ‰“å¼€ index.html
-app.UseStaticFiles();    // å…è®¸è®¿é—® wwwroot
+app.UseDefaultFiles();   // ×Ô¶¯´ò¿ª index.html
+app.UseStaticFiles();    // ÔÊĞí·ÃÎÊ wwwroot
 
-// Swaggerä¸­é—´ä»¶
+// SwaggerÖĞ¼ä¼ş
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();

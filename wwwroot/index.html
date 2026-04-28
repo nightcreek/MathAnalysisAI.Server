@@ -1,15 +1,12 @@
-ï»¿<!DOCTYPE html>
+<!DOCTYPE html>
 <html>
 <head>
-    <meta charset="utf-8">
-    <title>é”™é¢˜æœ¬</title>
-
-    <!-- MathJax -->
+    <meta charset="gbk">
+    <title>´íÌâ±¾</title>
     <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
-
     <style>
         body {
-            font-family: "Segoe UI";
+            font-family: "Segoe UI", "Î¢ÈíÑÅºÚ";
             background: #f5f5f5;
             padding: 20px;
         }
@@ -66,57 +63,77 @@
             button:hover {
                 background: #0056b3;
             }
+
+        .field {
+            margin-bottom: 12px;
+        }
+
+        .field-label {
+            font-weight: 600;
+            color: #333;
+        }
+
+        .field-content {
+            margin-left: 0.5em;
+        }
     </style>
 </head>
-
 <body>
     <div class="container">
-        <h1>æˆ‘çš„AIé”™é¢˜æœ¬</h1>
-        <div id="list">åŠ è½½ä¸­...</div>
+        <h1>ÎÒµÄAI´íÌâ±¾</h1>
+        <div id="list">¼ÓÔØÖĞ...</div>
     </div>
 
     <script>
-
         async function loadQuestions() {
-            const res = await fetch("/api/Question/list");
-            const data = await res.json();
+            var res = await fetch("/api/Question/list");
+            var data = await res.json();
+            var html = "";
 
-            let html = "";
+            data.forEach(function (q) {
+                var displayLatex = q.cleanLatex || "";
+                // ¹ıÂËµôOCRÈÕÖ¾
+                if (displayLatex.indexOf("Loading") !== -1 || displayLatex.indexOf("ONNX") !== -1) {
+                    displayLatex = "";
+                }
 
-            data.forEach(q => {
-                html += `
-            <div class="card">
-
-                <div class="img-box">
-                    <img src="${q.imagePath}">
-                </div>
-
-                <div class="section-title">è¯†åˆ«ç»“æœï¼š</div>
-                <div>$$${q.contentHtml || ""}$$</div>
-
-                <button onclick="analyze(${q.id})">AIåˆ†æ</button>
-
-                <div id="ai-${q.id}" class="analysis"></div>
-
-            </div>
-            `;
+                html +=
+                    '<div class="card">' +
+                    '<div class="img-box">' +
+                    '<img src="' + q.imagePath + '" alt="ÌâÄ¿Í¼Æ¬">' +
+                    '</div>' +
+                    '<div class="section-title">Ê¶±ğ½á¹û£º</div>' +
+                    '<div>$$' + (displayLatex || "£¨ÎŞ£©") + '$$</div>' +
+                    '<button onclick="analyze(' + q.id + ')">AI·ÖÎö</button>' +
+                    '<div id="ai-' + q.id + '" class="analysis"></div>' +
+                    '</div>';
             });
 
             document.getElementById("list").innerHTML = html;
-
             if (window.MathJax) {
                 MathJax.typeset();
             }
         }
 
         async function analyze(id) {
-            const res = await fetch(`/api/Question/analyze/${id}`, {
-                method: "POST"
-            });
+            var div = document.getElementById("ai-" + id);
+            div.innerHTML = "·ÖÎöÖĞ...";
 
-            const text = await res.text();
+            var res = await fetch("/api/Question/analyze/" + id, { method: "POST" });
+            if (!res.ok) {
+                div.innerHTML = "·ÖÎöÊ§°Ü£¬ÇëÉÔºóÖØÊÔ";
+                return;
+            }
 
-            document.getElementById(`ai-${id}`).innerHTML = text;
+            var result = await res.json();
+
+            div.innerHTML =
+                '<div class="field"><span class="field-label">ÕûÌåÆÀ¼Û£º</span><span class="field-content">' + (result.overallEvaluation || '') + '</span></div>' +
+                '<div class="field"><span class="field-label">ÖªÊ¶µã£º</span><span class="field-content">' + (result.knowledgePoint || '') + '</span></div>' +
+                '<div class="field"><span class="field-label">Ñ§Éú´ğ°¸£º</span><span class="field-content">' + (result.studentAnswer || '') + '</span></div>' +
+                '<div class="field"><span class="field-label">´íÎó·ÖÎö£º</span><span class="field-content">' + (result.errorAnalysis || '') + '</span></div>' +
+                '<div class="field"><span class="field-label">±ê×¼½â´ğ£º</span><span class="field-content">' + (result.standardSolution || '') + '</span></div>' +
+                '<div class="field"><span class="field-label">¸Ä½ø½¨Òé£º</span><span class="field-content">' + (result.improvementSuggestion || '') + '</span></div>';
 
             if (window.MathJax) {
                 MathJax.typeset();
@@ -124,7 +141,6 @@
         }
 
         loadQuestions();
-
     </script>
 </body>
 </html>
