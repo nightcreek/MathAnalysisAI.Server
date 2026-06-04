@@ -1,5 +1,22 @@
 (function () {
+  function hasPhotoOcrDom() {
+    return !!(
+      UI.qs("#photoOcrBtn") &&
+      UI.qs("#photoOcrStatus") &&
+      UI.qs("#photoOcrSummary") &&
+      UI.qs("#photoSolutionFile") &&
+      UI.qs("#photoSolutionHint") &&
+      UI.qs("#chapterSelect") &&
+      UI.qs("#problemTextInput") &&
+      UI.qs("#studentSolutionTextInput")
+    );
+  }
+
   async function recognizePhotoSolution() {
+    if (!hasPhotoOcrDom()) {
+      return;
+    }
+
     const btn = UI.qs("#photoOcrBtn");
     const status = UI.qs("#photoOcrStatus");
     const summary = UI.qs("#photoOcrSummary");

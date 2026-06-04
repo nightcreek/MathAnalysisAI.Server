@@ -1,4 +1,16 @@
 (function () {
+  function hasAnalysisDom() {
+    return !!(
+      UI.qs("#analyzeBtn") &&
+      UI.qs("#analyzeStatus") &&
+      UI.qs("#resultContainer") &&
+      UI.qs("#problemTextInput") &&
+      UI.qs("#studentSolutionTextInput") &&
+      UI.qs("#chapterSelect") &&
+      UI.qs("#modeSelect")
+    );
+  }
+
   function normalizeText(value, fallback) {
     if (value == null) return fallback || "";
     return String(value);
@@ -176,6 +188,10 @@
   }
 
   async function analyzeText() {
+    if (!hasAnalysisDom()) {
+      return;
+    }
+
     const btn = UI.qs("#analyzeBtn");
     const status = UI.qs("#analyzeStatus");
     const box = UI.qs("#resultContainer");

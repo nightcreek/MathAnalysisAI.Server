@@ -37,15 +37,15 @@
   - 分析结果中的知识点 code 已映射中文展示。
   - 未知 code fallback 为原 code。
 - R13-b 学生端分析结果展示优化
-  - `index.html` 分析结果区已升级为学习反馈报告式展示。
+  - 分析结果区已升级为学习反馈报告式展示。
   - 展示结构包括：顶部判定卡片、我的解答问题、标准解答、关联知识点、下一步建议、可视化建议。
   - API 文本已做 HTML escape，不展示 `RawResponseJson` / provider / key。
 - R23 网页端公式校对（MathLive）
   - R23-a：`dev.html` MathLive 技术验证完成。
-  - R23-b：`index.html` 已接入 OCR `formulas[]` 的 MathLive 编辑流程。
+  - R23-b：前端已接入 OCR `formulas[]` 的 MathLive 编辑流程。
   - R23-c：拍照 OCR + MathLive 回归已完成接口实测与前端代码路径核对。
   - R23-d：OCR `formulas[]` 已从底部统一编辑思路升级为 inline MathLive 编辑，用户可在公式卡片内直接修改。
-  - R23-vendor：MathLive 已 vendor 到 `wwwroot/vendor/mathlive`，`index/dev` 默认使用本地静态文件。
+  - R23-vendor：MathLive 已 vendor 到 `wwwroot/vendor/mathlive`，当前 `ocr/dev` 默认使用本地静态文件。
 - R14-a 课程资料知识库建模
   - `CourseMaterial` / `MaterialChunk` / `MaterialChunkKnowledgePoint` 三表已建模并完成迁移。
 - R14-b PDF 入库骨架
@@ -78,7 +78,8 @@
   - R18-c：`materials.html` 课程资料页完成。
   - R18-d：`stats.html` 学习统计页完成。
   - R18-e：`dev.html` 开发工具页完成。
-  - R18-f：`index.html` 首页最终整理完成。
+  - R18-f：首页 / 资料 / 统计 / 开发页基础拆分完成。
+  - UI-split-audit：`index.html` 已收敛为入口页，新增 `analysis.html` 与 `ocr.html` 承载手动分析和拍照识别流程。
 - R19 登录与用户体系（开发期）
   - R19-a：登录与用户体系设计完成。
   - R19-b：`AuthController` + `/api/auth/me` `/api/auth/login` `/api/auth/logout` 完成。
@@ -204,12 +205,23 @@
   - 服务器侧仍需手动 `pull` 新代码并 `docker compose up -d --force-recreate` 才会生效。
 
 ## 3. 当前页面结构
-- `index.html`：学生学习分析首页
-  - 拍照解答
-  - 手动输入题目与解答
-  - 分析结果展示
+- `index.html`：首页入口
+  - 项目说明
+  - 手动分析入口
+  - 拍照识别入口
   - 学习统计入口
   - 课程资料入口
+- `analysis.html`：手动分析页
+  - 章节与模式选择
+  - 题目输入
+  - 学生解答输入
+  - 分析结果展示
+- `ocr.html`：拍照识别页
+  - OCR 图片上传
+  - OCR 回填
+  - MathLive inline 公式校对
+  - 手动开始分析
+  - 分析结果展示
 - `materials.html`：课程资料管理
   - PDF 上传
   - 解析状态展示
@@ -295,7 +307,7 @@
 - OCR JSON LaTeX 反斜杠解析问题已修复（非法反斜杠可容错修复）。
 - OCR 题干/学生解答分区 prompt 已优化。
 - 当前仍可能出现 `section_split_uncertain`，属于可接受 warning。
-- `index.html` 已支持 OCR 后公式校对：
+- `ocr.html` 已支持 OCR 后公式校对：
   - `formulas[]` 列表展示
   - MathLive inline 可视化编辑
   - 复制 LaTeX
@@ -356,7 +368,7 @@
 - `request.UserId` 为空或等于当前用户时允许。
 - `request.UserId` 与当前用户不一致时返回 `403`。
 - `StudentSolution` / `UserCourseStats` / `UserKnowledgeState` 归属以后端当前用户为准。
-- `index.html` 分析结果已改为学习反馈报告式展示（学生可读）。
+- `analysis.html` / `ocr.html` 分析结果已改为学习反馈报告式展示（学生可读）。
 - 系统已具备独立符号计算工具层。
 - 支持 `simplify / expand / factor / diff / integrate / limit / solve / series`。
 - 符号计算当前仅作为 dev/admin 调试工具。

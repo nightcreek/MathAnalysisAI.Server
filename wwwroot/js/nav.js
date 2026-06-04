@@ -2,6 +2,8 @@
   const routeMap = {
     "/": "/index.html",
     "/index.html": "/index.html",
+    "/analysis.html": "/analysis.html",
+    "/ocr.html": "/ocr.html",
     "/materials.html": "/materials.html",
     "/stats.html": "/stats.html",
     "/dev.html": "/dev.html",

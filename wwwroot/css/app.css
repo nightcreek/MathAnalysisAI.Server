@@ -10,6 +10,10 @@ body {
 .hero h1 { margin: 0; font-size: 32px; letter-spacing: 1px; }
 .hero p { margin: 10px 0 0; color: #475569; font-size: 15px; }
 .card { background: #fff; border-radius: 12px; padding: 18px; margin-bottom: 16px; box-shadow: 0 4px 16px rgba(15, 23, 42, 0.06); border: 1px solid #e7ecf3; }
+.entry-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+.entry-card { display: flex; flex-direction: column; min-height: 180px; }
+.entry-copy { color: #475569; line-height: 1.7; margin: 0 0 18px; }
+.entry-link { margin-top: auto; }
 .section-title { font-size: 18px; font-weight: 700; margin-bottom: 12px; }
 .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .full { grid-column: 1 / -1; }
@@ -115,6 +119,12 @@ input[type="text"] {
 }
 .hero-left {
     text-align: left;
+}
+.ordered-list {
+    padding-left: 20px;
+}
+.ordered-list li {
+    margin-bottom: 6px;
 }
 .status-chip {
     display: inline-block;
@@ -416,6 +426,23 @@ input[type="text"] {
 }
 
 @media (max-width: 720px) {
+    .entry-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .form-grid,
+    .upload-row,
+    .materials-filter-grid,
+    .symbolic-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .top-nav-user {
+        margin-left: 0;
+        width: 100%;
+        justify-content: space-between;
+    }
+
     .ocr-formula-item {
         padding: 9px;
     }
