@@ -3,12 +3,20 @@
     "/": "/index.html",
     "/index.html": "/index.html",
     "/analysis.html": "/analysis.html",
-    "/ocr.html": "/ocr.html",
+    "/ocr.html": "/analysis.html",
     "/materials.html": "/materials.html",
     "/stats.html": "/stats.html",
     "/dev.html": "/dev.html",
     "/login.html": "/login.html"
   };
+
+  const standardNavLinks = [
+    { href: "/index.html", label: "首页", className: "" },
+    { href: "/analysis.html", label: "解题分析", className: "" },
+    { href: "/materials.html", label: "课程资料", className: "" },
+    { href: "/stats.html", label: "学习统计", className: "" },
+    { href: "/dev.html", label: "开发工具", className: "nav-dev" }
+  ];
 
   function normalizePath(pathname) {
     if (!pathname || pathname === "/") return "/index.html";
@@ -24,6 +32,38 @@
         link.classList.add("active");
       } else {
         link.classList.remove("active");
+      }
+    });
+  }
+
+  function canDisplayDevLink(user) {
+    const role = user && user.role ? String(user.role).toLowerCase() : "";
+    return role === "admin" || role === "teacher";
+  }
+
+  function normalizeTopNavLinks(user) {
+    const nav = document.querySelector(".top-nav");
+    if (!nav) return;
+
+    nav.innerHTML =
+      "<div class='brand'>" +
+      "<a class='brand-link' href='/index.html'>数学分析智能体</a>" +
+      "<span class='brand-subtitle'>MathAnalysisAI</span>" +
+      "</div>" +
+      "<div class='nav-links'></div>" +
+      "<div class='top-nav-user'></div>";
+
+    const linksHost = nav.querySelector(".nav-links");
+    standardNavLinks.forEach((item) => {
+      if (item.href === "/dev.html" && !canDisplayDevLink(user)) {
+        return;
+      }
+      const link = document.createElement("a");
+      link.className = "top-nav-link" + (item.className ? " " + item.className : "");
+      link.href = item.href;
+      link.textContent = item.label;
+      if (linksHost) {
+        linksHost.appendChild(link);
       }
     });
   }
@@ -52,12 +92,11 @@
     const auth = window.Auth;
     const user = auth ? auth.getCurrentUser() : null;
     const role = user && user.role ? String(user.role).toLowerCase() : "";
-
     const materialsLinks = document.querySelectorAll('.top-nav-link[href="/materials.html"]');
     const devLinks = document.querySelectorAll('.top-nav-link[href="/dev.html"]');
 
-    const canSeeMaterials = role === "teacher" || role === "admin";
-    const canSeeDev = role === "admin";
+    const canSeeMaterials = true;
+    const canSeeDev = role === "admin" || role === "teacher";
 
     materialsLinks.forEach((link) => {
       link.style.display = canSeeMaterials ? "" : "none";
@@ -84,13 +123,30 @@
     if (normalizePath(window.location.pathname) !== "/materials.html") return;
     const auth = window.Auth;
     const allowed = auth && auth.hasAnyRole && auth.hasAnyRole(["teacher", "admin"]);
-    if (allowed) return;
-
     const managerArea = document.getElementById("materialsManagerArea");
+    const listArea = document.getElementById("materialsListArea");
+    const searchArea = document.getElementById("materialsSearchArea");
+    const studentNotice = document.getElementById("materialsStudentNotice");
+
+    if (allowed) {
+      if (studentNotice) {
+        studentNotice.style.display = "none";
+      }
+      return;
+    }
+
     if (managerArea) {
       managerArea.remove();
     }
-    showAccessDenied("materialsAccessDenied", "无权访问课程资料管理");
+    if (listArea) {
+      listArea.remove();
+    }
+    if (searchArea) {
+      searchArea.remove();
+    }
+    if (studentNotice) {
+      studentNotice.style.display = "block";
+    }
   }
 
   function guardDevPage() {
@@ -171,6 +227,9 @@
     if (window.Auth && window.Auth.loadCurrentUser) {
       await window.Auth.loadCurrentUser();
     }
+    const auth = window.Auth;
+    const user = auth ? auth.getCurrentUser() : null;
+    normalizeTopNavLinks(user);
     applyRoleBasedNavVisibility();
     setActiveNav();
     renderCurrentUserHint();

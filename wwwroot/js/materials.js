@@ -318,7 +318,7 @@
   }
 
   function initMaterialsPage() {
-    if (!UI.qs("#uploadMaterialBtn")) {
+    if (!UI.qs("#materialsListContainer")) {
       return;
     }
     wireMaterialListFilters();

@@ -7,20 +7,21 @@
     <link rel="stylesheet" href="/css/app.css">
 </head>
 <body>
+<div class="app-shell">
 <div class="container">
-    <nav class="top-nav" aria-label="主导航">
-        <a class="top-nav-link" href="/index.html">学习分析</a>
-        <a class="top-nav-link" href="/materials.html">课程资料</a>
-        <a class="top-nav-link" href="/stats.html">学习统计</a>
-        <a class="top-nav-link nav-dev" href="/dev.html">开发工具</a>
-    </nav>
+    <nav class="top-nav" aria-label="主导航"></nav>
 
     <div class="hero hero-left">
         <h1>课程资料</h1>
-        <p>上传教材、讲义或课程资料，后续将用于知识库检索与学习分析。</p>
+        <p>查看教师或管理员上传的课程资料。学生端当前以只读查看为主，上传与调试入口仅对教师/管理员开放。</p>
     </div>
 
-    <div id="materialsAccessDenied" style="display:none;"></div>
+    <div id="materialsStudentNotice" class="card" style="display:none;">
+        <div class="section-title">只读查看</div>
+        <div class="hint">
+            当前以学生视角打开课程资料页。课程资料入口会继续保留，但本轮前端未单独接入学生只读资料列表；上传、解析管理和检索调试入口仅对教师或管理员开放。
+        </div>
+    </div>
 
     <div id="materialsManagerArea">
     <div class="card">
@@ -72,8 +73,9 @@
         <div class="section-title">上传结果</div>
         <div id="materialResultBox" class="status">暂无上传结果</div>
     </div>
+    </div>
 
-    <div class="card">
+    <div id="materialsListArea" class="card">
         <div class="section-title">已上传资料</div>
         <div class="materials-filter-grid">
             <div>
@@ -112,7 +114,7 @@
         <div id="materialsListContainer" class="status">加载中...</div>
     </div>
 
-    <div class="card">
+    <div id="materialsSearchArea" class="card">
         <div class="section-title">资料检索调试</div>
         <div class="form-grid">
             <div class="full">
@@ -151,7 +153,7 @@
         </div>
         <div id="materialSearchResultContainer" class="status">点击“检索”后显示结果。</div>
     </div>
-    </div>
+</div>
 </div>
 
 <script src="/js/config.js"></script>
