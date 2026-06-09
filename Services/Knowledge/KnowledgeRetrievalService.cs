@@ -9,7 +9,40 @@ namespace MathAnalysisAI.Server.Services.Knowledge
     {
         private static readonly string[] MathTerms =
         {
-            "反常积分", "收敛", "发散", "比较判别法", "判别法", "p积分", "极限", "级数", "函数列", "一致收敛", "幂级数", "泰勒", "导数", "积分", "无穷"
+            "反常积分", "收敛", "发散", "比较判别法", "判别法", "p积分", "极限", "级数", "函数列", "一致收敛", "逐点收敛", "幂级数", "泰勒", "导数", "定积分", "不定积分", "重积分", "曲线积分", "曲面积分", "无穷"
+        };
+
+        private static readonly RetrievalHint[] RetrievalHints =
+        {
+            new("重积分", new[] { "重积分", "multiple integral" }),
+            new("二重积分", new[] { "二重积分", "double integral" }),
+            new("三重积分", new[] { "三重积分", "triple integral" }),
+            new("积分次序", new[] { "积分次序", "order of integration" }),
+            new("变量替换", new[] { "变量替换", "change of variables" }),
+            new("极坐标", new[] { "极坐标", "polar coordinates" }),
+            new("柱坐标", new[] { "柱坐标", "cylindrical coordinates" }),
+            new("球坐标", new[] { "球坐标", "spherical coordinates" }),
+            new("曲线积分", new[] { "曲线积分", "line integral" }),
+            new("第一类曲线积分", new[] { "第一类曲线积分", "scalar line integral" }),
+            new("第二类曲线积分", new[] { "第二类曲线积分", "vector line integral" }),
+            new("路径无关性", new[] { "路径无关", "路径无关性", "path independent" }),
+            new("保守场", new[] { "保守场", "conservative field" }),
+            new("Green 公式", new[] { "Green 公式", "green formula" }),
+            new("曲面积分", new[] { "曲面积分", "surface integral" }),
+            new("第一类曲面积分", new[] { "第一类曲面积分", "scalar surface integral" }),
+            new("第二类曲面积分", new[] { "第二类曲面积分", "flux integral" }),
+            new("Gauss 公式", new[] { "Gauss 公式", "gauss formula" }),
+            new("Stokes 公式", new[] { "Stokes 公式", "stokes formula" }),
+            new("反常积分瑕点拆分", new[] { "反常积分瑕点拆分", "瑕点", "奇点", "improper integral singularity" }),
+            new("幂级数端点", new[] { "幂级数端点", "幂级数端点收敛", "endpoint convergence" }),
+            new("一致收敛", new[] { "一致收敛", "uniform convergence" }),
+            new("逐点收敛", new[] { "逐点收敛", "pointwise convergence" }),
+            new("函数项级数一致收敛", new[] { "函数项级数一致收敛", "function series uniform convergence" }),
+            new("逐点收敛与一致收敛区分", new[] { "逐点收敛与一致收敛区分", "pointwise vs uniform convergence" }),
+            new("泰勒公式余项", new[] { "泰勒公式余项", "泰勒余项", "remainder term" }),
+            new("中值定理条件检查", new[] { "中值定理条件检查", "mean value theorem conditions" }),
+            new("极限与积分交换条件", new[] { "极限与积分交换条件", "极限与积分交换", "interchange of limit and integral" }),
+            new("反常积分", new[] { "反常积分", "improper integral" })
         };
 
         private static readonly HashSet<string> Stopwords = new(StringComparer.OrdinalIgnoreCase)
@@ -35,6 +68,13 @@ namespace MathAnalysisAI.Server.Services.Knowledge
 
             var topK = Math.Clamp(request.TopK <= 0 ? 3 : request.TopK, 1, 8);
             var keywords = BuildKeywords(request.ProblemText, request.StudentSolutionText);
+            var requestedKnowledgePointCodes = await ResolveRequestedKnowledgePointCodesAsync(
+                request.CourseId,
+                request.NormalizedKnowledgePointCodes,
+                request.ProblemText,
+                request.StudentSolutionText,
+                request.ChapterId,
+                cancellationToken);
 
             var candidateQuery = _db.MaterialChunks
                 .AsNoTracking()
@@ -78,7 +118,7 @@ namespace MathAnalysisAI.Server.Services.Knowledge
             var candidateChunkIds = candidates.Select(c => c.ChunkId).ToList();
             var mappedKnowledgePoints = await ResolveRequestedKnowledgePointsAsync(
                 request.CourseId,
-                request.NormalizedKnowledgePointCodes,
+                requestedKnowledgePointCodes,
                 cancellationToken);
 
             var candidateLinks = await _db.MaterialChunkKnowledgePoints
@@ -141,9 +181,9 @@ namespace MathAnalysisAI.Server.Services.Knowledge
                         var confidenceBonus = Math.Min(link.Confidence, 1m) * 0.5m;
                         score += confidenceBonus;
 
-                        var shortInfo = !string.IsNullOrWhiteSpace(link.KnowledgePointCode)
-                            ? link.KnowledgePointCode!
-                            : (!string.IsNullOrWhiteSpace(link.KnowledgePointName) ? link.KnowledgePointName! : string.Empty);
+                        var shortInfo = !string.IsNullOrWhiteSpace(link.KnowledgePointName)
+                            ? link.KnowledgePointName!
+                            : (!string.IsNullOrWhiteSpace(link.KnowledgePointCode) ? link.KnowledgePointCode! : string.Empty);
 
                         if (!string.IsNullOrWhiteSpace(shortInfo)
                             && !matchedKnowledgePointTexts.Any(x => string.Equals(x, shortInfo, StringComparison.OrdinalIgnoreCase)))
@@ -192,6 +232,39 @@ namespace MathAnalysisAI.Server.Services.Knowledge
             return ordered;
         }
 
+        private async Task<IReadOnlyList<string>> ResolveRequestedKnowledgePointCodesAsync(
+            int courseId,
+            IReadOnlyList<string>? normalizedKnowledgePointCodes,
+            string problemText,
+            string? studentSolutionText,
+            int? chapterId,
+            CancellationToken cancellationToken)
+        {
+            if (normalizedKnowledgePointCodes != null && normalizedKnowledgePointCodes.Count > 0)
+            {
+                return normalizedKnowledgePointCodes
+                    .Where(x => !string.IsNullOrWhiteSpace(x))
+                    .Select(x => x.Trim())
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .ToList();
+            }
+
+            var labels = InferKnowledgePointLabels(problemText, studentSolutionText);
+            if (labels.Count == 0)
+            {
+                return Array.Empty<string>();
+            }
+
+            return await KnowledgePointNormalizer.NormalizeAsync(
+                _db,
+                labels,
+                courseId,
+                chapterId,
+                problemText,
+                studentSolutionText,
+                cancellationToken);
+        }
+
         private async Task<Dictionary<int, string>> ResolveRequestedKnowledgePointsAsync(
             int courseId,
             IReadOnlyList<string>? normalizedKnowledgePointCodes,
@@ -222,6 +295,34 @@ namespace MathAnalysisAI.Server.Services.Knowledge
             return points
                 .Where(x => !string.IsNullOrWhiteSpace(x.Code))
                 .ToDictionary(x => x.Id, x => x.Code!);
+        }
+
+        private static List<string> InferKnowledgePointLabels(string? problemText, string? studentSolutionText)
+        {
+            var combined = $"{problemText} {studentSolutionText}";
+            if (string.IsNullOrWhiteSpace(combined))
+            {
+                return new List<string>();
+            }
+
+            var normalized = combined
+                .Replace("（", "(")
+                .Replace("）", ")")
+                .Replace(" ", string.Empty)
+                .ToLowerInvariant();
+
+            var labels = new List<string>();
+            foreach (var hint in RetrievalHints)
+            {
+                if (hint.Phrases.Any(phrase => ContainsNormalized(normalized, phrase)))
+                {
+                    labels.Add(hint.Label);
+                }
+            }
+
+            return labels
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
         }
 
         private static decimal ScoreTitleSectionAndPath(ChunkCandidate candidate, IReadOnlyList<string> keywords)
@@ -292,11 +393,20 @@ namespace MathAnalysisAI.Server.Services.Knowledge
                 }
             }
 
+            foreach (var hint in RetrievalHints)
+            {
+                if (hint.Phrases.Any(phrase => expanded.Contains(phrase, StringComparison.OrdinalIgnoreCase)))
+                {
+                    words.Add(hint.Label);
+                }
+            }
+
             var tokens = Regex.Split(expanded, "[^\\p{L}\\p{Nd}_]+")
                 .Select(x => x.Trim())
                 .Where(x => !string.IsNullOrWhiteSpace(x))
                 .Where(x => x.Length >= 2)
-                .Where(x => !Stopwords.Contains(x));
+                .Where(x => !Stopwords.Contains(x))
+                .Where(x => !string.Equals(x, "积分", StringComparison.OrdinalIgnoreCase));
 
             words.AddRange(tokens);
 
@@ -313,6 +423,13 @@ namespace MathAnalysisAI.Server.Services.Knowledge
             return !string.IsNullOrWhiteSpace(text)
                    && !string.IsNullOrWhiteSpace(keyword)
                    && text.Contains(keyword, StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static bool ContainsNormalized(string text, string phrase)
+        {
+            return !string.IsNullOrWhiteSpace(text)
+                   && !string.IsNullOrWhiteSpace(phrase)
+                   && text.Contains(phrase.Replace(" ", string.Empty).ToLowerInvariant(), StringComparison.OrdinalIgnoreCase);
         }
 
         private static string Truncate(string value, int maxLength)
@@ -349,5 +466,7 @@ namespace MathAnalysisAI.Server.Services.Knowledge
             public decimal Score { get; set; }
             public List<string> MatchedKnowledgePoints { get; set; } = new();
         }
+
+        private sealed record RetrievalHint(string Label, string[] Phrases);
     }
 }

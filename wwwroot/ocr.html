@@ -11,19 +11,19 @@
     <link rel="stylesheet" href="/css/app.css">
 </head>
 <body>
+<div class="app-shell">
 <div class="container">
-    <nav class="top-nav" aria-label="主导航">
-        <a class="top-nav-link" href="/index.html">首页</a>
-        <a class="top-nav-link" href="/analysis.html">手动分析</a>
-        <a class="top-nav-link" href="/ocr.html">拍照识别</a>
-        <a class="top-nav-link" href="/materials.html">课程资料</a>
-        <a class="top-nav-link" href="/stats.html">学习统计</a>
-        <a class="top-nav-link nav-dev" href="/dev.html">开发工具</a>
-    </nav>
+    <nav class="top-nav" aria-label="主导航"></nav>
 
     <div class="hero hero-left">
         <h1>拍照识别与公式校对</h1>
-        <p>先识别题目和解答，再检查公式卡片。确认无误后手动开始分析，不会自动提交 analyze。</p>
+        <p>该页面保留为兼容入口。新的学生主入口已合并到“解题分析工作台”，推荐优先使用统一工作台。</p>
+    </div>
+
+    <div class="card">
+        <div class="section-title">推荐入口</div>
+        <p class="entry-copy">拍照识别、公式校对和手动开始分析已合并到同一工作台中。你可以继续使用本页，也可以跳转到统一分析入口。</p>
+        <a class="jump-link entry-link" href="/analysis.html?mode=ocr">前往解题分析工作台（拍照识别模式） →</a>
     </div>
 
     <div class="card">
@@ -40,6 +40,7 @@
         </div>
         <div class="actions">
             <button id="photoOcrBtn" onclick="recognizePhotoSolution()">识别题目与解答</button>
+            <button id="photoOcrConfirmBtn" type="button" class="btn-secondary" onclick="confirmPhotoSolutionOcr()" disabled>确认 OCR 并允许分析</button>
             <span id="photoOcrStatus" class="status"></span>
         </div>
         <div id="photoOcrSummary" class="hint"></div>
@@ -101,6 +102,7 @@
         <div class="section-title">分析结果</div>
         <div id="resultContainer" class="status">暂无结果</div>
     </div>
+</div>
 </div>
 
 <script src="/js/config.js"></script>

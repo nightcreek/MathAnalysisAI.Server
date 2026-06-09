@@ -80,6 +80,9 @@
   - R18-e：`dev.html` 开发工具页完成。
   - R18-f：首页 / 资料 / 统计 / 开发页基础拆分完成。
   - UI-split-audit：`index.html` 已收敛为入口页，新增 `analysis.html` 与 `ocr.html` 承载手动分析和拍照识别流程。
+  - UI-information-architecture-a：学生端首页已合并主入口为“解题分析”；`analysis.html` 升级为统一分析工作台，支持“手动输入 / 拍照识别”两种模式；`ocr.html` 保留为兼容入口。
+  - UI-product-polish-a：学生端首页已进一步产品化为学习起点；统一导航默认隐藏开发工具；分析工作台升级为更明确的双模式工作区；课程资料入口保持学生可见但当前仍以只读导向为主。
+  - UI-purpose-clarity-a：学生首页 Hero 与主任务表达已改为更明确的“拍照或输入解答并分析一道题”；主入口强化为“先分析一道题”；学生导航默认仅在 teacher/admin 时显示开发工具。
 - R19 登录与用户体系（开发期）
   - R19-a：登录与用户体系设计完成。
   - R19-b：`AuthController` + `/api/auth/me` `/api/auth/login` `/api/auth/logout` 完成。
@@ -150,6 +153,20 @@
   - 已明确推荐：`AppUsers + AuthAccounts + 可选 LocalCredentials`。
   - 已明确生产最终优先 OIDC，`LocalPassword` 作为过渡 / 私有部署方案。
   - 当前仍仅为设计阶段，尚未新增实体、DbContext 或 migration。
+- R40 模板题目空间设计
+  - 已新增 `Docs/TemplateProblemSpaceDesign.md`。
+  - 已明确将数据库逻辑拆为：
+    - 学习资料空间：`CourseMaterials / MaterialChunks / MaterialChunkKnowledgePoints`
+    - 模板题目空间：`ProblemTemplates / ProblemTemplateKnowledgePoints / GeneratedPracticeProblems / PracticeAttempts`
+  - 已明确模板题与资料空间不能混表。
+  - 已明确 MVP 优先模板化出题，不优先自由 AI 出题。
+  - 当前仅为设计阶段，尚未新增实体、DbContext 或 migration。
+  - 已新增 `Docs/TemplateProblemImplementationPlan.md`，承接 R40-b ~ R41：
+    - EF Core 模型草案
+    - migration 方案草案
+    - 模板题 seed 示例
+    - 练习生成 / 作答 API 草案
+    - ReviewCards MVP 草案
 - R33-a SQL 备份与恢复设计
   - 已新增 `Docs/SqlBackupDesign.md`。
   - 已明确 `.bak` 手动备份、宿主机副本、恢复顺序、恢复演练与保留策略。
@@ -206,25 +223,27 @@
 
 ## 3. 当前页面结构
 - `index.html`：首页入口
-  - 项目说明
-  - 手动分析入口
-  - 拍照识别入口
-  - 学习统计入口
-  - 课程资料入口
-- `analysis.html`：手动分析页
+  - Hero 学习入口（强调拍照或输入解答并分析一道题）
+  - 四步学习流程说明
+  - “你可以这样使用”场景区
+  - 先分析一道题 / 学习统计 / 课程资料三张主卡片
+  - 备案位预留
+- `analysis.html`：统一分析工作台
+  - 输入方式切换（手动输入 / 拍照识别）
   - 章节与模式选择
   - 题目输入
   - 学生解答输入
-  - 分析结果展示
-- `ocr.html`：拍照识别页
-  - OCR 图片上传
-  - OCR 回填
+  - OCR 上传与回填
   - MathLive inline 公式校对
-  - 手动开始分析
   - 分析结果展示
+  - 学生主任务入口
+- `ocr.html`：兼容 OCR 入口
+  - 保留独立 OCR 页面能力
+  - 提示优先使用 `analysis.html?mode=ocr`
 - `materials.html`：课程资料管理
-  - PDF 上传
-  - 解析状态展示
+  - 学生端入口与文案为只读导向
+  - 当前 student 视角以前端只读说明为主
+  - 教师/admin 上传与检索调试保留
   - `ocr_pending` 提示
 - `stats.html`：学习统计与排行榜
   - 公开排行榜
@@ -234,6 +253,17 @@
   - MathLive 编辑器试验
   - legacy OCR / legacy analyze 区域已删除
   - 旧 `WrongQuestion` 数据表仍保留，仅作为历史兼容数据，不再作为页面功能入口
+
+## 3.1 当前学生端导航
+- 默认展示：
+  - 首页
+  - 解题分析
+  - 课程资料
+  - 学习统计
+- 默认不展示：
+  - 开发工具
+- 开发工具仅在明确 `teacher/admin` 时显示，不再因为开发 fallback 默认暴露在学生导航中。
+- `dev.html` 仍可通过直接 URL 访问，并继续由页面权限控制。
 
 ## 4. 当前主链路（MVP）
 1. 前端页面或 `curl` 调用 `/api/learning-analysis/analyze`
@@ -307,7 +337,7 @@
 - OCR JSON LaTeX 反斜杠解析问题已修复（非法反斜杠可容错修复）。
 - OCR 题干/学生解答分区 prompt 已优化。
 - 当前仍可能出现 `section_split_uncertain`，属于可接受 warning。
-- `ocr.html` 已支持 OCR 后公式校对：
+- `analysis.html` / `ocr.html` 已支持 OCR 后公式校对：
   - `formulas[]` 列表展示
   - MathLive inline 可视化编辑
   - 复制 LaTeX
@@ -360,8 +390,9 @@
 - 当前用户上下文服务可用。
 - 前端不再直接依赖硬编码 `userId=1`。
 - 前端导航已按角色显示。
-- `materials.html` teacher/admin 可见，student 隐藏/无权访问。
-- `CourseMaterialsController` 已后端拦截 student。
+- 学生端导航主入口已调整为：首页 / 解题分析 / 学习统计 / 课程资料。
+- “开发工具”默认不作为学生端导航入口显示，仅对 admin / teacher / 开发回退场景开放。
+- `materials.html` 当前前端呈现为学生只读、教师/admin 管理增强的形态；更细粒度的教师/admin 管理体验可后续继续完善。
 - `dev.html` admin 可见，当前用于 symbolic / MathLive 等开发调试，不再作为 legacy Question 链路入口。
 - 当前仍非生产级认证。
 - `analyze` 不再盲目信任前端 `userId`。
@@ -434,3 +465,54 @@
 33. `R26-backup`（SQL Server 备份）待完成。
 34. 生产 secrets 仍需替换占位值为真实值（仅服务器本地）。
 35. `R26-symbolic-container`（生产镜像内 Python/SymPy）待完成。
+36. `R40-b-runtime-fix` 已完成本地运行前置结构落地：
+   - 4 张模板题相关表的实体 / `DbSet<>` / `OnModelCreating` 已真实落地
+   - 已存在真实 migration：`20260605140211_AddTemplateProblemSpace`
+   - 本地 Docker 测试库已具备：
+     - `ProblemTemplates`
+     - `ProblemTemplateKnowledgePoints`
+     - `GeneratedPracticeProblems`
+     - `PracticeAttempts`
+   - `mathanalysis-server` 已 rebuild + recreate
+   - 容器日志已确认 `PracticeController.Generate` 路由被命中
+   - 当前 `POST /api/practice/generate` 的 `404` 已不是路由级 404，而是空请求下的业务级模板不存在
+37. `R40-g` 模板练习后端闭环验证仍待重跑：
+   - 当前主要缺口已从“表结构/路由不存在”收敛为“测试模板数据尚未准备”
+   - 下一步可在本地测试库插入一条最小 active/published 模板后，重新执行：
+     - `generate`
+     - `submit` 第一次
+     - `submit` 第二次
+
+## 7. P0 / P1 整改完成状态（2026-06-08）
+- 项目定位已进一步收拢为：**面向数学分析课程的 AI 学习与解题智能体**。
+- 已完成的 P0 主链路整改：
+  - OCR 结果持久化
+  - OCR 显式确认层
+  - 未确认 OCR 后端 `409` 拦截
+  - `StructuredProblem` 题目结构化中间层
+  - `AnalysisResult` 可靠性标记
+  - `AnalysisVerificationService` 自检层
+  - 结果页可靠性提示
+  - LLM / OCR timeout + retry
+  - OCR / StructuredProblem / 自检链路测试保护
+- 已完成的 P1 课程边界整改：
+  - 补齐重积分、曲线积分、曲面积分章节 seed
+  - 补齐高频误区知识点
+  - 扩展 `KnowledgePointNormalizer`
+  - 扩展 `KnowledgeRetrievalService` 检索覆盖
+  - 整理 `AnalysisContextBuilder` 课程化上下文
+  - 分析页“关联知识点”课程标签化展示
+  - `PromptProfile` / Prompt 文案升级为 v4，强化数学分析课程边界与条件检查
+- 当前最后一次验证结果：
+  - `dotnet build` 通过
+  - `dotnet test` 通过
+  - `49 passed, 0 failed`
+  - 已知 `NU1900` / `CS8618` / `ASP0014` 为既有警告，不影响当前整改结论
+- 现阶段后续建议优先级：
+  1. 错误码前端文案统一
+  2. 首页 / 题目页知识点标签风格统一
+  3. 进一步补充数学分析题型策略库
+  4. teacher scope 落表
+  5. OIDC / AuthAccounts 生产级认证解耦
+  6. 历史题目检索页面
+  7. 更丰富的错因库

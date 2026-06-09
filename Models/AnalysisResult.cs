@@ -11,6 +11,8 @@ namespace MathAnalysisAI.Server.Models
         public int ProblemId { get; set; }
 
         public int? StudentSolutionId { get; set; }
+        public int? PhotoSolutionOcrRecordId { get; set; }
+        public int? StructuredProblemId { get; set; }
 
         [Required]
         [MaxLength(64)]
@@ -34,6 +36,11 @@ namespace MathAnalysisAI.Server.Models
         public string? MistakeTagsJson { get; set; }
         public string? ReviewSuggestionsJson { get; set; }
         public string? RawResponseJson { get; set; }
+        public AnswerReliability AnswerReliability { get; set; } = AnswerReliability.Uncertain;
+        public bool NeedsReview { get; set; } = true;
+        public string? ReliabilityReasonsJson { get; set; }
+        public string? VerifierWarningsJson { get; set; }
+        public DateTime? VerifiedAt { get; set; }
 
         public bool? AiJudgedCorrect { get; set; }
         public bool? FinalCorrect { get; set; }
@@ -46,6 +53,8 @@ namespace MathAnalysisAI.Server.Models
 
         public Problem? Problem { get; set; }
         public StudentSolution? StudentSolution { get; set; }
+        public PhotoSolutionOcrRecord? PhotoSolutionOcrRecord { get; set; }
+        public StructuredProblem? StructuredProblem { get; set; }
         public ICollection<AnalysisVisualization> Visualizations { get; set; } = new List<AnalysisVisualization>();
         public ICollection<MistakeRecord> MistakeRecords { get; set; } = new List<MistakeRecord>();
     }

@@ -8,11 +8,15 @@ using MathAnalysisAI.Server.Services.Analysis.LLM;
 using MathAnalysisAI.Server.Services.Analysis.Parsing;
 using MathAnalysisAI.Server.Services.Analysis.Persistence;
 using MathAnalysisAI.Server.Services.Analysis.Stats;
+using MathAnalysisAI.Server.Services.Analysis.Structuring;
+using MathAnalysisAI.Server.Services.Analysis.Verification;
 using MathAnalysisAI.Server.Services.Auth;
 using MathAnalysisAI.Server.Services.Materials;
 using MathAnalysisAI.Server.Services.Knowledge;
 using MathAnalysisAI.Server.Services.LLM;
 using MathAnalysisAI.Server.Services.OCR;
+using MathAnalysisAI.Server.Services.Practice;
+using MathAnalysisAI.Server.Services.ProblemTemplates;
 using MathAnalysisAI.Server.Services.Ranking;
 using MathAnalysisAI.Server.Services.Security;
 using MathAnalysisAI.Server.Services.Symbolic;
@@ -28,6 +32,12 @@ using System.Net;
 using System.Threading.RateLimiting;
 
 var builder = WebApplication.CreateBuilder(args);
+var isEfDesignTime = IsEfDesignTime();
+var skipRuntimeStartup = isEfDesignTime ||
+    string.Equals(
+        Environment.GetEnvironmentVariable("MATHANALYSIS_SKIP_RUNTIME_STARTUP"),
+        "true",
+        StringComparison.OrdinalIgnoreCase);
 var authOptions = builder.Configuration.GetSection(AuthOptions.SectionName).Get<AuthOptions>() ?? new AuthOptions();
 
 ValidateAuthConfiguration(builder.Environment, authOptions);
@@ -40,6 +50,8 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
 builder.Services.AddControllers();
 builder.Services.AddHttpContextAccessor();
 builder.Services.Configure<AuthOptions>(builder.Configuration.GetSection(AuthOptions.SectionName));
+builder.Services.Configure<LLMOptions>(builder.Configuration.GetSection(LLMOptions.SectionName));
+builder.Services.Configure<PhotoSolutionOcrOptions>(builder.Configuration.GetSection(PhotoSolutionOcrOptions.SectionName));
 builder.Services.AddDistributedMemoryCache();
 builder.Services.AddSession(options =>
 {
@@ -205,6 +217,8 @@ builder.Services.AddScoped<IAnalysisContextBuilder, AnalysisContextBuilder>();
 builder.Services.AddScoped<IAnalysisFallbackService, AnalysisFallbackService>();
 builder.Services.AddScoped<ILlmRequestFactory, LlmRequestFactory>();
 builder.Services.AddScoped<IAnalysisPersistenceService, AnalysisPersistenceService>();
+builder.Services.AddScoped<IProblemStructuringService, ProblemStructuringService>();
+builder.Services.AddScoped<IAnalysisVerificationService, AnalysisVerificationService>();
 builder.Services.AddScoped<IMistakeRecordService, MistakeRecordService>();
 builder.Services.AddScoped<IUserStatsUpdateService, UserStatsUpdateService>();
 builder.Services.AddScoped<VisualizationService>();
@@ -218,12 +232,16 @@ builder.Services.AddScoped<CourseMaterialIngestionService>();
 builder.Services.AddScoped<IPhotoSolutionOcrProvider, LiteLLMPhotoSolutionOcrProvider>();
 builder.Services.AddScoped<IKnowledgeRetrievalService, KnowledgeRetrievalService>();
 builder.Services.AddScoped<ISymbolicMathService, SymPySymbolicMathService>();
+builder.Services.AddScoped<ProblemTemplatePreviewService>();
+builder.Services.AddScoped<PracticeValidationService>();
+builder.Services.AddScoped<PracticeAttemptService>();
 
 var app = builder.Build();
 
 // Runtime PromptProfile seeding (idempotent, safe to skip when DB/tables are unavailable)
-using (var scope = app.Services.CreateScope())
+if (!skipRuntimeStartup)
 {
+    using var scope = app.Services.CreateScope();
     var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
     try
     {
@@ -264,7 +282,10 @@ app.UseSession();
 app.UseRateLimiter();
 app.UseAuthorization();
 app.UseEndpoints(endpoints => endpoints.MapControllers());
-app.Run();
+if (!skipRuntimeStartup)
+{
+    app.Run();
+}
 
 static void ValidateAuthConfiguration(IHostEnvironment environment, AuthOptions authOptions)
 {
@@ -325,4 +346,13 @@ static void ValidateAuthConfiguration(IHostEnvironment environment, AuthOptions 
         throw new InvalidOperationException(
             $"Unsafe auth configuration for Production: {string.Join(", ", violations)}. Development-only auth settings must be disabled before startup.");
     }
+}
+
+static bool IsEfDesignTime()
+{
+    return AppDomain.CurrentDomain.GetAssemblies()
+        .Any(assembly => string.Equals(
+            assembly.GetName().Name,
+            "Microsoft.EntityFrameworkCore.Design",
+            StringComparison.Ordinal));
 }

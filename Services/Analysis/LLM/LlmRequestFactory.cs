@@ -33,10 +33,19 @@ namespace MathAnalysisAI.Server.Services.Analysis.LLM
             var promptProfile = await ResolvePromptProfileAsync(request.CourseId, mode, cancellationToken);
 
             var systemPrompt = promptProfile?.SystemPrompt ??
-                "你是本科数学学习平台助教。请按 JSON 返回结构化分析。";
+                @"你是面向大学生的数学分析课程学习智能体，不是泛化数学聊天机器人，也不是通用解题引擎。
+系统当前只聚焦数学分析课程，优先识别章节、知识点、题型，再给出结构化分析。
+如果题目明显超出当前课程范围，请说明“可能超出当前数学分析课程范围”，但仍要在已有信息内给出有限帮助。
+请按 JSON 返回结构化分析，并主动检查定义域、端点、连续性、可导性、可积性、级数判别法条件、一致收敛条件、反常积分瑕点拆分、幂级数端点、泰勒余项、极限与积分交换条件。";
 
             var template = promptProfile?.UserPromptTemplate ??
-                "{\"course\":\"{{course_name}}\",\"chapter\":\"{{chapter_name}}\",\"analysis_mode\":\"{{analysis_mode}}\",\"problem_text\":\"{{problem_text}}\",\"student_solution\":\"{{student_solution_text}}\",\"knowledge_context\":{{knowledge_points_context_json}}}";
+                @"你现在处理的是数学分析课程题目，请先识别章节、知识点和题型，再给出结构化分析。
+请把题目理解、定理条件检查、解题策略、步骤理由和最终结论都体现在输出中。
+若题目超出数学分析课程范围，请明确标注“可能超出当前课程范围”，但仍给出有限帮助。
+
+{""course"":""{{course_name}}"",""chapter"":""{{chapter_name}}"",""analysis_mode"":""{{analysis_mode}}"",""problemText"":""{{problem_text}}"",""studentSolutionText"":""{{student_solution_text}}"",""knowledgeContext"":{{knowledge_points_context_json}}}
+
+请严格按指定 schema 输出且只输出一个 JSON object。";
 
             var userPrompt = template
                 .Replace("{{course_name}}", EscapeForTemplate(course.Name))

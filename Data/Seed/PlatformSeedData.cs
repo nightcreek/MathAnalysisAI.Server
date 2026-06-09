@@ -45,7 +45,10 @@ namespace MathAnalysisAI.Server.Data.Seed
             new() { Id = 308, CourseId = CourseMathAnalysisId, Name = "数项级数", Code = "ma.numeric_series", OrderIndex = 8, Description = "级数收敛性判别", CreatedAt = SeedCreatedAt },
             new() { Id = 309, CourseId = CourseMathAnalysisId, Name = "函数列与函数项级数", Code = "ma.function_series", OrderIndex = 9, Description = "一致收敛与函数项级数", CreatedAt = SeedCreatedAt },
             new() { Id = 310, CourseId = CourseMathAnalysisId, Name = "幂级数", Code = "ma.power_series", OrderIndex = 10, Description = "收敛半径与展开", CreatedAt = SeedCreatedAt },
-            new() { Id = 311, CourseId = CourseMathAnalysisId, Name = "多元函数微分学", Code = "ma.multivariable_differential", OrderIndex = 11, Description = "偏导与全微分", CreatedAt = SeedCreatedAt }
+            new() { Id = 311, CourseId = CourseMathAnalysisId, Name = "多元函数微分学", Code = "ma.multivariable_differential", OrderIndex = 11, Description = "偏导与全微分", CreatedAt = SeedCreatedAt },
+            new() { Id = 312, CourseId = CourseMathAnalysisId, Name = "重积分", Code = "ma.multiple_integral", OrderIndex = 12, Description = "二重积分与三重积分", CreatedAt = SeedCreatedAt },
+            new() { Id = 313, CourseId = CourseMathAnalysisId, Name = "曲线积分", Code = "ma.line_integral", OrderIndex = 13, Description = "第一类与第二类曲线积分", CreatedAt = SeedCreatedAt },
+            new() { Id = 314, CourseId = CourseMathAnalysisId, Name = "曲面积分", Code = "ma.surface_integral", OrderIndex = 14, Description = "第一类与第二类曲面积分", CreatedAt = SeedCreatedAt }
         };
 
         public static readonly KnowledgePoint[] KnowledgePoints =
@@ -103,7 +106,34 @@ namespace MathAnalysisAI.Server.Data.Seed
             new() { Id = 1041, CourseId = CourseMathAnalysisId, ChapterId = 311, Name = "偏导数定义", Code = "ma.multivariable_differential.partial_derivative", Description = "多元函数偏导", CreatedAt = SeedCreatedAt },
             new() { Id = 1042, CourseId = CourseMathAnalysisId, ChapterId = 311, Name = "全微分", Code = "ma.multivariable_differential.total_differential", Description = "全微分存在条件", CreatedAt = SeedCreatedAt },
             new() { Id = 1043, CourseId = CourseMathAnalysisId, ChapterId = 311, Name = "方向导数与梯度", Code = "ma.multivariable_differential.directional_gradient", Description = "梯度及几何意义", CreatedAt = SeedCreatedAt },
-            new() { Id = 1044, CourseId = CourseMathAnalysisId, ChapterId = 311, Name = "极值与条件极值", Code = "ma.multivariable_differential.extrema_lagrange", Description = "Hessian 与拉格朗日乘子", CreatedAt = SeedCreatedAt }
+            new() { Id = 1044, CourseId = CourseMathAnalysisId, ChapterId = 311, Name = "极值与条件极值", Code = "ma.multivariable_differential.extrema_lagrange", Description = "Hessian 与拉格朗日乘子", CreatedAt = SeedCreatedAt },
+
+            new() { Id = 1045, CourseId = CourseMathAnalysisId, ChapterId = 312, Name = "重积分概念", Code = "ma.multiple_integral.concept", Description = "重积分定义与基本概念", CreatedAt = SeedCreatedAt },
+            new() { Id = 1046, CourseId = CourseMathAnalysisId, ChapterId = 312, Name = "二重积分定义与计算", Code = "ma.multiple_integral.double_integral", Description = "二重积分的定义与计算", CreatedAt = SeedCreatedAt },
+            new() { Id = 1047, CourseId = CourseMathAnalysisId, ChapterId = 312, Name = "三重积分定义与计算", Code = "ma.multiple_integral.triple_integral", Description = "三重积分的定义与计算", CreatedAt = SeedCreatedAt },
+            new() { Id = 1048, CourseId = CourseMathAnalysisId, ChapterId = 312, Name = "积分区域与积分次序", Code = "ma.multiple_integral.region_order", Description = "积分区域描述与积分次序交换", CreatedAt = SeedCreatedAt },
+            new() { Id = 1049, CourseId = CourseMathAnalysisId, ChapterId = 312, Name = "重积分变量替换", Code = "ma.multiple_integral.change_of_variables", Description = "重积分换元与雅可比", CreatedAt = SeedCreatedAt },
+            new() { Id = 1050, CourseId = CourseMathAnalysisId, ChapterId = 312, Name = "坐标系下的重积分", Code = "ma.multiple_integral.coordinate_systems", Description = "极坐标、柱坐标与球坐标下的重积分", CreatedAt = SeedCreatedAt },
+
+            new() { Id = 1051, CourseId = CourseMathAnalysisId, ChapterId = 313, Name = "曲线积分概念", Code = "ma.line_integral.concept", Description = "曲线积分基本概念", CreatedAt = SeedCreatedAt },
+            new() { Id = 1052, CourseId = CourseMathAnalysisId, ChapterId = 313, Name = "第一类曲线积分", Code = "ma.line_integral.scalar", Description = "标量场上的曲线积分", CreatedAt = SeedCreatedAt },
+            new() { Id = 1053, CourseId = CourseMathAnalysisId, ChapterId = 313, Name = "第二类曲线积分", Code = "ma.line_integral.vector", Description = "向量场上的曲线积分", CreatedAt = SeedCreatedAt },
+            new() { Id = 1054, CourseId = CourseMathAnalysisId, ChapterId = 313, Name = "路径无关性与保守场", Code = "ma.line_integral.path_independence", Description = "路径无关性、保守场与势函数", CreatedAt = SeedCreatedAt },
+            new() { Id = 1055, CourseId = CourseMathAnalysisId, ChapterId = 313, Name = "Green 公式", Code = "ma.line_integral.green_formula", Description = "Green 公式与平面区域积分", CreatedAt = SeedCreatedAt },
+
+            new() { Id = 1056, CourseId = CourseMathAnalysisId, ChapterId = 314, Name = "曲面积分概念", Code = "ma.surface_integral.concept", Description = "曲面积分基本概念", CreatedAt = SeedCreatedAt },
+            new() { Id = 1057, CourseId = CourseMathAnalysisId, ChapterId = 314, Name = "第一类曲面积分", Code = "ma.surface_integral.scalar", Description = "标量场上的曲面积分", CreatedAt = SeedCreatedAt },
+            new() { Id = 1058, CourseId = CourseMathAnalysisId, ChapterId = 314, Name = "第二类曲面积分", Code = "ma.surface_integral.flux", Description = "通量型曲面积分", CreatedAt = SeedCreatedAt },
+            new() { Id = 1059, CourseId = CourseMathAnalysisId, ChapterId = 314, Name = "Gauss 公式", Code = "ma.surface_integral.gauss_formula", Description = "Gauss 散度公式", CreatedAt = SeedCreatedAt },
+            new() { Id = 1060, CourseId = CourseMathAnalysisId, ChapterId = 314, Name = "Stokes 公式", Code = "ma.surface_integral.stokes_formula", Description = "Stokes 公式", CreatedAt = SeedCreatedAt },
+
+            new() { Id = 1061, CourseId = CourseMathAnalysisId, ChapterId = 307, Name = "反常积分瑕点拆分", Code = "ma.improper_integral.singularity_split", Description = "反常积分遇到瑕点时的拆分处理", CreatedAt = SeedCreatedAt },
+            new() { Id = 1062, CourseId = CourseMathAnalysisId, ChapterId = 310, Name = "幂级数端点收敛", Code = "ma.power_series.endpoint_convergence", Description = "幂级数端点的收敛性判定", CreatedAt = SeedCreatedAt },
+            new() { Id = 1063, CourseId = CourseMathAnalysisId, ChapterId = 309, Name = "函数项级数一致收敛", Code = "ma.function_series.uniform_convergence.criteria", Description = "函数项级数一致收敛与常见判定", CreatedAt = SeedCreatedAt },
+            new() { Id = 1064, CourseId = CourseMathAnalysisId, ChapterId = 309, Name = "逐点收敛与一致收敛区分", Code = "ma.function_series.pointwise_vs_uniform", Description = "逐点收敛与一致收敛的区别", CreatedAt = SeedCreatedAt },
+            new() { Id = 1065, CourseId = CourseMathAnalysisId, ChapterId = 310, Name = "泰勒公式余项", Code = "ma.power_series.taylor_remainder", Description = "泰勒公式余项与截断误差", CreatedAt = SeedCreatedAt },
+            new() { Id = 1066, CourseId = CourseMathAnalysisId, ChapterId = 304, Name = "中值定理条件检查", Code = "ma.mean_value_theorem.conditions_check", Description = "使用中值定理前的条件检查", CreatedAt = SeedCreatedAt },
+            new() { Id = 1067, CourseId = CourseMathAnalysisId, ChapterId = 309, Name = "极限与积分交换条件", Code = "ma.function_series.limit_exchange_conditions", Description = "极限与积分交换的条件", CreatedAt = SeedCreatedAt }
         };
 
         // NOTE: `often_confused` is modeled as a directed edge in storage,
@@ -121,7 +151,16 @@ namespace MathAnalysisAI.Server.Data.Seed
             new() { Id = 2009, FromKnowledgePointId = 1034, ToKnowledgePointId = 1039, DependencyType = "uses", CreatedAt = SeedCreatedAt },
             new() { Id = 2010, FromKnowledgePointId = 1030, ToKnowledgePointId = 1027, DependencyType = "often_confused", CreatedAt = SeedCreatedAt },
             new() { Id = 2011, FromKnowledgePointId = 1012, ToKnowledgePointId = 1042, DependencyType = "prerequisite", CreatedAt = SeedCreatedAt },
-            new() { Id = 2012, FromKnowledgePointId = 1041, ToKnowledgePointId = 1043, DependencyType = "uses", CreatedAt = SeedCreatedAt }
+            new() { Id = 2012, FromKnowledgePointId = 1041, ToKnowledgePointId = 1043, DependencyType = "uses", CreatedAt = SeedCreatedAt },
+            new() { Id = 2013, FromKnowledgePointId = 1021, ToKnowledgePointId = 1045, DependencyType = "prerequisite", CreatedAt = SeedCreatedAt },
+            new() { Id = 2014, FromKnowledgePointId = 1042, ToKnowledgePointId = 1045, DependencyType = "prerequisite", CreatedAt = SeedCreatedAt },
+            new() { Id = 2015, FromKnowledgePointId = 1042, ToKnowledgePointId = 1051, DependencyType = "prerequisite", CreatedAt = SeedCreatedAt },
+            new() { Id = 2016, FromKnowledgePointId = 1042, ToKnowledgePointId = 1056, DependencyType = "prerequisite", CreatedAt = SeedCreatedAt },
+            new() { Id = 2017, FromKnowledgePointId = 1034, ToKnowledgePointId = 1063, DependencyType = "prerequisite", CreatedAt = SeedCreatedAt },
+            new() { Id = 2018, FromKnowledgePointId = 1034, ToKnowledgePointId = 1064, DependencyType = "prerequisite", CreatedAt = SeedCreatedAt },
+            new() { Id = 2019, FromKnowledgePointId = 1040, ToKnowledgePointId = 1065, DependencyType = "prerequisite", CreatedAt = SeedCreatedAt },
+            new() { Id = 2020, FromKnowledgePointId = 1014, ToKnowledgePointId = 1066, DependencyType = "prerequisite", CreatedAt = SeedCreatedAt },
+            new() { Id = 2021, FromKnowledgePointId = 1034, ToKnowledgePointId = 1067, DependencyType = "prerequisite", CreatedAt = SeedCreatedAt }
         };
     }
 }

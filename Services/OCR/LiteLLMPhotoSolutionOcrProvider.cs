@@ -1,7 +1,10 @@
+using System.Net;
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
 using MathAnalysisAI.Server.DTOs.PhotoSolutions;
+using MathAnalysisAI.Server.Options;
+using Microsoft.Extensions.Options;
 
 namespace MathAnalysisAI.Server.Services.OCR
 {
@@ -14,15 +17,18 @@ namespace MathAnalysisAI.Server.Services.OCR
         private readonly IHttpClientFactory _httpClientFactory;
         private readonly IConfiguration _configuration;
         private readonly ILogger<LiteLLMPhotoSolutionOcrProvider> _logger;
+        private readonly IOptions<PhotoSolutionOcrOptions> _options;
 
         public LiteLLMPhotoSolutionOcrProvider(
             IHttpClientFactory httpClientFactory,
             IConfiguration configuration,
-            ILogger<LiteLLMPhotoSolutionOcrProvider> logger)
+            ILogger<LiteLLMPhotoSolutionOcrProvider> logger,
+            IOptions<PhotoSolutionOcrOptions> options)
         {
             _httpClientFactory = httpClientFactory;
             _configuration = configuration;
             _logger = logger;
+            _options = options;
         }
 
         public async Task<PhotoSolutionOcrResponseDto> RecognizeAsync(
@@ -32,23 +38,45 @@ namespace MathAnalysisAI.Server.Services.OCR
             var result = BuildFallback();
             result.RawProvider = ProviderName;
 
+            var settings = _options.Value;
+            var timeoutSeconds = settings.TimeoutSeconds > 0 ? settings.TimeoutSeconds : 90;
+            var maxRetryAttempts = Math.Max(0, settings.MaxRetryAttempts);
+            var maxAttempts = maxRetryAttempts + 1;
+            var retryDelayMilliseconds = Math.Max(0, settings.RetryDelayMilliseconds);
+            var maxErrorBodyLength = settings.MaxErrorBodyLength > 0 ? settings.MaxErrorBodyLength : 2000;
+
             if (request.CourseId <= 0)
             {
-                result.Warnings.Add("invalid_course_id");
-                return result;
+                return BuildFailure(
+                    result,
+                    errorCode: "ocr_config_error",
+                    message: "CourseId is required.",
+                    statusCode: (int)HttpStatusCode.BadRequest,
+                    attemptCount: 1,
+                    retryable: false);
             }
 
             if (request.ImageBytes == null || request.ImageBytes.Length == 0)
             {
-                result.Warnings.Add("empty_image_bytes");
-                return result;
+                return BuildFailure(
+                    result,
+                    errorCode: "ocr_config_error",
+                    message: "Image bytes are required.",
+                    statusCode: (int)HttpStatusCode.BadRequest,
+                    attemptCount: 1,
+                    retryable: false);
             }
 
             var maxImageBytes = _configuration.GetValue<int?>("PhotoSolutionOcr:MaxImageBytes") ?? DefaultMaxImageBytes;
             if (request.ImageBytes.Length > maxImageBytes)
             {
-                result.Warnings.Add($"image_exceeds_limit:{maxImageBytes}");
-                return result;
+                return BuildFailure(
+                    result,
+                    errorCode: "ocr_config_error",
+                    message: $"Image exceeds limit of {maxImageBytes} bytes.",
+                    statusCode: (int)HttpStatusCode.BadRequest,
+                    attemptCount: 1,
+                    retryable: false);
             }
 
             var baseUrl = _configuration["LiteLLM:BaseUrl"] ?? string.Empty;
@@ -58,20 +86,17 @@ namespace MathAnalysisAI.Server.Services.OCR
 
             if (string.IsNullOrWhiteSpace(baseUrl))
             {
-                result.Warnings.Add("missing_litellm_base_url");
-                return result;
+                return BuildFailure(result, "ocr_config_error", "LiteLLM:BaseUrl is not configured.", (int)HttpStatusCode.InternalServerError, 1, false);
             }
 
             if (string.IsNullOrWhiteSpace(apiKey))
             {
-                result.Warnings.Add("missing_litellm_api_key");
-                return result;
+                return BuildFailure(result, "ocr_config_error", "LiteLLM API key is not configured. Set LiteLLM__ApiKey.", (int)HttpStatusCode.InternalServerError, 1, false);
             }
 
             if (!IsAscii(apiKey))
             {
-                result.Warnings.Add("invalid_litellm_api_key_non_ascii");
-                return result;
+                return BuildFailure(result, "ocr_config_error", "LiteLLM API key contains non-ASCII characters.", (int)HttpStatusCode.InternalServerError, 1, false);
             }
 
             var contentType = string.IsNullOrWhiteSpace(request.ContentType)
@@ -100,45 +125,222 @@ namespace MathAnalysisAI.Server.Services.OCR
                 }
             };
 
-            try
+            var client = _httpClientFactory.CreateClient();
+            var retryableStatusCodes = settings.RetryOnStatusCodes?.Count > 0
+                ? new HashSet<int>(settings.RetryOnStatusCodes)
+                : new HashSet<int>([429, 502, 503, 504]);
+
+            for (var attempt = 1; attempt <= maxAttempts; attempt++)
             {
-                var client = _httpClientFactory.CreateClient();
-                using var httpRequest = new HttpRequestMessage(HttpMethod.Post, baseUrl)
+                try
                 {
-                    Content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json")
-                };
-                httpRequest.Headers.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
+                    using var attemptCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+                    attemptCts.CancelAfter(TimeSpan.FromSeconds(timeoutSeconds));
 
-                using var httpResponse = await client.SendAsync(httpRequest, cancellationToken);
-                var body = await httpResponse.Content.ReadAsStringAsync(cancellationToken);
-                if (!httpResponse.IsSuccessStatusCode)
-                {
-                    result.Warnings.Add($"provider_http_{(int)httpResponse.StatusCode}");
-                    return result;
+                    using var httpRequest = new HttpRequestMessage(HttpMethod.Post, baseUrl)
+                    {
+                        Content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json")
+                    };
+                    httpRequest.Headers.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
+
+                    using var httpResponse = await client.SendAsync(httpRequest, attemptCts.Token);
+                    var httpStatusCode = (int)httpResponse.StatusCode;
+                    var body = await httpResponse.Content.ReadAsStringAsync(attemptCts.Token);
+
+                    if (!httpResponse.IsSuccessStatusCode)
+                    {
+                        var truncatedBody = Truncate(body, maxErrorBodyLength);
+                        if (IsRetryableStatusCode(retryableStatusCodes, httpResponse.StatusCode) && attempt < maxAttempts)
+                        {
+                            _logger.LogWarning(
+                                "Photo OCR provider retryable HTTP failure. Provider={Provider} Model={Model} Attempt={Attempt} StatusCode={StatusCode} ErrorCode={ErrorCode} Message={Message}",
+                                ProviderName,
+                                modelAlias,
+                                attempt,
+                                httpStatusCode,
+                                "ocr_temporary_unavailable",
+                                Truncate(truncatedBody, maxErrorBodyLength));
+
+                            await DelayBeforeRetryAsync(retryDelayMilliseconds, cancellationToken);
+                            continue;
+                        }
+
+                        return BuildFailure(
+                            result,
+                            errorCode: MapHttpErrorCode(httpResponse.StatusCode),
+                            message: string.IsNullOrWhiteSpace(truncatedBody)
+                                ? $"OCR provider returned HTTP {httpStatusCode}."
+                                : truncatedBody,
+                            statusCode: httpStatusCode,
+                            attemptCount: attempt,
+                            retryable: IsRetryableStatusCode(retryableStatusCodes, httpResponse.StatusCode));
+                    }
+
+                    if (!TryExtractMessageContent(body, out var llmContent))
+                    {
+                        return BuildFailure(
+                            result,
+                            errorCode: "ocr_response_parse_failed",
+                            message: "OCR provider response parse failed.",
+                            statusCode: (int)HttpStatusCode.BadGateway,
+                            attemptCount: attempt,
+                            retryable: false);
+                    }
+
+                    if (!TryParseOcrJson(llmContent, out var parsed, out var parseWarning))
+                    {
+                        return BuildFailure(
+                            result,
+                            errorCode: "ocr_json_parse_failed",
+                            message: parseWarning ?? "OCR JSON parse failed.",
+                            statusCode: (int)HttpStatusCode.BadGateway,
+                            attemptCount: attempt,
+                            retryable: false);
+                    }
+
+                    parsed.RawProvider = ProviderName;
+                    parsed.ModelName = modelAlias;
+                    parsed.IsSuccess = true;
+                    parsed.AttemptCount = attempt;
+                    parsed.IsRetryable = false;
+                    parsed.StatusCode = (int)HttpStatusCode.OK;
+                    return parsed;
                 }
-
-                if (!TryExtractMessageContent(body, out var llmContent))
+                catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
                 {
-                    result.Warnings.Add("provider_response_parse_failed");
-                    return result;
-                }
+                    if (attempt < maxAttempts)
+                    {
+                        _logger.LogWarning(
+                            "Photo OCR provider timeout. Provider={Provider} Model={Model} Attempt={Attempt} ErrorCode={ErrorCode} Message={Message}",
+                            ProviderName,
+                            modelAlias,
+                            attempt,
+                            "ocr_timeout",
+                            $"OCR request timed out after {timeoutSeconds} seconds.");
 
-                if (!TryParseOcrJson(llmContent, out var parsed, out var parseWarning))
+                        await DelayBeforeRetryAsync(retryDelayMilliseconds, cancellationToken);
+                        continue;
+                    }
+
+                    return BuildFailure(
+                        result,
+                        errorCode: "ocr_timeout",
+                        message: $"OCR request timed out after {timeoutSeconds} seconds.",
+                        statusCode: (int)HttpStatusCode.GatewayTimeout,
+                        attemptCount: attempt,
+                        retryable: true);
+                }
+                catch (HttpRequestException ex)
                 {
-                    result.Warnings.Add(parseWarning ?? "ocr_json_parse_failed");
-                    return result;
-                }
+                    var truncatedMessage = Truncate(ex.Message, maxErrorBodyLength);
+                    if (attempt < maxAttempts)
+                    {
+                        _logger.LogWarning(
+                            "Photo OCR provider network failure. Provider={Provider} Model={Model} Attempt={Attempt} ErrorCode={ErrorCode} Message={Message}",
+                            ProviderName,
+                            modelAlias,
+                            attempt,
+                            "ocr_temporary_unavailable",
+                            truncatedMessage);
 
-                parsed.RawProvider = ProviderName;
-                parsed.ModelName = modelAlias;
-                return parsed;
+                        await DelayBeforeRetryAsync(retryDelayMilliseconds, cancellationToken);
+                        continue;
+                    }
+
+                    return BuildFailure(
+                        result,
+                        errorCode: "ocr_temporary_unavailable",
+                        message: truncatedMessage,
+                        statusCode: (int)HttpStatusCode.BadGateway,
+                        attemptCount: attempt,
+                        retryable: true);
+                }
+                catch (Exception ex)
+                {
+                    var truncatedMessage = Truncate(ex.Message, maxErrorBodyLength);
+                    _logger.LogWarning(
+                        ex,
+                        "Photo OCR provider failure. Provider={Provider} Model={Model} Attempt={Attempt} ErrorCode={ErrorCode} StatusCode={StatusCode} Message={Message}",
+                        ProviderName,
+                        modelAlias,
+                        attempt,
+                        "ocr_provider_exception",
+                        (int?)HttpStatusCode.BadGateway,
+                        truncatedMessage);
+
+                    return BuildFailure(
+                        result,
+                        errorCode: "ocr_provider_exception",
+                        message: truncatedMessage,
+                        statusCode: (int)HttpStatusCode.BadGateway,
+                        attemptCount: attempt,
+                        retryable: false);
+                }
             }
-            catch (Exception ex)
+
+            return BuildFailure(
+                result,
+                errorCode: "ocr_temporary_unavailable",
+                message: "OCR provider failed after retries.",
+                statusCode: (int)HttpStatusCode.BadGateway,
+                attemptCount: maxAttempts,
+                retryable: true);
+        }
+
+        private PhotoSolutionOcrResponseDto BuildFailure(
+            PhotoSolutionOcrResponseDto response,
+            string errorCode,
+            string message,
+            int statusCode,
+            int attemptCount,
+            bool retryable)
+        {
+            response.IsSuccess = false;
+            response.ErrorCode = errorCode;
+            response.ErrorMessage = message;
+            response.StatusCode = statusCode;
+            response.AttemptCount = attemptCount;
+            response.IsRetryable = retryable;
+            response.Warnings = new List<string>();
+            response.ReviewReasons = new List<string>();
+            response.CanAnalyze = false;
+
+            _logger.LogWarning(
+                "Photo OCR provider failed. Provider={Provider} Model={Model} Attempt={Attempt} ErrorCode={ErrorCode} StatusCode={StatusCode} Message={Message}",
+                ProviderName,
+                response.ModelName ?? DefaultAlias,
+                attemptCount,
+                errorCode,
+                statusCode,
+                message);
+
+            return response;
+        }
+
+        private static bool IsRetryableStatusCode(HashSet<int> retryableStatusCodes, HttpStatusCode statusCode)
+        {
+            return retryableStatusCodes.Contains((int)statusCode);
+        }
+
+        private static async Task DelayBeforeRetryAsync(int retryDelayMilliseconds, CancellationToken cancellationToken)
+        {
+            if (retryDelayMilliseconds <= 0)
             {
-                _logger.LogWarning(ex, "Photo solution OCR provider call failed.");
-                result.Warnings.Add("provider_exception");
-                return result;
+                return;
             }
+
+            await Task.Delay(retryDelayMilliseconds, cancellationToken);
+        }
+
+        private static string MapHttpErrorCode(HttpStatusCode statusCode)
+        {
+            return statusCode switch
+            {
+                HttpStatusCode.Unauthorized => "ocr_config_error",
+                HttpStatusCode.Forbidden => "ocr_config_error",
+                HttpStatusCode.BadRequest => "ocr_request_failed",
+                _ => "ocr_temporary_unavailable"
+            };
         }
 
         private static PhotoSolutionOcrResponseDto BuildFallback()
@@ -151,6 +353,9 @@ namespace MathAnalysisAI.Server.Services.OCR
                 Formulas = new List<FormulaCandidateDto>(),
                 Warnings = new List<string>(),
                 Confidence = null,
+                IsSuccess = true,
+                AttemptCount = 0,
+                IsRetryable = false,
                 RawProvider = ProviderName,
                 ModelName = null
             };

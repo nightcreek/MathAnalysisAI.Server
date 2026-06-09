@@ -35,6 +35,7 @@
   function setFormulaLatex(index, latex) {
     if (index < 0 || index >= state.formulas.length) return;
     state.formulas[index].latex = String(latex || "");
+    document.dispatchEvent(new CustomEvent("photo-solution-ocr-changed"));
   }
 
   function appendLatexToTextarea(textareaId, latex) {
@@ -100,6 +101,7 @@
       var value = String(field.value || "");
       setFormulaLatex(index, value);
       latexOutput.textContent = value;
+      document.dispatchEvent(new CustomEvent("photo-solution-ocr-changed"));
     });
 
     return field;
@@ -238,7 +240,15 @@
       if (!hasDom()) return;
       state.mathLiveReady = isMathLiveReady();
     },
-    renderFormulas: renderFormulas
+    renderFormulas: renderFormulas,
+    getFormulas: function () {
+      return state.formulas.map(function (item) {
+        return {
+          latex: String(item.latex || "").trim(),
+          context: String(item.context || "").trim()
+        };
+      });
+    }
   };
 
   document.addEventListener("DOMContentLoaded", function () {

@@ -20,5 +20,11 @@ namespace MathAnalysisAI.Server.DTOs.Analysis
         public List<string> MistakeTags { get; set; } = new();
         public List<string> ReviewSuggestions { get; set; } = new();
         public VisualizationDto Visualization { get; set; } = new();
+
+        public string? AnswerReliability { get; set; }
+        public bool NeedsReview { get; set; }
+        public List<string> ReliabilityReasons { get; set; } = new();
+        public List<string> VerifierWarnings { get; set; } = new();
+        public DateTime? VerifiedAt { get; set; }
     }
 }

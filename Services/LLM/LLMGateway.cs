@@ -1,10 +1,13 @@
 using System.Diagnostics;
+using System.Net;
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
 using MathAnalysisAI.Server.Data;
 using MathAnalysisAI.Server.DTOs.LLM;
 using MathAnalysisAI.Server.Models;
+using MathAnalysisAI.Server.Options;
+using Microsoft.Extensions.Options;
 
 namespace MathAnalysisAI.Server.Services.LLM
 {
@@ -20,21 +23,31 @@ namespace MathAnalysisAI.Server.Services.LLM
         private readonly IHttpClientFactory _httpClientFactory;
         private readonly IConfiguration _configuration;
         private readonly ApplicationDbContext _db;
+        private readonly IOptions<LLMOptions> _options;
 
         public LLMGateway(
             IHttpClientFactory httpClientFactory,
             IConfiguration configuration,
-            ApplicationDbContext db)
+            ApplicationDbContext db,
+            IOptions<LLMOptions> options)
         {
             _httpClientFactory = httpClientFactory;
             _configuration = configuration;
             _db = db;
+            _options = options;
         }
 
         public async Task<LLMChatResponseDto> ChatAsync(LLMChatRequestDto request, CancellationToken cancellationToken = default)
         {
             var stopwatch = Stopwatch.StartNew();
             var response = new LLMChatResponseDto { IsSuccess = false };
+
+            var settings = _options.Value;
+            var timeoutSeconds = settings.TimeoutSeconds > 0 ? settings.TimeoutSeconds : 60;
+            var maxRetryAttempts = Math.Max(0, settings.MaxRetryAttempts);
+            var maxAttempts = maxRetryAttempts + 1;
+            var retryDelayMilliseconds = Math.Max(0, settings.RetryDelayMilliseconds);
+            var maxErrorBodyLength = settings.MaxErrorBodyLength > 0 ? settings.MaxErrorBodyLength : 2000;
 
             var mode = (_configuration["LLMGateway:Mode"] ?? GatewayModeDirect).Trim().ToLowerInvariant();
             var provider = mode == GatewayModeLiteLlm ? ProviderLiteLlm : ProviderDeepSeek;
@@ -44,6 +57,9 @@ namespace MathAnalysisAI.Server.Services.LLM
             var status = "failed";
             string? errorCode = null;
             string? errorMessage = null;
+            int? statusCode = null;
+            var attemptCount = 0;
+            var isRetryable = false;
             int? promptTokens = null;
             int? completionTokens = null;
             int? totalTokens = null;
@@ -59,8 +75,12 @@ namespace MathAnalysisAI.Server.Services.LLM
                 {
                     errorCode = "empty_messages";
                     errorMessage = "Messages must contain at least one non-empty item.";
+                    statusCode = (int)HttpStatusCode.BadRequest;
                     response.ErrorCode = errorCode;
                     response.ErrorMessage = errorMessage;
+                    response.StatusCode = statusCode;
+                    response.IsRetryable = false;
+                    response.AttemptCount = 1;
                     status = "failed";
                     return response;
                 }
@@ -74,32 +94,17 @@ namespace MathAnalysisAI.Server.Services.LLM
                     apiKey = _configuration["LiteLLM:ApiKey"] ?? string.Empty;
                     if (string.IsNullOrWhiteSpace(baseUrl))
                     {
-                        errorCode = "missing_litellm_base_url";
-                        errorMessage = "LiteLLM:BaseUrl is not configured.";
-                        response.ErrorCode = errorCode;
-                        response.ErrorMessage = errorMessage;
-                        status = "failed";
-                        return response;
+                        return BuildConfigFailure(response, "missing_litellm_base_url", "LiteLLM:BaseUrl is not configured.");
                     }
 
                     if (string.IsNullOrWhiteSpace(apiKey))
                     {
-                        errorCode = "missing_litellm_api_key";
-                        errorMessage = "LiteLLM API key is not configured. Set LiteLLM__ApiKey.";
-                        response.ErrorCode = errorCode;
-                        response.ErrorMessage = errorMessage;
-                        status = "failed";
-                        return response;
+                        return BuildConfigFailure(response, "missing_litellm_api_key", "LiteLLM API key is not configured. Set LiteLLM__ApiKey.");
                     }
 
                     if (!IsAscii(apiKey))
                     {
-                        errorCode = "invalid_litellm_api_key";
-                        errorMessage = "LiteLLM API key contains non-ASCII characters.";
-                        response.ErrorCode = errorCode;
-                        response.ErrorMessage = errorMessage;
-                        status = "failed";
-                        return response;
+                        return BuildConfigFailure(response, "invalid_litellm_api_key", "LiteLLM API key contains non-ASCII characters.");
                     }
 
                     modelName = ResolveLiteLlmAlias(requestType, request.ModelName);
@@ -111,78 +116,131 @@ namespace MathAnalysisAI.Server.Services.LLM
                     apiKey = _configuration["DeepSeek:ApiKey"] ?? string.Empty;
                     if (string.IsNullOrWhiteSpace(baseUrl))
                     {
-                        errorCode = "missing_base_url";
-                        errorMessage = "DeepSeek:BaseUrl is not configured.";
-                        response.ErrorCode = errorCode;
-                        response.ErrorMessage = errorMessage;
-                        status = "failed";
-                        return response;
+                        return BuildConfigFailure(response, "missing_base_url", "DeepSeek:BaseUrl is not configured.");
                     }
 
                     if (string.IsNullOrWhiteSpace(apiKey))
                     {
-                        errorCode = "missing_api_key";
-                        errorMessage = "DeepSeek API key is not configured. Set DeepSeek__ApiKey.";
-                        response.ErrorCode = errorCode;
-                        response.ErrorMessage = errorMessage;
-                        status = "failed";
-                        return response;
+                        return BuildConfigFailure(response, "missing_api_key", "DeepSeek API key is not configured. Set DeepSeek__ApiKey.");
                     }
 
                     if (!IsAscii(apiKey))
                     {
-                        errorCode = "invalid_api_key";
-                        errorMessage = "DeepSeek API key contains non-ASCII characters.";
-                        response.ErrorCode = errorCode;
-                        response.ErrorMessage = errorMessage;
-                        status = "failed";
-                        return response;
+                        return BuildConfigFailure(response, "invalid_api_key", "DeepSeek API key contains non-ASCII characters.");
                     }
 
                     modelName = string.IsNullOrWhiteSpace(request.ModelName) ? DefaultDeepSeekModel : request.ModelName.Trim();
                     payload = new { model = modelName, messages };
                 }
 
+                var retryableStatusCodes = settings.RetryOnStatusCodes?.Count > 0
+                    ? new HashSet<int>(settings.RetryOnStatusCodes)
+                    : new HashSet<int>([429, 502, 503, 504]);
+
                 var client = _httpClientFactory.CreateClient();
-                using var httpRequest = new HttpRequestMessage(HttpMethod.Post, baseUrl)
+                while (attemptCount < maxAttempts)
                 {
-                    Content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json")
-                };
-                httpRequest.Headers.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
+                    attemptCount++;
+                    statusCode = null;
+                    isRetryable = false;
 
-                using var httpResponse = await client.SendAsync(httpRequest, cancellationToken);
-                var responseBody = await httpResponse.Content.ReadAsStringAsync(cancellationToken);
+                    try
+                    {
+                        using var attemptCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+                        attemptCts.CancelAfter(TimeSpan.FromSeconds(timeoutSeconds));
 
-                if (!httpResponse.IsSuccessStatusCode)
-                {
-                    errorCode = mode == GatewayModeLiteLlm
-                        ? "litellm_request_failed"
-                        : $"http_{(int)httpResponse.StatusCode}";
-                    errorMessage = Truncate(responseBody, 1000);
-                    response.ErrorCode = errorCode;
-                    response.ErrorMessage = errorMessage;
-                    status = "failed";
-                    return response;
+                        using var httpRequest = new HttpRequestMessage(HttpMethod.Post, baseUrl)
+                        {
+                            Content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json")
+                        };
+                        httpRequest.Headers.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
+
+                        using var httpResponse = await client.SendAsync(httpRequest, attemptCts.Token);
+                        statusCode = (int)httpResponse.StatusCode;
+
+                        if (!httpResponse.IsSuccessStatusCode)
+                        {
+                            var responseBody = await httpResponse.Content.ReadAsStringAsync(attemptCts.Token);
+                            var truncatedBody = Truncate(responseBody, maxErrorBodyLength);
+                            if (IsRetryableStatusCode(retryableStatusCodes, httpResponse.StatusCode) && attemptCount < maxAttempts)
+                            {
+                                errorCode = "llm_temporary_unavailable";
+                                errorMessage = $"LLM provider returned HTTP {(int)httpResponse.StatusCode}.";
+                                isRetryable = true;
+                                await DelayBeforeRetryAsync(retryDelayMilliseconds, cancellationToken);
+                                continue;
+                            }
+
+                            errorCode = MapHttpErrorCode(httpResponse.StatusCode);
+                            errorMessage = string.IsNullOrWhiteSpace(truncatedBody)
+                                ? $"LLM provider returned HTTP {(int)httpResponse.StatusCode}."
+                                : truncatedBody;
+                            statusCode = (int)httpResponse.StatusCode;
+                            isRetryable = IsRetryableStatusCode(retryableStatusCodes, httpResponse.StatusCode);
+                            break;
+                        }
+
+                        var responseBodySuccess = await httpResponse.Content.ReadAsStringAsync(attemptCts.Token);
+                        if (!TryExtractContentAndTokens(responseBodySuccess, out var content, out promptTokens, out completionTokens, out totalTokens))
+                        {
+                            errorCode = mode == GatewayModeLiteLlm ? "litellm_response_parse_failed" : "response_parse_failed";
+                            errorMessage = "Failed to parse LLM response.";
+                            statusCode = (int)HttpStatusCode.OK;
+                            isRetryable = false;
+                            break;
+                        }
+
+                        response.IsSuccess = true;
+                        response.Content = content;
+                        response.PromptTokenCount = promptTokens;
+                        response.CompletionTokenCount = completionTokens;
+                        response.TotalTokenCount = totalTokens;
+                        response.ErrorCode = null;
+                        response.ErrorMessage = null;
+                        response.StatusCode = (int)HttpStatusCode.OK;
+                        response.IsRetryable = false;
+                        response.AttemptCount = attemptCount;
+                        status = "success";
+                        return response;
+                    }
+                    catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+                    {
+                        errorCode = "llm_timeout";
+                        errorMessage = $"LLM request timed out after {timeoutSeconds} seconds.";
+                        statusCode = (int)HttpStatusCode.GatewayTimeout;
+                        isRetryable = true;
+
+                        if (attemptCount < maxAttempts)
+                        {
+                            await DelayBeforeRetryAsync(retryDelayMilliseconds, cancellationToken);
+                            continue;
+                        }
+
+                        break;
+                    }
+                    catch (HttpRequestException ex)
+                    {
+                        errorCode = "llm_temporary_unavailable";
+                        errorMessage = Truncate(ex.Message, maxErrorBodyLength);
+                        statusCode = (int)HttpStatusCode.ServiceUnavailable;
+                        isRetryable = true;
+
+                        if (attemptCount < maxAttempts)
+                        {
+                            await DelayBeforeRetryAsync(retryDelayMilliseconds, cancellationToken);
+                            continue;
+                        }
+
+                        break;
+                    }
                 }
 
-                if (!TryExtractContentAndTokens(responseBody, out var content, out promptTokens, out completionTokens, out totalTokens))
-                {
-                    errorCode = mode == GatewayModeLiteLlm
-                        ? "litellm_response_parse_failed"
-                        : "response_parse_failed";
-                    errorMessage = "Failed to parse LLM response.";
-                    response.ErrorCode = errorCode;
-                    response.ErrorMessage = errorMessage;
-                    status = "failed";
-                    return response;
-                }
-
-                response.IsSuccess = true;
-                response.Content = content;
-                response.PromptTokenCount = promptTokens;
-                response.CompletionTokenCount = completionTokens;
-                response.TotalTokenCount = totalTokens;
-                status = "success";
+                response.ErrorCode = errorCode;
+                response.ErrorMessage = errorMessage;
+                response.StatusCode = statusCode;
+                response.IsRetryable = isRetryable;
+                response.AttemptCount = Math.Max(1, attemptCount);
+                status = "failed";
                 return response;
             }
             catch (OperationCanceledException)
@@ -191,15 +249,21 @@ namespace MathAnalysisAI.Server.Services.LLM
                 errorMessage = "LLM request canceled.";
                 response.ErrorCode = errorCode;
                 response.ErrorMessage = errorMessage;
+                response.StatusCode = statusCode;
+                response.IsRetryable = false;
+                response.AttemptCount = Math.Max(1, attemptCount);
                 status = "failed";
                 return response;
             }
             catch (Exception ex)
             {
                 errorCode = "gateway_exception";
-                errorMessage = Truncate(ex.Message, 1000);
+                errorMessage = Truncate(ex.Message, maxErrorBodyLength);
                 response.ErrorCode = errorCode;
                 response.ErrorMessage = errorMessage;
+                response.StatusCode = statusCode;
+                response.IsRetryable = false;
+                response.AttemptCount = Math.Max(1, attemptCount);
                 status = "failed";
                 return response;
             }
@@ -207,6 +271,7 @@ namespace MathAnalysisAI.Server.Services.LLM
             {
                 stopwatch.Stop();
                 response.LatencyMs = stopwatch.ElapsedMilliseconds;
+                response.AttemptCount = Math.Max(1, response.AttemptCount);
 
                 var log = new LLMRequestLog
                 {
@@ -217,6 +282,8 @@ namespace MathAnalysisAI.Server.Services.LLM
                     CompletionTokenCount = completionTokens,
                     TotalTokenCount = totalTokens,
                     LatencyMs = (int)Math.Min(int.MaxValue, stopwatch.ElapsedMilliseconds),
+                    AttemptCount = response.AttemptCount,
+                    StatusCode = response.StatusCode,
                     Status = status,
                     ErrorCode = errorCode,
                     ErrorMessage = errorMessage,
@@ -235,6 +302,43 @@ namespace MathAnalysisAI.Server.Services.LLM
                     // Logging failures should not mask the original LLM response.
                 }
             }
+        }
+
+        private static LLMChatResponseDto BuildConfigFailure(LLMChatResponseDto response, string errorCode, string errorMessage)
+        {
+            response.IsSuccess = false;
+            response.ErrorCode = errorCode;
+            response.ErrorMessage = errorMessage;
+            response.StatusCode = (int)HttpStatusCode.InternalServerError;
+            response.IsRetryable = false;
+            response.AttemptCount = 1;
+            return response;
+        }
+
+        private static string MapHttpErrorCode(HttpStatusCode statusCode)
+        {
+            return statusCode switch
+            {
+                HttpStatusCode.Unauthorized => "llm_auth_error",
+                HttpStatusCode.Forbidden => "llm_auth_error",
+                HttpStatusCode.BadRequest => "llm_request_failed",
+                _ => "llm_temporary_unavailable"
+            };
+        }
+
+        private static bool IsRetryableStatusCode(HashSet<int> retryableStatusCodes, HttpStatusCode statusCode)
+        {
+            return retryableStatusCodes.Contains((int)statusCode);
+        }
+
+        private static async Task DelayBeforeRetryAsync(int retryDelayMilliseconds, CancellationToken cancellationToken)
+        {
+            if (retryDelayMilliseconds <= 0)
+            {
+                return;
+            }
+
+            await Task.Delay(retryDelayMilliseconds, cancellationToken);
         }
 
         private string ResolveLiteLlmAlias(string requestType, string? requestedModelName)

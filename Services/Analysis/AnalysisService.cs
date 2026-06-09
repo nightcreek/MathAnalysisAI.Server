@@ -10,6 +10,7 @@ using MathAnalysisAI.Server.Services.Analysis.Mistakes;
 using MathAnalysisAI.Server.Services.Analysis.Parsing;
 using MathAnalysisAI.Server.Services.Analysis.Persistence;
 using MathAnalysisAI.Server.Services.Analysis.Stats;
+using MathAnalysisAI.Server.Services.Analysis.Verification;
 using MathAnalysisAI.Server.Services.Knowledge;
 using MathAnalysisAI.Server.Services.LLM;
 using MathAnalysisAI.Server.Services.Visualization;
@@ -27,6 +28,7 @@ namespace MathAnalysisAI.Server.Services.Analysis
         private readonly IAnalysisPersistenceService _analysisPersistenceService;
         private readonly IMistakeRecordService _mistakeRecordService;
         private readonly IUserStatsUpdateService _userStatsUpdateService;
+        private readonly IAnalysisVerificationService _analysisVerificationService;
         private readonly IAnalysisContextBuilder _analysisContextBuilder;
         private readonly ILlmRequestFactory _llmRequestFactory;
         private readonly ILogger<AnalysisService> _logger;
@@ -40,6 +42,7 @@ namespace MathAnalysisAI.Server.Services.Analysis
             IAnalysisPersistenceService analysisPersistenceService,
             IMistakeRecordService mistakeRecordService,
             IUserStatsUpdateService userStatsUpdateService,
+            IAnalysisVerificationService analysisVerificationService,
             IAnalysisContextBuilder analysisContextBuilder,
             ILlmRequestFactory llmRequestFactory,
             ILogger<AnalysisService> logger)
@@ -52,6 +55,7 @@ namespace MathAnalysisAI.Server.Services.Analysis
             _analysisPersistenceService = analysisPersistenceService;
             _mistakeRecordService = mistakeRecordService;
             _userStatsUpdateService = userStatsUpdateService;
+            _analysisVerificationService = analysisVerificationService;
             _analysisContextBuilder = analysisContextBuilder;
             _llmRequestFactory = llmRequestFactory;
             _logger = logger;
@@ -157,6 +161,9 @@ namespace MathAnalysisAI.Server.Services.Analysis
                 response.Chapter = chapter?.Name;
                 response.StudentSolutionReview.MainIssue = $"LLM failed: {llmResponse.ErrorCode} {llmResponse.ErrorMessage}".Trim();
 
+                await ApplyVerificationAsync(request, problem, failedResult, null, cancellationToken);
+                ApplyReliabilityToResponse(response, failedResult);
+
                 await _userStatsUpdateService.UpdateCourseStatsAsync(
                     request.UserId,
                     request.CourseId,
@@ -183,6 +190,9 @@ namespace MathAnalysisAI.Server.Services.Analysis
                 response.Course = course.Name;
                 response.Chapter = chapter?.Name;
                 response.StudentSolutionReview.MainIssue = $"JSON parse failed: {parseResult.ErrorMessage}";
+
+                await ApplyVerificationAsync(request, problem, parseFailResult, null, cancellationToken);
+                ApplyReliabilityToResponse(response, parseFailResult);
 
                 await _userStatsUpdateService.UpdateCourseStatsAsync(
                     request.UserId,
@@ -233,6 +243,9 @@ namespace MathAnalysisAI.Server.Services.Analysis
                 response.Chapter = chapter?.Name;
                 response.StudentSolutionReview.MainIssue = $"llm_schema_invalid: {schemaError}";
 
+                await ApplyVerificationAsync(request, problem, schemaFailResult, parsed, cancellationToken);
+                ApplyReliabilityToResponse(response, schemaFailResult);
+
                 await _userStatsUpdateService.UpdateCourseStatsAsync(
                     request.UserId,
                     request.CourseId,
@@ -265,6 +278,9 @@ namespace MathAnalysisAI.Server.Services.Analysis
                 mistakeKnowledgePointIds,
                 analysisResult,
                 cancellationToken);
+
+            await ApplyVerificationAsync(request, problem, analysisResult, parsed, cancellationToken);
+            ApplyReliabilityToResponse(parsed, analysisResult);
 
             return parsed;
         }
@@ -308,6 +324,74 @@ namespace MathAnalysisAI.Server.Services.Analysis
                 GeoGebraCommands = new List<string>()
             };
             response.SolutionOverview ??= string.Empty;
+        }
+
+        private async Task ApplyVerificationAsync(
+            AnalysisRequestDto request,
+            Problem problem,
+            AnalysisResult analysisResult,
+            AnalysisResponseDto? parsed,
+            CancellationToken cancellationToken)
+        {
+            StructuredProblem? structuredProblem = null;
+            if (problem.StructuredProblemId.HasValue)
+            {
+                structuredProblem = await _db.StructuredProblems
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(x => x.Id == problem.StructuredProblemId.Value, cancellationToken);
+            }
+            else if (request.StructuredProblemId.HasValue)
+            {
+                structuredProblem = await _db.StructuredProblems
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(x => x.Id == request.StructuredProblemId.Value, cancellationToken);
+            }
+
+            PhotoSolutionOcrRecord? ocrRecord = null;
+            if (problem.PhotoSolutionOcrRecordId.HasValue)
+            {
+                ocrRecord = await _db.PhotoSolutionOcrRecords
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(x => x.Id == problem.PhotoSolutionOcrRecordId.Value, cancellationToken);
+            }
+            else if (request.OcrRecordId.HasValue)
+            {
+                ocrRecord = await _db.PhotoSolutionOcrRecords
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(x => x.Id == request.OcrRecordId.Value, cancellationToken);
+            }
+
+            await _analysisVerificationService.VerifyAsync(
+                structuredProblem,
+                ocrRecord,
+                analysisResult,
+                parsed,
+                request.ProblemText,
+                request.StudentSolutionText,
+                cancellationToken);
+        }
+
+        private static void ApplyReliabilityToResponse(AnalysisResponseDto response, AnalysisResult analysisResult)
+        {
+            response.AnswerReliability = analysisResult.AnswerReliability.ToString();
+            response.NeedsReview = analysisResult.NeedsReview;
+            response.ReliabilityReasons = ParseStrings(analysisResult.ReliabilityReasonsJson);
+            response.VerifierWarnings = ParseStrings(analysisResult.VerifierWarningsJson);
+            response.VerifiedAt = analysisResult.VerifiedAt;
+        }
+
+        private static List<string> ParseStrings(string? json)
+        {
+            try
+            {
+                return string.IsNullOrWhiteSpace(json)
+                    ? new List<string>()
+                    : System.Text.Json.JsonSerializer.Deserialize<List<string>>(json) ?? new List<string>();
+            }
+            catch
+            {
+                return new List<string>();
+            }
         }
 
         private static AnalysisResponseDto BuildFallbackResponse()

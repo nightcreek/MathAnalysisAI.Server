@@ -27,6 +27,9 @@ namespace MathAnalysisAI.Server.Models
         [MaxLength(1024)]
         public string? SourceFilePath { get; set; }
 
+        public int? PhotoSolutionOcrRecordId { get; set; }
+        public int? StructuredProblemId { get; set; }
+
         [Required]
         [MaxLength(64)]
         public string ProblemType { get; set; } = "mixed";
@@ -42,6 +45,8 @@ namespace MathAnalysisAI.Server.Models
         public Course? Course { get; set; }
         public Chapter? Chapter { get; set; }
         public AppUser? CreatedByUser { get; set; }
+        public PhotoSolutionOcrRecord? PhotoSolutionOcrRecord { get; set; }
+        public StructuredProblem? StructuredProblem { get; set; }
         public ICollection<StudentSolution> StudentSolutions { get; set; } = new List<StudentSolution>();
         public ICollection<AnalysisResult> AnalysisResults { get; set; } = new List<AnalysisResult>();
     }

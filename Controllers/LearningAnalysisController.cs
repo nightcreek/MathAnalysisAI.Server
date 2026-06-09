@@ -1,6 +1,11 @@
 using MathAnalysisAI.Server.DTOs.Analysis;
+using MathAnalysisAI.Server.DTOs.PhotoSolutions;
+using MathAnalysisAI.Server.Data;
+using MathAnalysisAI.Server.Models;
 using MathAnalysisAI.Server.Services.Analysis;
+using MathAnalysisAI.Server.Services.Analysis.Structuring;
 using MathAnalysisAI.Server.Services.Auth;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 
@@ -11,16 +16,22 @@ namespace MathAnalysisAI.Server.Controllers;
 public class LearningAnalysisController : ControllerBase
 {
     private readonly AnalysisService _analysisService;
+    private readonly IProblemStructuringService _problemStructuringService;
     private readonly IUserContext _userContext;
+    private readonly ApplicationDbContext _db;
     private readonly ILogger<LearningAnalysisController> _logger;
 
     public LearningAnalysisController(
         AnalysisService analysisService,
+        IProblemStructuringService problemStructuringService,
         IUserContext userContext,
+        ApplicationDbContext db,
         ILogger<LearningAnalysisController> logger)
     {
         _analysisService = analysisService;
+        _problemStructuringService = problemStructuringService;
         _userContext = userContext;
+        _db = db;
         _logger = logger;
     }
 
@@ -55,6 +66,86 @@ public class LearningAnalysisController : ControllerBase
 
         request.UserId = currentUser.Id;
 
+        if (request.OcrRecordId.HasValue)
+        {
+            var ocrRecord = await _db.PhotoSolutionOcrRecords
+                .AsNoTracking()
+                .FirstOrDefaultAsync(x => x.Id == request.OcrRecordId.Value, cancellationToken);
+
+            if (ocrRecord == null)
+            {
+                return NotFound(new { message = "OCR record not found." });
+            }
+
+            if (ocrRecord.UserId != currentUser.Id)
+            {
+                _logger.LogWarning(
+                    "Analyze blocked due to OCR record ownership mismatch. OcrRecordId={OcrRecordId}, RecordUserId={RecordUserId}, CurrentUserId={CurrentUserId}, Role={Role}",
+                    ocrRecord.Id,
+                    ocrRecord.UserId,
+                    currentUser.Id,
+                    currentUser.Role);
+
+                return StatusCode(StatusCodes.Status403Forbidden, new { message = "Forbidden OCR record access." });
+            }
+
+            if (!string.Equals(ocrRecord.Status, PhotoSolutionOcrRecordStatus.Confirmed, StringComparison.OrdinalIgnoreCase))
+            {
+                return Conflict(new
+                {
+                    message = "OCR record is not confirmed yet.",
+                    ocrRecordId = ocrRecord.Id,
+                    status = ocrRecord.Status
+                });
+            }
+
+            if (string.IsNullOrWhiteSpace(ocrRecord.ConfirmedProblemText))
+            {
+                return Conflict(new
+                {
+                    message = "OCR confirmation snapshot is incomplete.",
+                    ocrRecordId = ocrRecord.Id
+                });
+            }
+
+            if (string.IsNullOrWhiteSpace(ocrRecord.ConfirmedFormulasJson))
+            {
+                return Conflict(new
+                {
+                    message = "OCR confirmation snapshot is missing formulas.",
+                    ocrRecordId = ocrRecord.Id
+                });
+            }
+
+            request.CourseId = ocrRecord.CourseId;
+            request.ChapterId = ocrRecord.ChapterId;
+            request.ProblemText = ocrRecord.ConfirmedProblemText;
+            request.StudentSolutionText = ocrRecord.ConfirmedStudentSolutionText;
+
+            var structuredProblem = await _problemStructuringService.CreateFromConfirmedOcrAsync(
+                ocrRecord,
+                request,
+                currentUser.Id,
+                cancellationToken);
+
+            request.StructuredProblemId = structuredProblem.Id;
+            request.ProblemText = structuredProblem.NormalizedProblemText;
+            request.StudentSolutionText = structuredProblem.StudentSolutionText;
+            request.Formulas = ParseFormulas(structuredProblem.FormulasJson);
+        }
+        else
+        {
+            var structuredProblem = await _problemStructuringService.CreateFromManualInputAsync(
+                request,
+                currentUser.Id,
+                cancellationToken);
+
+            request.StructuredProblemId = structuredProblem.Id;
+            request.ProblemText = structuredProblem.NormalizedProblemText;
+            request.StudentSolutionText = structuredProblem.StudentSolutionText;
+            request.Formulas = ParseFormulas(structuredProblem.FormulasJson);
+        }
+
         try
         {
             var result = await _analysisService.AnalyzeAsync(request, cancellationToken);
@@ -71,6 +162,20 @@ public class LearningAnalysisController : ControllerBase
             {
                 message = "An internal server error occurred."
             });
+        }
+    }
+
+    private static List<FormulaCandidateDto> ParseFormulas(string? json)
+    {
+        try
+        {
+            return string.IsNullOrWhiteSpace(json)
+                ? new List<FormulaCandidateDto>()
+                : System.Text.Json.JsonSerializer.Deserialize<List<FormulaCandidateDto>>(json) ?? new List<FormulaCandidateDto>();
+        }
+        catch
+        {
+            return new List<FormulaCandidateDto>();
         }
     }
 }

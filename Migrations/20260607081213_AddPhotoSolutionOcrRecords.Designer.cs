@@ -4,6 +4,7 @@ using MathAnalysisAI.Server.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace MathAnalysisAI.Server.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260607081213_AddPhotoSolutionOcrRecords")]
+    partial class AddPhotoSolutionOcrRecords
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -70,9 +73,6 @@ namespace MathAnalysisAI.Server.Migrations
                     b.Property<int?>("PhotoSolutionOcrRecordId")
                         .HasColumnType("int");
 
-                    b.Property<int?>("StructuredProblemId")
-                        .HasColumnType("int");
-
                     b.Property<int>("ProblemId")
                         .HasColumnType("int");
 
@@ -81,9 +81,6 @@ namespace MathAnalysisAI.Server.Migrations
                         .HasColumnType("nvarchar(64)");
 
                     b.Property<string>("RawResponseJson")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("ReliabilityReasonsJson")
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("ReviewSuggestionsJson")
@@ -98,27 +95,11 @@ namespace MathAnalysisAI.Server.Migrations
                     b.Property<string>("StudentSolutionReview")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<bool>("NeedsReview")
-                        .HasColumnType("bit");
-
-                    b.Property<string>("AnswerReliability")
-                        .IsRequired()
-                        .HasMaxLength(32)
-                        .HasColumnType("nvarchar(32)");
-
-                    b.Property<string>("VerifierWarningsJson")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<DateTime?>("VerifiedAt")
-                        .HasColumnType("datetime2");
-
                     b.HasKey("Id");
 
                     b.HasIndex("CreatedAt");
 
                     b.HasIndex("PhotoSolutionOcrRecordId");
-
-                    b.HasIndex("StructuredProblemId");
 
                     b.HasIndex("StudentSolutionId");
 
@@ -1232,9 +1213,6 @@ namespace MathAnalysisAI.Server.Migrations
                     b.Property<int?>("AnalysisResultId")
                         .HasColumnType("int");
 
-                    b.Property<int>("AttemptCount")
-                        .HasColumnType("int");
-
                     b.Property<int?>("CompletionTokenCount")
                         .HasColumnType("int");
 
@@ -1246,11 +1224,8 @@ namespace MathAnalysisAI.Server.Migrations
                         .HasColumnType("nvarchar(64)");
 
                     b.Property<string>("ErrorMessage")
-                        .HasMaxLength(2048)
-                        .HasColumnType("nvarchar(2048)");
-
-                    b.Property<int?>("StatusCode")
-                        .HasColumnType("int");
+                        .HasMaxLength(1024)
+                        .HasColumnType("nvarchar(1024)");
 
                     b.Property<int?>("LatencyMs")
                         .HasColumnType("int");
@@ -1581,78 +1556,6 @@ namespace MathAnalysisAI.Server.Migrations
                     b.HasIndex(new[] { "UserId", "UploadedAt" }, "IX_PhotoSolutionOcrRecords_UserId_UploadedAt");
 
                     b.ToTable("PhotoSolutionOcrRecords");
-                });
-
-            modelBuilder.Entity("MathAnalysisAI.Server.Models.StructuredProblem", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<decimal?>("Confidence")
-                        .HasPrecision(5, 4)
-                        .HasColumnType("decimal(5,4)");
-
-                    b.Property<int>("CreatedByUserId")
-                        .HasColumnType("int");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("FormulasJson")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("GivenConditionsJson")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("KnowledgePointCandidatesJson")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("NormalizedProblemText")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<int?>("PhotoSolutionOcrRecordId")
-                        .HasColumnType("int");
-
-                    b.Property<string>("ProblemType")
-                        .HasMaxLength(64)
-                        .HasColumnType("nvarchar(64)");
-
-                    b.Property<string>("RawProblemText")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("SourceType")
-                        .IsRequired()
-                        .HasMaxLength(16)
-                        .HasColumnType("nvarchar(16)");
-
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .HasMaxLength(32)
-                        .HasColumnType("nvarchar(32)");
-
-                    b.Property<string>("StudentSolutionText")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("TargetText")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex(new[] { "CreatedByUserId" }, "IX_StructuredProblems_CreatedByUserId");
-
-                    b.HasIndex(new[] { "PhotoSolutionOcrRecordId" }, "IX_StructuredProblems_PhotoSolutionOcrRecordId");
-
-                    b.HasIndex(new[] { "Status" }, "IX_StructuredProblems_Status");
-
-                    b.ToTable("StructuredProblems");
                 });
 
             modelBuilder.Entity("MathAnalysisAI.Server.Models.PracticeAttempt", b =>
@@ -2154,11 +2057,6 @@ namespace MathAnalysisAI.Server.Migrations
                         .HasForeignKey("PhotoSolutionOcrRecordId")
                         .OnDelete(DeleteBehavior.SetNull);
 
-                    b.HasOne("MathAnalysisAI.Server.Models.StructuredProblem", "StructuredProblem")
-                        .WithMany("AnalysisResults")
-                        .HasForeignKey("StructuredProblemId")
-                        .OnDelete(DeleteBehavior.SetNull);
-
                     b.HasOne("MathAnalysisAI.Server.Models.Problem", "Problem")
                         .WithMany("AnalysisResults")
                         .HasForeignKey("ProblemId")
@@ -2171,8 +2069,6 @@ namespace MathAnalysisAI.Server.Migrations
                         .OnDelete(DeleteBehavior.NoAction);
 
                     b.Navigation("PhotoSolutionOcrRecord");
-
-                    b.Navigation("StructuredProblem");
 
                     b.Navigation("Problem");
 
@@ -2389,11 +2285,6 @@ namespace MathAnalysisAI.Server.Migrations
 
             modelBuilder.Entity("MathAnalysisAI.Server.Models.PhotoSolutionOcrRecord", b =>
                 {
-                    b.HasMany("MathAnalysisAI.Server.Models.StructuredProblem", "StructuredProblems")
-                        .WithOne("PhotoSolutionOcrRecord")
-                        .HasForeignKey("PhotoSolutionOcrRecordId")
-                        .OnDelete(DeleteBehavior.SetNull);
-
                     b.HasOne("MathAnalysisAI.Server.Models.AppUser", "ConfirmedByUser")
                         .WithMany()
                         .HasForeignKey("ConfirmedByUserId")
@@ -2408,8 +2299,6 @@ namespace MathAnalysisAI.Server.Migrations
                     b.Navigation("ConfirmedByUser");
 
                     b.Navigation("User");
-
-                    b.Navigation("StructuredProblems");
                 });
 
             modelBuilder.Entity("MathAnalysisAI.Server.Models.PracticeAttempt", b =>
@@ -2433,11 +2322,6 @@ namespace MathAnalysisAI.Server.Migrations
 
             modelBuilder.Entity("MathAnalysisAI.Server.Models.Problem", b =>
                 {
-                    b.HasOne("MathAnalysisAI.Server.Models.StructuredProblem", "StructuredProblem")
-                        .WithMany("Problems")
-                        .HasForeignKey("StructuredProblemId")
-                        .OnDelete(DeleteBehavior.SetNull);
-
                     b.HasOne("MathAnalysisAI.Server.Models.Chapter", "Chapter")
                         .WithMany("Problems")
                         .HasForeignKey("ChapterId")
@@ -2466,8 +2350,6 @@ namespace MathAnalysisAI.Server.Migrations
                     b.Navigation("CreatedByUser");
 
                     b.Navigation("PhotoSolutionOcrRecord");
-
-                    b.Navigation("StructuredProblem");
                 });
 
             modelBuilder.Entity("MathAnalysisAI.Server.Models.ProblemTemplate", b =>
@@ -2653,13 +2535,6 @@ namespace MathAnalysisAI.Server.Migrations
                     b.Navigation("AnalysisResults");
 
                     b.Navigation("StudentSolutions");
-                });
-
-            modelBuilder.Entity("MathAnalysisAI.Server.Models.StructuredProblem", b =>
-                {
-                    b.Navigation("AnalysisResults");
-
-                    b.Navigation("Problems");
                 });
 
             modelBuilder.Entity("MathAnalysisAI.Server.Models.ProblemTemplate", b =>

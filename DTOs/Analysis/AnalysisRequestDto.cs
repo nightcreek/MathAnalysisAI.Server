@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using MathAnalysisAI.Server.DTOs.PhotoSolutions;
 
 namespace MathAnalysisAI.Server.DTOs.Analysis
 {
@@ -18,5 +19,11 @@ namespace MathAnalysisAI.Server.DTOs.Analysis
         public string AnalysisMode { get; set; } = string.Empty;
 
         public int? UserId { get; set; }
+
+        public int? OcrRecordId { get; set; }
+
+        public int? StructuredProblemId { get; set; }
+
+        public List<FormulaCandidateDto>? Formulas { get; set; }
     }
 }

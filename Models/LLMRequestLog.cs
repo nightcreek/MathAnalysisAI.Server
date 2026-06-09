@@ -26,6 +26,8 @@ namespace MathAnalysisAI.Server.Models
         public int? CompletionTokenCount { get; set; }
         public int? TotalTokenCount { get; set; }
         public int? LatencyMs { get; set; }
+        public int AttemptCount { get; set; } = 1;
+        public int? StatusCode { get; set; }
 
         [Required]
         [MaxLength(32)]
@@ -34,7 +36,7 @@ namespace MathAnalysisAI.Server.Models
         [MaxLength(64)]
         public string? ErrorCode { get; set; }
 
-        [MaxLength(1024)]
+        [MaxLength(2048)]
         public string? ErrorMessage { get; set; }
 
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
