@@ -32,10 +32,6 @@ namespace MathAnalysisAI.Server.Data
         public DbSet<CourseMaterial> CourseMaterials { get; set; }
         public DbSet<MaterialChunk> MaterialChunks { get; set; }
         public DbSet<MaterialChunkKnowledgePoint> MaterialChunkKnowledgePoints { get; set; }
-        public DbSet<ProblemTemplate> ProblemTemplates { get; set; }
-        public DbSet<ProblemTemplateKnowledgePoint> ProblemTemplateKnowledgePoints { get; set; }
-        public DbSet<GeneratedPracticeProblem> GeneratedPracticeProblems { get; set; }
-        public DbSet<PracticeAttempt> PracticeAttempts { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -298,72 +294,6 @@ namespace MathAnalysisAI.Server.Data
                 .HasForeignKey(x => x.KnowledgePointId)
                 .OnDelete(DeleteBehavior.NoAction);
 
-            modelBuilder.Entity<ProblemTemplate>()
-                .HasOne(x => x.Course)
-                .WithMany()
-                .HasForeignKey(x => x.CourseId)
-                .OnDelete(DeleteBehavior.Restrict);
-
-            modelBuilder.Entity<ProblemTemplate>()
-                .HasOne(x => x.Chapter)
-                .WithMany()
-                .HasForeignKey(x => x.ChapterId)
-                .OnDelete(DeleteBehavior.SetNull);
-
-            modelBuilder.Entity<ProblemTemplate>()
-                .HasOne(x => x.CreatedByUser)
-                .WithMany()
-                .HasForeignKey(x => x.CreatedByUserId)
-                .OnDelete(DeleteBehavior.SetNull);
-
-            modelBuilder.Entity<ProblemTemplateKnowledgePoint>()
-                .HasOne(x => x.ProblemTemplate)
-                .WithMany(x => x.KnowledgePointLinks)
-                .HasForeignKey(x => x.ProblemTemplateId)
-                .OnDelete(DeleteBehavior.Cascade);
-
-            modelBuilder.Entity<ProblemTemplateKnowledgePoint>()
-                .HasOne(x => x.KnowledgePoint)
-                .WithMany()
-                .HasForeignKey(x => x.KnowledgePointId)
-                .OnDelete(DeleteBehavior.Restrict);
-
-            modelBuilder.Entity<GeneratedPracticeProblem>()
-                .HasOne(x => x.Template)
-                .WithMany(x => x.GeneratedPracticeProblems)
-                .HasForeignKey(x => x.TemplateId)
-                .OnDelete(DeleteBehavior.Restrict);
-
-            modelBuilder.Entity<GeneratedPracticeProblem>()
-                .HasOne(x => x.User)
-                .WithMany()
-                .HasForeignKey(x => x.UserId)
-                .OnDelete(DeleteBehavior.Cascade);
-
-            modelBuilder.Entity<GeneratedPracticeProblem>()
-                .HasOne(x => x.SourceMistakeRecord)
-                .WithMany()
-                .HasForeignKey(x => x.SourceMistakeRecordId)
-                .OnDelete(DeleteBehavior.SetNull);
-
-            modelBuilder.Entity<GeneratedPracticeProblem>()
-                .HasOne(x => x.SourceKnowledgePoint)
-                .WithMany()
-                .HasForeignKey(x => x.SourceKnowledgePointId)
-                .OnDelete(DeleteBehavior.SetNull);
-
-            modelBuilder.Entity<PracticeAttempt>()
-                .HasOne(x => x.GeneratedPracticeProblem)
-                .WithMany(x => x.Attempts)
-                .HasForeignKey(x => x.GeneratedPracticeProblemId)
-                .OnDelete(DeleteBehavior.Cascade);
-
-            modelBuilder.Entity<PracticeAttempt>()
-                .HasOne(x => x.User)
-                .WithMany()
-                .HasForeignKey(x => x.UserId)
-                .OnDelete(DeleteBehavior.NoAction);
-
             modelBuilder.Entity<AppUser>()
                 .HasIndex(x => x.Username)
                 .IsUnique();
@@ -491,49 +421,6 @@ namespace MathAnalysisAI.Server.Data
             modelBuilder.Entity<MaterialChunkKnowledgePoint>()
                 .Property(x => x.Confidence)
                 .HasPrecision(5, 4);
-
-            modelBuilder.Entity<ProblemTemplate>()
-                .HasIndex(x => new { x.CourseId, x.ChapterId, x.ProblemType, x.Difficulty, x.Visibility });
-
-            modelBuilder.Entity<ProblemTemplate>()
-                .HasIndex(x => x.CreatedByUserId);
-
-            modelBuilder.Entity<ProblemTemplateKnowledgePoint>()
-                .HasIndex(x => new { x.KnowledgePointId, x.Role });
-
-            modelBuilder.Entity<ProblemTemplateKnowledgePoint>()
-                .HasIndex(x => new { x.ProblemTemplateId, x.KnowledgePointId, x.Role })
-                .IsUnique();
-
-            modelBuilder.Entity<ProblemTemplateKnowledgePoint>()
-                .Property(x => x.Weight)
-                .HasPrecision(6, 2);
-
-            modelBuilder.Entity<GeneratedPracticeProblem>()
-                .HasIndex(x => new { x.UserId, x.GeneratedAt });
-
-            modelBuilder.Entity<GeneratedPracticeProblem>()
-                .HasIndex(x => new { x.TemplateId, x.UserId });
-
-            modelBuilder.Entity<GeneratedPracticeProblem>()
-                .HasIndex(x => x.SourceKnowledgePointId);
-
-            modelBuilder.Entity<GeneratedPracticeProblem>()
-                .HasIndex(x => x.SourceMistakeRecordId);
-
-            modelBuilder.Entity<GeneratedPracticeProblem>()
-                .HasIndex(x => x.Status);
-
-            modelBuilder.Entity<PracticeAttempt>()
-                .HasIndex(x => new { x.UserId, x.SubmittedAt });
-
-            modelBuilder.Entity<PracticeAttempt>()
-                .HasIndex(x => new { x.GeneratedPracticeProblemId, x.AttemptNumber })
-                .IsUnique();
-
-            modelBuilder.Entity<PracticeAttempt>()
-                .Property(x => x.Score)
-                .HasPrecision(5, 2);
 
             modelBuilder.Entity<Subject>().HasData(PlatformSeedData.Subjects);
             modelBuilder.Entity<Course>().HasData(PlatformSeedData.Courses);

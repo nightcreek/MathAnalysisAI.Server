@@ -535,81 +535,6 @@ namespace MathAnalysisAI.Server.Migrations
                     b.ToTable("CourseMaterials");
                 });
 
-            modelBuilder.Entity("MathAnalysisAI.Server.Models.GeneratedPracticeProblem", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<DateTime>("GeneratedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("ParameterValuesJson")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("RenderedAnswer")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("RenderedExplanation")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("RenderedProblemText")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<int?>("SourceKnowledgePointId")
-                        .HasColumnType("int");
-
-                    b.Property<int?>("SourceMistakeRecordId")
-                        .HasColumnType("int");
-
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .HasMaxLength(32)
-                        .HasColumnType("nvarchar(32)");
-
-                    b.Property<int>("TemplateId")
-                        .HasColumnType("int");
-
-                    b.Property<int>("TemplateVersionSnapshot")
-                        .HasColumnType("int");
-
-                    b.Property<int>("UserId")
-                        .HasColumnType("int");
-
-                    b.Property<string>("ValidationRulesSnapshotJson")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("SourceKnowledgePointId");
-
-                    b.HasIndex("SourceMistakeRecordId");
-
-                    b.HasIndex("Status");
-
-                    b.HasIndex("TemplateId", "UserId");
-
-                    b.HasIndex("UserId", "GeneratedAt");
-
-                    b.HasIndex(new[] { "SourceKnowledgePointId" }, "IX_GeneratedPracticeProblems_SourceKnowledgePointId");
-
-                    b.HasIndex(new[] { "SourceMistakeRecordId" }, "IX_GeneratedPracticeProblems_SourceMistakeRecordId");
-
-                    b.HasIndex(new[] { "Status" }, "IX_GeneratedPracticeProblems_Status");
-
-                    b.HasIndex(new[] { "TemplateId", "UserId" }, "IX_GeneratedPracticeProblems_TemplateId_UserId");
-
-                    b.HasIndex(new[] { "UserId", "GeneratedAt" }, "IX_GeneratedPracticeProblems_UserId_GeneratedAt");
-
-                    b.ToTable("GeneratedPracticeProblems");
-                });
-
             modelBuilder.Entity("MathAnalysisAI.Server.Models.KnowledgeDependency", b =>
                 {
                     b.Property<int>("Id")
@@ -1655,55 +1580,6 @@ namespace MathAnalysisAI.Server.Migrations
                     b.ToTable("StructuredProblems");
                 });
 
-            modelBuilder.Entity("MathAnalysisAI.Server.Models.PracticeAttempt", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<int>("AttemptNumber")
-                        .HasColumnType("int");
-
-                    b.Property<int>("GeneratedPracticeProblemId")
-                        .HasColumnType("int");
-
-                    b.Property<bool?>("IsCorrect")
-                        .HasColumnType("bit");
-
-                    b.Property<string>("ReviewResultJson")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<decimal?>("Score")
-                        .HasPrecision(5, 2)
-                        .HasColumnType("decimal(5,2)");
-
-                    b.Property<string>("StudentAnswer")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<DateTime>("SubmittedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<int>("UserId")
-                        .HasColumnType("int");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("GeneratedPracticeProblemId", "AttemptNumber")
-                        .IsUnique();
-
-                    b.HasIndex("UserId", "SubmittedAt");
-
-                    b.HasIndex(new[] { "GeneratedPracticeProblemId", "AttemptNumber" }, "IX_PracticeAttempts_GeneratedPracticeProblemId_AttemptNumber")
-                        .IsUnique();
-
-                    b.HasIndex(new[] { "UserId", "SubmittedAt" }, "IX_PracticeAttempts_UserId_SubmittedAt");
-
-                    b.ToTable("PracticeAttempts");
-                });
-
             modelBuilder.Entity("MathAnalysisAI.Server.Models.Problem", b =>
                 {
                     b.Property<int>("Id")
@@ -1770,134 +1646,6 @@ namespace MathAnalysisAI.Server.Migrations
                     b.HasIndex("PhotoSolutionOcrRecordId");
 
                     b.ToTable("Problems");
-                });
-
-            modelBuilder.Entity("MathAnalysisAI.Server.Models.ProblemTemplate", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("AnswerTemplate")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<int?>("ChapterId")
-                        .HasColumnType("int");
-
-                    b.Property<int>("CourseId")
-                        .HasColumnType("int");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<int?>("CreatedByUserId")
-                        .HasColumnType("int");
-
-                    b.Property<string>("Description")
-                        .HasMaxLength(1000)
-                        .HasColumnType("nvarchar(1000)");
-
-                    b.Property<string>("Difficulty")
-                        .IsRequired()
-                        .HasMaxLength(32)
-                        .HasColumnType("nvarchar(32)");
-
-                    b.Property<string>("ExplanationTemplate")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("GenerationRulesJson")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<bool>("IsActive")
-                        .HasColumnType("bit");
-
-                    b.Property<string>("ParameterSchemaJson")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("ProblemType")
-                        .IsRequired()
-                        .HasMaxLength(64)
-                        .HasColumnType("nvarchar(64)");
-
-                    b.Property<string>("TemplateText")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<int>("TemplateVersion")
-                        .HasColumnType("int");
-
-                    b.Property<string>("Title")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
-
-                    b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("ValidationRulesJson")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("Visibility")
-                        .IsRequired()
-                        .HasMaxLength(32)
-                        .HasColumnType("nvarchar(32)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("ChapterId");
-
-                    b.HasIndex("CreatedByUserId");
-
-                    b.HasIndex("CourseId", "ChapterId", "ProblemType", "Difficulty", "Visibility");
-
-                    b.HasIndex(new[] { "CourseId", "ChapterId", "ProblemType", "Difficulty", "Visibility" }, "IX_ProblemTemplates_CourseId_ChapterId_ProblemType_Difficulty_Visibility");
-
-                    b.HasIndex(new[] { "CreatedByUserId" }, "IX_ProblemTemplates_CreatedByUserId");
-
-                    b.ToTable("ProblemTemplates");
-                });
-
-            modelBuilder.Entity("MathAnalysisAI.Server.Models.ProblemTemplateKnowledgePoint", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<int>("KnowledgePointId")
-                        .HasColumnType("int");
-
-                    b.Property<int>("ProblemTemplateId")
-                        .HasColumnType("int");
-
-                    b.Property<string>("Role")
-                        .IsRequired()
-                        .HasMaxLength(32)
-                        .HasColumnType("nvarchar(32)");
-
-                    b.Property<decimal>("Weight")
-                        .HasPrecision(6, 2)
-                        .HasColumnType("decimal(6,2)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("KnowledgePointId", "Role");
-
-                    b.HasIndex("ProblemTemplateId", "KnowledgePointId", "Role")
-                        .IsUnique();
-
-                    b.HasIndex(new[] { "KnowledgePointId", "Role" }, "IX_ProblemTemplateKnowledgePoints_KnowledgePointId_Role");
-
-                    b.HasIndex(new[] { "ProblemTemplateId", "KnowledgePointId", "Role" }, "IX_ProblemTemplateKnowledgePoints_ProblemTemplateId_KnowledgePointId_Role")
-                        .IsUnique();
-
-                    b.ToTable("ProblemTemplateKnowledgePoints");
                 });
 
             modelBuilder.Entity("MathAnalysisAI.Server.Models.PromptProfile", b =>
@@ -2230,39 +1978,6 @@ namespace MathAnalysisAI.Server.Migrations
                     b.Navigation("UploadedByUser");
                 });
 
-            modelBuilder.Entity("MathAnalysisAI.Server.Models.GeneratedPracticeProblem", b =>
-                {
-                    b.HasOne("MathAnalysisAI.Server.Models.KnowledgePoint", "SourceKnowledgePoint")
-                        .WithMany()
-                        .HasForeignKey("SourceKnowledgePointId")
-                        .OnDelete(DeleteBehavior.SetNull);
-
-                    b.HasOne("MathAnalysisAI.Server.Models.MistakeRecord", "SourceMistakeRecord")
-                        .WithMany()
-                        .HasForeignKey("SourceMistakeRecordId")
-                        .OnDelete(DeleteBehavior.SetNull);
-
-                    b.HasOne("MathAnalysisAI.Server.Models.ProblemTemplate", "Template")
-                        .WithMany("GeneratedPracticeProblems")
-                        .HasForeignKey("TemplateId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("MathAnalysisAI.Server.Models.AppUser", "User")
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("SourceKnowledgePoint");
-
-                    b.Navigation("SourceMistakeRecord");
-
-                    b.Navigation("Template");
-
-                    b.Navigation("User");
-                });
-
             modelBuilder.Entity("MathAnalysisAI.Server.Models.KnowledgeDependency", b =>
                 {
                     b.HasOne("MathAnalysisAI.Server.Models.KnowledgePoint", "FromKnowledgePoint")
@@ -2412,25 +2127,6 @@ namespace MathAnalysisAI.Server.Migrations
                     b.Navigation("StructuredProblems");
                 });
 
-            modelBuilder.Entity("MathAnalysisAI.Server.Models.PracticeAttempt", b =>
-                {
-                    b.HasOne("MathAnalysisAI.Server.Models.GeneratedPracticeProblem", "GeneratedPracticeProblem")
-                        .WithMany("Attempts")
-                        .HasForeignKey("GeneratedPracticeProblemId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("MathAnalysisAI.Server.Models.AppUser", "User")
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.NoAction)
-                        .IsRequired();
-
-                    b.Navigation("GeneratedPracticeProblem");
-
-                    b.Navigation("User");
-                });
-
             modelBuilder.Entity("MathAnalysisAI.Server.Models.Problem", b =>
                 {
                     b.HasOne("MathAnalysisAI.Server.Models.StructuredProblem", "StructuredProblem")
@@ -2468,50 +2164,6 @@ namespace MathAnalysisAI.Server.Migrations
                     b.Navigation("PhotoSolutionOcrRecord");
 
                     b.Navigation("StructuredProblem");
-                });
-
-            modelBuilder.Entity("MathAnalysisAI.Server.Models.ProblemTemplate", b =>
-                {
-                    b.HasOne("MathAnalysisAI.Server.Models.Chapter", "Chapter")
-                        .WithMany()
-                        .HasForeignKey("ChapterId")
-                        .OnDelete(DeleteBehavior.SetNull);
-
-                    b.HasOne("MathAnalysisAI.Server.Models.Course", "Course")
-                        .WithMany()
-                        .HasForeignKey("CourseId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("MathAnalysisAI.Server.Models.AppUser", "CreatedByUser")
-                        .WithMany()
-                        .HasForeignKey("CreatedByUserId")
-                        .OnDelete(DeleteBehavior.SetNull);
-
-                    b.Navigation("Chapter");
-
-                    b.Navigation("Course");
-
-                    b.Navigation("CreatedByUser");
-                });
-
-            modelBuilder.Entity("MathAnalysisAI.Server.Models.ProblemTemplateKnowledgePoint", b =>
-                {
-                    b.HasOne("MathAnalysisAI.Server.Models.KnowledgePoint", "KnowledgePoint")
-                        .WithMany()
-                        .HasForeignKey("KnowledgePointId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("MathAnalysisAI.Server.Models.ProblemTemplate", "ProblemTemplate")
-                        .WithMany("KnowledgePointLinks")
-                        .HasForeignKey("ProblemTemplateId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("KnowledgePoint");
-
-                    b.Navigation("ProblemTemplate");
                 });
 
             modelBuilder.Entity("MathAnalysisAI.Server.Models.PromptProfile", b =>
@@ -2620,11 +2272,6 @@ namespace MathAnalysisAI.Server.Migrations
                     b.Navigation("Chunks");
                 });
 
-            modelBuilder.Entity("MathAnalysisAI.Server.Models.GeneratedPracticeProblem", b =>
-                {
-                    b.Navigation("Attempts");
-                });
-
             modelBuilder.Entity("MathAnalysisAI.Server.Models.KnowledgePoint", b =>
                 {
                     b.Navigation("IncomingDependencies");
@@ -2660,13 +2307,6 @@ namespace MathAnalysisAI.Server.Migrations
                     b.Navigation("AnalysisResults");
 
                     b.Navigation("Problems");
-                });
-
-            modelBuilder.Entity("MathAnalysisAI.Server.Models.ProblemTemplate", b =>
-                {
-                    b.Navigation("GeneratedPracticeProblems");
-
-                    b.Navigation("KnowledgePointLinks");
                 });
 
             modelBuilder.Entity("MathAnalysisAI.Server.Models.StudentSolution", b =>

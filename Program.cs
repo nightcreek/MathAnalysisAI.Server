@@ -15,8 +15,6 @@ using MathAnalysisAI.Server.Services.Materials;
 using MathAnalysisAI.Server.Services.Knowledge;
 using MathAnalysisAI.Server.Services.LLM;
 using MathAnalysisAI.Server.Services.OCR;
-using MathAnalysisAI.Server.Services.Practice;
-using MathAnalysisAI.Server.Services.ProblemTemplates;
 using MathAnalysisAI.Server.Services.Ranking;
 using MathAnalysisAI.Server.Services.Security;
 using MathAnalysisAI.Server.Services.Symbolic;
@@ -232,9 +230,6 @@ builder.Services.AddScoped<CourseMaterialIngestionService>();
 builder.Services.AddScoped<IPhotoSolutionOcrProvider, LiteLLMPhotoSolutionOcrProvider>();
 builder.Services.AddScoped<IKnowledgeRetrievalService, KnowledgeRetrievalService>();
 builder.Services.AddScoped<ISymbolicMathService, SymPySymbolicMathService>();
-builder.Services.AddScoped<ProblemTemplatePreviewService>();
-builder.Services.AddScoped<PracticeValidationService>();
-builder.Services.AddScoped<PracticeAttemptService>();
 
 var app = builder.Build();
 
