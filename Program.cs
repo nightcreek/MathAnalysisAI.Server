@@ -71,34 +71,35 @@ builder.Services.Configure<KestrelServerOptions>(options =>
 
 // Forwarded Headers — trust Nginx/load-balancer proxy headers when behind reverse proxy
 // Required for correct HTTPS detection, client IP, and OAuth redirect_uri generation.
-// Deployment note: if Nginx runs on Docker host (not in compose), add the Docker bridge
-// network (typically 172.16.0.0/12) to ForwardedHeaders__KnownNetworks in server.env.
-builder.Services.Configure<ForwardedHeadersOptions>(options =>
-{
-    options.ForwardedHeaders =
-        ForwardedHeaders.XForwardedFor |
-        ForwardedHeaders.XForwardedProto;
-
-    // Clear ASP.NET Core defaults; only trust explicitly configured sources
-    options.KnownNetworks.Clear();
-    options.KnownProxies.Clear();
-
-    // Always trust loopback (Nginx on same machine connects via 127.0.0.1)
-    options.KnownNetworks.Add(new Microsoft.AspNetCore.HttpOverrides.IPNetwork(IPAddress.Parse("127.0.0.0"), 8));
-
-    // Optional: trust Docker bridge via config (comma-separated CIDRs, e.g. "172.16.0.0/12")
-    var dockerNetworks = builder.Configuration["ForwardedHeaders:KnownNetworks"];
-    if (!string.IsNullOrWhiteSpace(dockerNetworks))
+    // Deployment note: if Nginx runs on Docker host (not in compose), add the Docker bridge
+    // network (typically 172.16.0.0/12) to ForwardedHeaders__KnownNetworks in server.env.
+    // The configuration values are written into KnownIPNetworks.
+    builder.Services.Configure<ForwardedHeadersOptions>(options =>
     {
-        foreach (var cidr in dockerNetworks.Split(',', StringSplitOptions.RemoveEmptyEntries))
+        options.ForwardedHeaders =
+            ForwardedHeaders.XForwardedFor |
+            ForwardedHeaders.XForwardedProto;
+
+        // Clear ASP.NET Core defaults; only trust explicitly configured sources
+        options.KnownIPNetworks.Clear();
+        options.KnownProxies.Clear();
+
+        // Always trust loopback (Nginx on same machine connects via 127.0.0.1)
+        options.KnownIPNetworks.Add(System.Net.IPNetwork.Parse("127.0.0.0/8"));
+
+        // Optional: trust Docker bridge via config (comma-separated CIDRs, e.g. "172.16.0.0/12")
+        var dockerNetworks = builder.Configuration["ForwardedHeaders:KnownNetworks"];
+        if (!string.IsNullOrWhiteSpace(dockerNetworks))
         {
-            var trimmed = cidr.Trim();
-            if (Microsoft.AspNetCore.HttpOverrides.IPNetwork.TryParse(trimmed, out var network))
+            foreach (var cidr in dockerNetworks.Split(',', StringSplitOptions.RemoveEmptyEntries))
             {
-                options.KnownNetworks.Add(network);
+                var trimmed = cidr.Trim();
+                if (System.Net.IPNetwork.TryParse(trimmed, out var network))
+                {
+                    options.KnownIPNetworks.Add(network);
+                }
             }
         }
-    }
 
     // Optional: trust specific proxy IPs via config (comma-separated, e.g. "172.17.0.1")
     var proxyIps = builder.Configuration["ForwardedHeaders:KnownProxies"];
