@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>题库 - 数学分析智能体</title>
+    <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"
+            integrity="sha256-0lGgKj3aQPhjCfYkGvCGxKMAuZnKATf/rDgqN/K8wY="
+            crossorigin="anonymous"></script>
+    <link rel="stylesheet" href="/vendor/mathlive/mathlive-static.css">
+    <link rel="stylesheet" href="/vendor/mathlive/mathlive-fonts.css">
+    <script src="/vendor/mathlive/mathlive.min.js"></script>
+    <link rel="stylesheet" href="/css/app.css">
+</head>
+<body>
+<div class="app-shell">
+<div class="container" id="questionsPageRoot">
+    <div id="questionsNavContainer"></div>
+
+    <div class="hero hero-left">
+        <h1>题库</h1>
+        <p>浏览与搜索题目，查看标准答案和解题提示。</p>
+    </div>
+
+    <div class="card">
+        <div class="materials-filter-grid">
+            <div>
+                <label for="questionSearch">搜索题目</label>
+                <input id="questionSearch" type="text" placeholder="输入关键词搜索题目...">
+            </div>
+            <div>
+                <label for="questionDifficulty">难度</label>
+                <select id="questionDifficulty">
+                    <option value="">全部难度</option>
+                    <option value="easy">简单</option>
+                    <option value="medium">中等</option>
+                    <option value="hard">困难</option>
+                </select>
+            </div>
+            <div>
+                <label for="questionType">题型</label>
+                <select id="questionType">
+                    <option value="">全部题型</option>
+                    <option value="calculation">计算题</option>
+                    <option value="proof">证明题</option>
+                    <option value="concept">概念题</option>
+                    <option value="mixed">综合题</option>
+                </select>
+            </div>
+            <div class="full">
+                <div class="materials-filter-actions">
+                    <button id="questionSearchBtn">搜索</button>
+                    <button id="questionClearBtn" class="btn-secondary">清除筛选</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="questionListContainer" class="hint">加载中...</div>
+
+    <div id="questionPagination" class="actions" style="justify-content:center;"></div>
+
+    <div id="questionDetailCard" class="card" style="display:none;">
+        <div class="section-title" id="questionDetailTitle"></div>
+        <div class="question-detail-meta" id="questionDetailMeta"></div>
+        <div class="question-detail-body" id="questionDetailContent"></div>
+        <div id="questionDetailAnswer" class="question-detail-answer" style="display:none;"></div>
+        <div id="questionDetailHint" class="question-detail-hint" style="display:none;"></div>
+        <div class="actions" style="margin-top:12px;">
+            <button id="questionDetailBackBtn" class="btn-secondary">返回列表</button>
+        </div>
+    </div>
+</div>
+</div>
+
+<script src="/js/config.js"></script>
+<script src="/js/api.js"></script>
+<script src="/js/ui.js"></script>
+<script src="/js/auth.js"></script>
+<script src="/js/nav.js"></script>
+<script src="/js/questions.js"></script>
+</body>
+</html>

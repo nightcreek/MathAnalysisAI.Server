@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>登录 - 数学分析智能体</title>
+    <link rel="stylesheet" href="/css/app.css">
+</head>
+<body>
+<div class="login-centered" id="loginPageRoot">
+    <div class="login-card">
+        <h2>登录</h2>
+        <p class="login-brand-sub">数学分析智能体</p>
+
+        <div id="loginSection">
+            <p id="loginPageHint">登录后可使用学习分析、拍照解题等功能。</p>
+            <div class="form-grid">
+                <div class="full">
+                    <label for="loginUsernameInput">用户名</label>
+                    <input id="loginUsernameInput" type="text" placeholder="请输入用户名" autocomplete="username">
+                </div>
+                <div class="full" id="passwordFieldGroup" style="display:none">
+                    <label for="loginPasswordInput">密码</label>
+                    <input id="loginPasswordInput" type="password" placeholder="请输入密码" autocomplete="current-password">
+                </div>
+            </div>
+            <div class="actions">
+                <button id="loginSubmitBtn">登录</button>
+                <button id="loginQuickBtn" class="btn-secondary">使用测试学生登录</button>
+                <span id="loginStatus" class="status"></span>
+            </div>
+            <div id="loginUserInfo" class="hint"></div>
+        </div>
+
+        <div id="registerSection" style="display:none">
+            <div class="section-title">注册新账号</div>
+            <div class="form-grid">
+                <div class="full">
+                    <label for="registerUsernameInput">用户名</label>
+                    <input id="registerUsernameInput" type="text" placeholder="请输入用户名" autocomplete="username">
+                </div>
+                <div class="full">
+                    <label for="registerPasswordInput">密码</label>
+                    <input id="registerPasswordInput" type="password" placeholder="请输入密码（至少4位）" autocomplete="new-password">
+                </div>
+                <div class="half">
+                    <label for="registerRealNameInput">真实姓名（选填）</label>
+                    <input id="registerRealNameInput" type="text" placeholder="姓名">
+                </div>
+                <div class="half">
+                    <label for="registerStudentNumberInput">学号（选填）</label>
+                    <input id="registerStudentNumberInput" type="text" placeholder="学号">
+                </div>
+            </div>
+            <div class="actions">
+                <button id="registerSubmitBtn">注册</button>
+                <span id="registerStatus" class="status"></span>
+            </div>
+        </div>
+
+        <div id="modeInfoSection" style="display:none">
+            <div class="section-title">当前认证模式</div>
+            <div id="modeInfoContent" class="hint"></div>
+        </div>
+    </div>
+</div>
+
+<script src="/js/config.js"></script>
+<script src="/js/api.js"></script>
+<script src="/js/ui.js"></script>
+<script src="/js/auth.js"></script>
+<script src="/js/nav.js"></script>
+<script src="/js/login.js"></script>
+</body>
+</html>

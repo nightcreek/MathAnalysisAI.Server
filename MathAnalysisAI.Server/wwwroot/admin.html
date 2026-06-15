@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>管理后台 - 数学分析智能体</title>
+    <link rel="stylesheet" href="/css/app.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"
+            integrity="sha256-BmtB4uom5IJhNrR9TkjBwfW5C/w4yR/m7GHkZRw4tU="
+            crossorigin="anonymous"></script>
+</head>
+<body>
+<div class="app-shell">
+<div class="container" id="adminPageRoot">
+    <div id="adminNavContainer"></div>
+
+    <div class="hero hero-left">
+        <h1>管理后台</h1>
+        <p>系统运维监控、用户管理与数据统计。</p>
+    </div>
+
+    <div class="card">
+        <div class="section-title">系统概览</div>
+        <div id="adminDashboardContainer" class="stats-summary-grid">
+            <div class="hint full">加载中...</div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="section-title">最近 7 天趋势</div>
+        <div class="chart-container">
+            <canvas id="adminTrendChart" style="max-height:320px;"></canvas>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="section-title">用户管理</div>
+        <div class="materials-filter-grid">
+            <div>
+                <label for="adminUserSearch">搜索用户</label>
+                <input id="adminUserSearch" type="text" placeholder="用户名、姓名、学号...">
+            </div>
+            <div>
+                <label for="adminUserRoleFilter">角色</label>
+                <select id="adminUserRoleFilter">
+                    <option value="">全部角色</option>
+                    <option value="student">学生</option>
+                    <option value="teacher">教师</option>
+                    <option value="school_leader">学校管理员</option>
+                    <option value="admin">超级管理员</option>
+                </select>
+            </div>
+            <div class="full">
+                <div class="materials-filter-actions">
+                    <button id="adminUserSearchBtn">搜索</button>
+                    <button id="adminUserClearBtn" class="btn-secondary">清除</button>
+                </div>
+            </div>
+        </div>
+        <div id="adminUserListContainer" class="hint">加载中...</div>
+        <div id="adminUserPagination" class="actions" style="justify-content:center;"></div>
+    </div>
+</div>
+</div>
+
+<script src="/js/config.js"></script>
+<script src="/js/api.js"></script>
+<script src="/js/ui.js"></script>
+<script src="/js/auth.js"></script>
+<script src="/js/nav.js"></script>
+<script src="/js/admin.js"></script>
+</body>
+</html>

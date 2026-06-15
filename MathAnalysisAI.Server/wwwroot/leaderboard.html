@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>学习排行榜 - 数学分析智能体</title>
+    <link rel="stylesheet" href="/css/app.css">
+</head>
+<body>
+<div class="app-shell">
+<div class="container" id="leaderboardPageRoot">
+    <div id="leaderboardNavContainer"></div>
+
+    <div class="hero hero-left">
+        <h1>学习排行榜</h1>
+        <p class="leaderboard-hero-text">查看所有学员在各课程中的学习排名。</p>
+    </div>
+
+    <div class="card">
+        <div class="section-title">排行榜</div>
+        <div style="margin-bottom:16px;">
+            <label for="leaderboardCourseSelect">选择课程</label>
+            <select id="leaderboardCourseSelect">
+                <option value="">加载中...</option>
+            </select>
+        </div>
+        <div id="leaderboardContainer" class="status">加载中...</div>
+    </div>
+
+</div>
+</div>
+
+<script src="/js/config.js"></script>
+<script src="/js/api.js"></script>
+<script src="/js/ui.js"></script>
+<script src="/js/auth.js"></script>
+<script src="/js/nav.js"></script>
+<script src="/js/leaderboard.js"></script>
+</body>
+</html>

@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>课程资料 - 数学分析智能体</title>
+    <link rel="stylesheet" href="/css/app.css">
+</head>
+<body>
+<div class="app-shell">
+<div class="container">
+    <nav class="top-nav" aria-label="主导航"></nav>
+
+    <div class="hero hero-left">
+        <h1>课程资料</h1>
+        <p>查看教师或管理员上传的课程资料。学生端当前以只读查看为主，上传与调试入口仅对教师/管理员开放。</p>
+    </div>
+
+    <div id="materialsStudentNotice" class="card" style="display:none;">
+        <div class="section-title">只读查看</div>
+        <div class="hint">
+            当前以学生视角打开课程资料页。课程资料入口会继续保留，但本轮前端未单独接入学生只读资料列表；上传、解析管理和检索调试入口仅对教师或管理员开放。
+        </div>
+    </div>
+
+    <div id="materialsListArea" class="card">
+        <div class="section-title">已上传资料</div>
+        <div class="materials-filter-grid">
+            <div>
+                <label for="materialsListChapterSelect">章节</label>
+                <select id="materialsListChapterSelect">
+                    <option value="">全部章节</option>
+                </select>
+            </div>
+            <div>
+                <label for="materialsListStatusSelect">解析状态</label>
+                <select id="materialsListStatusSelect">
+                    <option value="">全部状态</option>
+                    <option value="success">解析成功</option>
+                    <option value="processing">解析中</option>
+                    <option value="pending">等待解析</option>
+                    <option value="failed">解析失败</option>
+                    <option value="ocr_pending">需要 OCR</option>
+                </select>
+            </div>
+            <div class="materials-filter-actions">
+                <button id="materialsRefreshBtn">刷新</button>
+                <span id="materialsListStatus" class="status"></span>
+            </div>
+        </div>
+        <div id="materialsListContainer" class="status">加载中...</div>
+    </div>
+</div>
+</div>
+
+<script src="/js/config.js"></script>
+<script src="/js/api.js"></script>
+<script src="/js/ui.js"></script>
+<script src="/js/auth.js"></script>
+<script src="/js/nav.js"></script>
+<script src="/js/materials.js"></script>
+</body>
+</html>

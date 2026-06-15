@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>数学分析智能体</title>
+    <link rel="stylesheet" href="/css/app.css">
+</head>
+<body>
+<div class="app-shell">
+<div class="container">
+    <nav class="top-nav" aria-label="主导航"></nav>
+
+    <section class="hero-landing">
+        <div class="hero-math-symbols">
+            <span class="hero-math-symbol" aria-hidden="true">∫</span>
+            <span class="hero-math-symbol" aria-hidden="true">∑</span>
+            <span class="hero-math-symbol" aria-hidden="true">∂</span>
+        </div>
+        <div class="hero-landing-inner">
+            <div class="hero-kicker">数学分析智能体 <span>MathAnalysisAI</span></div>
+            <h1>拍照或输入解答，快速找出数学分析题中的问题</h1>
+            <p>支持题目识别、公式校对、解答分析、错因归纳和复习建议，适合课后练习、作业复盘和课堂演示。</p>
+            <div class="hero-actions">
+                <a class="hero-btn" href="/analysis.html">开始分析一道题</a>
+                <a class="hero-btn hero-btn-secondary" href="/stats.html">查看学习统计</a>
+            </div>
+        </div>
+    </section>
+
+    <section class="panel workflow-panel">
+        <div class="panel-header">
+            <h2>学习流程</h2>
+            <p>从一道题开始，先确认题目和解答内容，再让系统分析你的推理过程。</p>
+        </div>
+        <div class="workflow-steps">
+            <div class="workflow-step">
+                <span class="workflow-step-no">1</span>
+                <div>
+                    <strong>拍照或输入题目</strong>
+                    <div class="hint">可以手动输入，也可以切换到拍照识别模式完成 OCR。</div>
+                </div>
+            </div>
+            <div class="workflow-step">
+                <span class="workflow-step-no">2</span>
+                <div>
+                    <strong>检查识别出的公式</strong>
+                    <div class="hint">核对 OCR 回填结果，必要时用 MathLive 修正公式和文本。</div>
+                </div>
+            </div>
+            <div class="workflow-step">
+                <span class="workflow-step-no">3</span>
+                <div>
+                    <strong>提交解答分析</strong>
+                    <div class="hint">确认题目和解答后，再手动开始分析。</div>
+                </div>
+            </div>
+            <div class="workflow-step">
+                <span class="workflow-step-no">4</span>
+                <div>
+                    <strong>查看错因与复习建议</strong>
+                    <div class="hint">获得标准解法、错因标签和后续复盘建议。</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="feature-grid feature-grid-home">
+        <section class="feature-card feature-card-primary">
+            <div class="section-title">先分析一道题</div>
+            <p class="entry-copy">可以手动输入题目和解答，也可以上传作业图片进行 OCR 识别。确认题目、解答和公式后，系统会生成标准解法、错因分析和复习建议。</p>
+            <div class="entry-methods">
+                <span class="entry-method-pill">手动输入</span>
+                <span class="entry-method-pill">拍照识别</span>
+            </div>
+            <a class="hero-btn entry-primary-btn" href="/analysis.html">开始分析一道题</a>
+        </section>
+
+        <section class="feature-card">
+            <div class="section-title">学习统计</div>
+            <p class="entry-copy">查看练习次数、错题情况、知识点掌握趋势和公开排行榜。</p>
+            <a class="jump-link entry-link" href="/stats.html">查看统计 →</a>
+        </section>
+
+        <section class="feature-card">
+            <div class="section-title">课程资料</div>
+            <p class="entry-copy">查看课程资料与知识点说明，后续可结合题目分析进行复习。</p>
+            <a class="jump-link entry-link" href="/materials.html">查看资料 →</a>
+        </section>
+    </section>
+
+    <section class="panel">
+        <div class="panel-header">
+            <h2>你可以这样使用</h2>
+        </div>
+        <div class="usage-grid">
+            <div class="usage-item">
+                <strong>检查作业解答</strong>
+                <p>上传题目和自己的解答，查看推理是否充分。</p>
+            </div>
+            <div class="usage-item">
+                <strong>补全标准解法</strong>
+                <p>输入不会处理的题目，获得分步骤解法参考。</p>
+            </div>
+            <div class="usage-item">
+                <strong>复盘常错知识点</strong>
+                <p>根据分析记录查看错因标签和知识点薄弱项。</p>
+            </div>
+        </div>
+    </section>
+
+    <section class="panel page-note">
+        <div class="panel-header">
+            <h2>当前版本说明</h2>
+        </div>
+        <p class="entry-copy">
+            当前学生主入口已经统一到“解题分析”页面。你可以先拍照识别或手动输入，再确认题目、解答和公式内容，最后手动提交分析。
+        </p>
+    </section>
+
+    <footer class="app-footer">
+        <span>备案号待添加</span>
+    </footer>
+</div>
+</div>
+
+<script src="/js/config.js"></script>
+<script src="/js/api.js"></script>
+<script src="/js/ui.js"></script>
+<script src="/js/auth.js"></script>
+<script src="/js/nav.js"></script>
+</body>
+</html>

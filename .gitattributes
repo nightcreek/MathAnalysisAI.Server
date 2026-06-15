@@ -1,0 +1,38 @@
+###############################################################################
+# Set default behavior to automatically normalize line endings.
+###############################################################################
+* text=auto eol=lf
+
+# Source files
+*.cs       text diff=csharp
+*.cshtml   text
+*.razor    text
+*.js        text
+*.ts        text
+*.css       text
+*.html      text
+*.json      text
+*.xml       text
+*.yml       text
+*.yaml      text
+*.md        text
+*.sh        text eol=lf
+*.ps1       text eol=lf
+*.conf      text
+*.sln       text eol=crlf
+*.csproj    text eol=crlf
+
+# Binary files
+*.png   binary
+*.jpg   binary
+*.jpeg  binary
+*.gif   binary
+*.ico   binary
+*.pdf   binary
+*.woff  binary
+*.woff2 binary
+*.ttf   binary
+*.otf   binary
+*.db    binary
+*.dll   binary
+*.exe   binary

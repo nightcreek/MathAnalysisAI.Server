@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>解题分析 - 数学分析智能体</title>
+    <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"
+            integrity="sha256-0lGgKj3aQPhjCfYkGvCGxKMAuZnKATf/rDgqN/K8wY="
+            crossorigin="anonymous"></script>
+    <link rel="stylesheet" href="/vendor/mathlive/mathlive-static.css">
+    <link rel="stylesheet" href="/vendor/mathlive/mathlive-fonts.css">
+    <script src="/vendor/mathlive/mathlive.min.js"></script>
+    <link rel="stylesheet" href="/css/app.css">
+</head>
+<body>
+<div class="app-shell">
+    <div class="container">
+        <nav class="top-nav" aria-label="主导航">
+            <a class="top-nav-link" href="/index.html">首页</a>
+        </nav>
+
+        <section class="page-hero hero-left">
+            <h1>解题分析工作台</h1>
+            <p>手动输入和拍照识别是同一个分析任务的两种输入方式。确认题目、解答和公式后，再手动开始分析。</p>
+        </section>
+
+        <main>
+        <div class="workbench-grid">
+            <div class="workbench-main">
+                <section class="panel">
+                    <div class="panel-header">
+                        <h2>输入方式</h2>
+                        <p>选择手动输入或拍照识别，确认题目、解答和公式后再提交分析。</p>
+                    </div>
+                    <div id="analysisModeSwitch" class="mode-switch" role="tablist" aria-label="分析输入方式">
+                        <button id="manualModeBtn" type="button" class="mode-switch-btn is-active">手动输入</button>
+                        <button id="ocrModeBtn" type="button" class="mode-switch-btn">拍照识别</button>
+                    </div>
+                    <div id="analysisWorkbenchHint" class="hint status-message">
+                        当前为手动输入模式：直接填写题目和我的解答，然后开始分析。
+                    </div>
+                </section>
+
+                <section id="ocrWorkbenchCard" class="panel" style="display:none;">
+                    <div class="panel-header">
+                        <h2>拍照识别</h2>
+                        <p>先识别题目和解答，再检查 OCR 回填内容与公式卡片。</p>
+                    </div>
+                    <div class="upload-row">
+                        <div>
+                            <label for="photoSolutionFile">作业图片</label>
+                            <input id="photoSolutionFile" type="file" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp">
+                        </div>
+                        <div>
+                            <label for="photoSolutionHint">识别提示（可选）</label>
+                            <input id="photoSolutionHint" type="text" placeholder="例如：题目在上半部分，解答在下半部分。">
+                        </div>
+                    </div>
+                    <div class="actions">
+                        <button id="photoOcrBtn">识别题目与解答</button>
+                        <button id="photoOcrConfirmBtn" type="button" class="btn-secondary" disabled>确认 OCR 并允许分析</button>
+                        <span id="photoOcrStatus" class="status"></span>
+                    </div>
+                    <div id="photoOcrSummary" class="hint"></div>
+
+                    <div id="photoOcrReviewNotice" class="hint ocr-review-card" style="display:none;"></div>
+
+                    <div id="photoOcrFormulaReview" class="ocr-review-card" style="display:none;">
+                        <div class="section-title section-title-compact">识别出的公式</div>
+                        <div class="hint">点击公式即可直接编辑；确认无误后可复制或插入到题目、我的解答末尾。</div>
+                        <div id="photoOcrFormulaList" class="ocr-formula-list"></div>
+                    </div>
+                </section>
+
+                <section class="panel">
+                    <div class="panel-header">
+                        <h2>题目与解答</h2>
+                        <p>无论使用哪种输入方式，最终都在这里确认题目和我的解答。</p>
+                    </div>
+                    <div class="form-grid">
+                        <div>
+                        <label for="chapterSelect">章节</label>
+                        <select id="chapterSelect">
+                            <option value="">加载中...</option>
+                        </select>
+                    </div>
+                        <div>
+                            <label for="modeSelect">分析模式</label>
+                            <select id="modeSelect">
+                                <option value="review_solution" selected>批改学生解答</option>
+                                <option value="hint">只给提示</option>
+                                <option value="solve">标准解答</option>
+                                <option value="concept_explain">概念讲解</option>
+                            </select>
+                        </div>
+                        <div class="full">
+                            <label for="problemTextInput">题目</label>
+                            <textarea id="problemTextInput" placeholder="请输入数学分析题目，或在拍照识别模式下等待 OCR 回填。"></textarea>
+                        </div>
+                        <div class="full">
+                            <label for="studentSolutionTextInput">我的解答</label>
+                            <textarea id="studentSolutionTextInput" placeholder="请输入你的解题过程，或在拍照识别模式下等待 OCR 回填。"></textarea>
+                        </div>
+                    </div>
+                    <div class="actions">
+                        <button id="analyzeBtn">开始分析</button>
+                        <span id="analyzeStatus" class="status"></span>
+                    </div>
+                    <div id="currentUserHint" class="hint"></div>
+                </section>
+            </div>
+
+            <aside class="workbench-side">
+                <section class="panel result-panel">
+                    <div class="panel-header">
+                        <h2>分析结果</h2>
+                        <p>提交题目和解答后，这里会显示标准解法、错因分析和复习建议。</p>
+                    </div>
+                    <div id="resultContainer" class="empty-state">
+                        <h3>暂无分析结果</h3>
+                        <p>提交题目和解答后，这里会显示标准解法、错因分析和复习建议。</p>
+                    </div>
+                </section>
+            </aside>
+        </div>
+        </main>
+    </div>
+</div>
+
+<script src="/js/config.js"></script>
+<script src="/js/api.js"></script>
+<script src="/js/ui.js"></script>
+<script src="/js/auth.js"></script>
+<script src="/js/nav.js"></script>
+<script src="/js/knowledge-points.js"></script>
+<script src="/js/analysis.js"></script>
+<script src="/js/photo-solution.js"></script>
+<script src="/js/mathlive-ocr.js"></script>
+</body>
+</html>
