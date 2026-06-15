@@ -162,5 +162,18 @@ namespace MathAnalysisAI.Server.Data.Seed
             new() { Id = 2020, FromKnowledgePointId = 1014, ToKnowledgePointId = 1066, DependencyType = "prerequisite", CreatedAt = SeedCreatedAt },
             new() { Id = 2021, FromKnowledgePointId = 1034, ToKnowledgePointId = 1067, DependencyType = "prerequisite", CreatedAt = SeedCreatedAt }
         };
+
+        public static readonly NetworkResource[] SeedNetworkResources =
+        {
+            new() { Id = 5001, CourseId = CourseMathAnalysisId, Category = "教材与参考书", Title = "华东师范大学 · 数学分析（第四版）", Description = "国内经典数学分析教材，适合本科基础阶段系统学习。", Link = "https://book.douban.com/subject/26802081/", SortOrder = 1, IsEnabled = true, CreatedAt = SeedCreatedAt, UpdatedAt = SeedCreatedAt },
+            new() { Id = 5002, CourseId = CourseMathAnalysisId, Category = "教材与参考书", Title = "陶哲轩 · Analysis I / Analysis II", Description = "从自然数出发的现代分析入门，强调直觉与严格性的结合。", Link = "https://terrytao.wordpress.com/books/analysis-i/", SortOrder = 2, IsEnabled = true, CreatedAt = SeedCreatedAt, UpdatedAt = SeedCreatedAt },
+            new() { Id = 5003, CourseId = CourseMathAnalysisId, Category = "在线课程", Title = "MIT 18.100 Real Analysis (OCW)", Description = "MIT OpenCourseWare 上的实分析公开课，含完整视频与习题。", Link = "https://ocw.mit.edu/courses/18-100a-real-analysis-fall-2020/", SortOrder = 3, IsEnabled = true, CreatedAt = SeedCreatedAt, UpdatedAt = SeedCreatedAt },
+            new() { Id = 5004, CourseId = CourseMathAnalysisId, Category = "在线课程", Title = "可汗学院 · Calculus", Description = "直观视频讲解微积分核心概念，作为先修或复习非常合适。", Link = "https://www.khanacademy.org/math/calculus-1", SortOrder = 4, IsEnabled = true, CreatedAt = SeedCreatedAt, UpdatedAt = SeedCreatedAt },
+            new() { Id = 5005, CourseId = CourseMathAnalysisId, Category = "交互式工具", Title = "Desmos Graphing Calculator", Description = "在线图形计算器，可输入函数直观查看收敛、连续性、极值等分析行为。", Link = "https://www.desmos.com/calculator", SortOrder = 5, IsEnabled = true, CreatedAt = SeedCreatedAt, UpdatedAt = SeedCreatedAt },
+            new() { Id = 5006, CourseId = CourseMathAnalysisId, Category = "交互式工具", Title = "Wolfram MathWorld", Description = "权威的在线数学百科，定义、定理与例子可以作为参考书补充。", Link = "https://mathworld.wolfram.com/", SortOrder = 6, IsEnabled = true, CreatedAt = SeedCreatedAt, UpdatedAt = SeedCreatedAt },
+            new() { Id = 5007, CourseId = CourseMathAnalysisId, Category = "习题与讨论", Title = "Math Stack Exchange", Description = "遇到具体题目或概念困惑时，可以在这里搜索类似问题或提问。", Link = "https://math.stackexchange.com/", SortOrder = 7, IsEnabled = true, CreatedAt = SeedCreatedAt, UpdatedAt = SeedCreatedAt },
+            new() { Id = 5008, CourseId = CourseMathAnalysisId, Category = "符号计算", Title = "SymPy - Python Symbolic Mathematics", Description = "免费的 Python 符号计算库，可以辅助推导极限、积分与级数。", Link = "https://www.sympy.org/", SortOrder = 8, IsEnabled = true, CreatedAt = SeedCreatedAt, UpdatedAt = SeedCreatedAt },
+            new() { Id = 5009, CourseId = CourseMathAnalysisId, Category = "中文开放课程", Title = "中国大学 MOOC · 数学分析", Description = "国内多所高校在 MOOC 平台开设的数学分析公开课程，适合中文环境学习。", Link = "https://www.icourse163.org/search.htm?search=%E6%95%B0%E5%AD%A6%E5%88%86%E6%9E%90", SortOrder = 9, IsEnabled = true, CreatedAt = SeedCreatedAt, UpdatedAt = SeedCreatedAt }
+        };
     }
 }

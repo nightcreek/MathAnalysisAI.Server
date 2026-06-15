@@ -4,26 +4,6 @@
   let loadingPromise = null;
   let fallbackApplied = false;
 
-  function isDevelopmentHost() {
-    const host = window.location.hostname;
-    return host === "localhost" || host === "127.0.0.1" || host === "::1";
-  }
-
-  function getFallbackUser() {
-    if (!window.AppConfig || !AppConfig.developmentFallbackUser) return null;
-    const fallback = AppConfig.developmentFallbackUser;
-    if (!fallback || typeof fallback !== "object") return null;
-    return {
-      userId: Number(fallback.userId) || null,
-      username: fallback.username || "test_student",
-      realName: fallback.realName || "测试学生",
-      role: fallback.role || "student",
-      schoolName: fallback.schoolName || null,
-      departmentName: fallback.departmentName || null,
-      className: fallback.className || null
-    };
-  }
-
   function resetCache() {
     loaded = false;
     loadingPromise = null;
@@ -48,13 +28,6 @@
       } catch (err) {
         currentUser = null;
         fallbackApplied = false;
-        if (isDevelopmentHost() && err && err.status === 401) {
-          const fallback = getFallbackUser();
-          if (fallback) {
-            currentUser = fallback;
-            fallbackApplied = true;
-          }
-        }
       } finally {
         loaded = true;
         loadingPromise = null;

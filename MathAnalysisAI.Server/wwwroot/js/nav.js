@@ -11,7 +11,8 @@
     "/dev.html": "/dev.html",
     "/login.html": "/login.html",
     "/leaderboard.html": "/leaderboard.html",
-    "/materials-manage.html": "/materials-manage.html"
+    "/materials-manage.html": "/materials-manage.html",
+    "/resources-manage.html": "/resources-manage.html"
   };
 
   const standardNavLinks = [
@@ -23,6 +24,7 @@
     { href: "/stats.html", label: "学习统计", className: "" },
     { href: "/dev.html", label: "开发工具", className: "nav-dev" },
     { href: "/materials-manage.html", label: "资料管理", className: "nav-dev", roles: ["teacher", "admin"] },
+    { href: "/resources-manage.html", label: "网络资源", className: "nav-dev", roles: ["teacher", "admin"] },
     { href: "/admin.html", label: "管理", className: "nav-admin", roles: ["admin"] }
   ];
 
@@ -82,24 +84,97 @@
     });
   }
 
-  function getUserText(user, fallbackApplied) {
+  function getUserText(user) {
     if (!user) return "当前未登录";
-    const displayName = user.realName || user.username || "未知用户";
-    const role = user.role || "student";
-    if (fallbackApplied) {
-      return "当前用户：" + displayName + "（" + role + "，开发模式）";
-    }
+    var displayName = user.realName || user.username || "未知用户";
+    var role = user.role || "student";
     return "当前用户：" + displayName + "（" + role + "）";
   }
 
-  function renderCurrentUserHint() {
-    const hint = document.getElementById("currentUserHint");
-    if (!hint) return;
+  async function impersonateRole(role) {
+    try {
+      await Api.postJson("/api/auth/impersonate", { role: role || null });
+      if (window.Auth && window.Auth.loadCurrentUser) {
+        await window.Auth.loadCurrentUser(true);
+      }
+      var newUser = window.Auth ? window.Auth.getCurrentUser() : null;
+      normalizeTopNavLinks(newUser);
+      applyRoleBasedNavVisibility();
+      setActiveNav();
+      renderTopNavUserArea();
+    } catch (_) {
+      console.error("Impersonation failed");
+    }
+  }
 
-    const auth = window.Auth;
-    const user = auth ? auth.getCurrentUser() : null;
-    const fallbackApplied = auth && auth.isDevelopmentFallbackApplied && auth.isDevelopmentFallbackApplied();
-    hint.textContent = getUserText(user, !!fallbackApplied);
+  function renderTopNavUserArea() {
+    var nav = document.querySelector(".top-nav");
+    if (!nav) return;
+
+    var area = nav.querySelector(".top-nav-user");
+    if (!area) {
+      area = document.createElement("div");
+      area.className = "top-nav-user";
+      nav.appendChild(area);
+    }
+
+    var auth = window.Auth;
+    var user = auth ? auth.getCurrentUser() : null;
+
+    var text = document.createElement("span");
+    text.className = "top-nav-user-text";
+    text.textContent = getUserText(user);
+
+    var action = document.createElement("a");
+    action.className = "top-nav-auth-link";
+
+    area.innerHTML = "";
+    area.appendChild(text);
+    area.appendChild(action);
+
+    if (!user) {
+      action.href = "/login.html";
+      action.textContent = "登录";
+      return;
+    }
+
+    action.href = "#";
+    action.textContent = "退出";
+    action.addEventListener("click", function (e) {
+      e.preventDefault();
+      logout();
+    });
+
+    var isAdmin = String(user.role || "").toLowerCase() === "admin";
+    if (isAdmin) {
+      var switcher = document.createElement("select");
+      switcher.className = "impersonate-switch";
+      switcher.setAttribute("aria-label", "切换查看视角");
+      switcher.title = "以不同角色视角查看前端效果";
+
+      var impersonatedRole = user.impersonatedRole || "";
+      var roles = [
+        { value: "", label: "👤 管理员视角" },
+        { value: "teacher", label: "🎓 教师视角" },
+        { value: "student", label: "📚 学生视角" }
+      ];
+
+      roles.forEach(function (r) {
+        var opt = document.createElement("option");
+        opt.value = r.value;
+        opt.textContent = r.label;
+        if (impersonatedRole === r.value || (!impersonatedRole && !r.value)) {
+          opt.selected = true;
+        }
+        switcher.appendChild(opt);
+      });
+
+      switcher.addEventListener("change", function () {
+        impersonateRole(switcher.value || null);
+      });
+
+      area.appendChild(switcher);
+    }
   }
 
   function applyRoleBasedNavVisibility() {
@@ -204,44 +279,6 @@
     window.location.href = "/login.html";
   }
 
-  function renderTopNavUserArea() {
-    const nav = document.querySelector(".top-nav");
-    if (!nav) return;
-
-    let area = nav.querySelector(".top-nav-user");
-    if (!area) {
-      area = document.createElement("div");
-      area.className = "top-nav-user";
-      nav.appendChild(area);
-    }
-
-    const auth = window.Auth;
-    const user = auth ? auth.getCurrentUser() : null;
-    const fallbackApplied = auth && auth.isDevelopmentFallbackApplied && auth.isDevelopmentFallbackApplied();
-
-    const text = document.createElement("span");
-    text.className = "top-nav-user-text";
-    text.textContent = getUserText(user, !!fallbackApplied);
-
-    const action = document.createElement("a");
-    action.className = "top-nav-auth-link";
-
-    if (user) {
-      action.href = "#";
-      action.textContent = "退出";
-      action.addEventListener("click", function (e) {
-        e.preventDefault();
-        logout();
-      });
-    } else {
-      action.href = "/login.html";
-      action.textContent = "登录";
-    }
-
-    area.innerHTML = "";
-    area.appendChild(text);
-    area.appendChild(action);
-  }
 
   document.addEventListener("DOMContentLoaded", async function () {
     if (window.Auth && window.Auth.loadCurrentUser) {
@@ -252,7 +289,6 @@
     normalizeTopNavLinks(user);
     applyRoleBasedNavVisibility();
     setActiveNav();
-    renderCurrentUserHint();
     renderTopNavUserArea();
     guardMaterialsPage();
     guardDevPage();

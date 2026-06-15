@@ -1,5 +1,6 @@
 using MathAnalysisAI.Server.Data;
 using MathAnalysisAI.Server.DTOs.Auth;
+using MathAnalysisAI.Server.Filters;
 using MathAnalysisAI.Server.Models;
 using MathAnalysisAI.Server.Options;
 using MathAnalysisAI.Server.Services.Auth;
@@ -244,7 +245,78 @@ public class AuthController : ControllerBase
     public IActionResult Logout()
     {
         HttpContext.Session.Remove(SessionUserIdKey);
+        HttpContext.Session.Remove("impersonated_role");
         return Ok(new { success = true });
+    }
+
+    [HttpPost("impersonate")]
+    public IActionResult Impersonate([FromBody] ImpersonateRequestDto request)
+    {
+        var user = HttpContext.GetCurrentUser();
+        if (user == null)
+            return Unauthorized(new { message = "Not logged in." });
+
+        if (!string.Equals(user.Role, AppUserRole.Admin, StringComparison.OrdinalIgnoreCase))
+            return StatusCode(StatusCodes.Status403Forbidden, new { message = "Only admin can impersonate." });
+
+        var role = request.Role?.Trim()?.ToLower();
+        var validRoles = new HashSet<string> { "student", "teacher", "admin", "school_leader" };
+
+        if (string.IsNullOrWhiteSpace(role))
+        {
+            HttpContext.Session.Remove("impersonated_role");
+            return Ok(new { role = (string?)null, message = "Impersonation cleared. Back to admin view." });
+        }
+
+        if (!validRoles.Contains(role))
+            return BadRequest(new { message = $"Invalid role: '{request.Role}'. Allowed: student, teacher, admin, school_leader." });
+
+        if (_userContext is CurrentUserService cus)
+            cus.SetImpersonatedRole(role);
+        else
+            HttpContext.Session.SetString("impersonated_role", role);
+
+        return Ok(new { role, message = $"Now viewing as {role}." });
+    }
+
+    [HttpPost("join-class")]
+    public async Task<IActionResult> JoinClass([FromBody] JoinClassRequestDto request, CancellationToken cancellationToken)
+    {
+        var currentUser = await _userContext.GetCurrentUserAsync(cancellationToken);
+        if (currentUser == null)
+            return Unauthorized(new { message = "Not logged in." });
+
+        if (string.IsNullOrWhiteSpace(request.TeacherId) && string.IsNullOrWhiteSpace(request.TeacherUsername))
+            return BadRequest(new { message = "TeacherId or TeacherUsername is required." });
+
+        AppUser? teacher = null;
+        if (!string.IsNullOrWhiteSpace(request.TeacherId) && int.TryParse(request.TeacherId, out var tId) && tId > 0)
+            teacher = await _db.AppUsers.FirstOrDefaultAsync(x => x.Id == tId
+                && (x.Role == AppUserRole.Teacher || x.Role == AppUserRole.Admin), cancellationToken);
+        else if (!string.IsNullOrWhiteSpace(request.TeacherUsername))
+            teacher = await _db.AppUsers.FirstOrDefaultAsync(x => x.Username == request.TeacherUsername.Trim()
+                && (x.Role == AppUserRole.Teacher || x.Role == AppUserRole.Admin), cancellationToken);
+
+        if (teacher == null)
+            return NotFound(new { message = "Teacher not found." });
+
+        currentUser.TeacherId = teacher.Id;
+
+        if (!string.IsNullOrWhiteSpace(request.RealName))
+            currentUser.RealName = request.RealName.Trim();
+
+        if (!string.IsNullOrWhiteSpace(request.StudentNumber))
+            currentUser.StudentNumber = request.StudentNumber.Trim();
+
+        if (!string.IsNullOrWhiteSpace(request.SchoolName))
+            currentUser.SchoolName = request.SchoolName.Trim();
+
+        if (!string.IsNullOrWhiteSpace(request.ClassName))
+            currentUser.ClassName = request.ClassName.Trim();
+
+        await _db.SaveChangesAsync(cancellationToken);
+
+        return Ok(MapToCurrentUser(currentUser));
     }
 
     private ActionResult<CurrentUserDto> HandleLocalPasswordLogin(AppUser user, string? password)
@@ -322,17 +394,24 @@ public class AuthController : ControllerBase
         return null;
     }
 
-    private static CurrentUserDto MapToCurrentUser(AppUser user)
+    private CurrentUserDto MapToCurrentUser(AppUser user)
     {
+        string? impersonatedRole = null;
+        if (_userContext is CurrentUserService cus)
+            impersonatedRole = cus.GetImpersonatedRole();
+
         return new CurrentUserDto
         {
             UserId = user.Id,
             Username = user.Username,
             RealName = user.RealName,
+            StudentNumber = user.StudentNumber,
             Role = user.Role,
             SchoolName = user.SchoolName,
             DepartmentName = user.DepartmentName,
-            ClassName = user.ClassName
+            ClassName = user.ClassName,
+            TeacherId = user.TeacherId,
+            ImpersonatedRole = impersonatedRole
         };
     }
 

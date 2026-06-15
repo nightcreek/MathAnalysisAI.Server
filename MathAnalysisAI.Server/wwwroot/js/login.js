@@ -119,14 +119,13 @@
     if (pageHint) pageHint.textContent = "开发环境 - 输入用户名即可登录，也支持注册新账号。";
     showPasswordField = false;
     if (passwordGroup) passwordGroup.style.display = "none";
-    if (quickBtn) quickBtn.style.display = "";
+    if (quickBtn) quickBtn.style.display = "none";
     if (registerSection) registerSection.style.display = "";
   }
 
   async function doLogin(username, password) {
     var status = UI.qs("#loginStatus");
     var loginBtn = UI.qs("#loginSubmitBtn");
-    var quickBtn = UI.qs("#loginQuickBtn");
 
     var usernameValue = (username || "").trim();
     var passwordValue = (password || "").trim();
@@ -146,7 +145,6 @@
     }
 
     loginBtn.disabled = true;
-    if (quickBtn) quickBtn.disabled = true;
     UI.showStatus(status, "正在登录…", false);
 
     var payload = { username: usernameValue };
@@ -169,7 +167,6 @@
       UI.showStatus(status, UI.formatApiErrorMessage(err, "login"), true);
     } finally {
       loginBtn.disabled = false;
-      if (quickBtn) quickBtn.disabled = false;
     }
   }
 
@@ -179,10 +176,6 @@
     var username = input ? input.value : "";
     var password = passwordInput ? passwordInput.value : "";
     doLogin(username, password);
-  }
-
-  function quickLoginTestStudent() {
-    doLogin("test_student", "");
   }
 
   async function doRegister() {
@@ -234,11 +227,9 @@
 
   function bindEvents() {
     var loginBtn = UI.qs("#loginSubmitBtn");
-    var quickBtn = UI.qs("#loginQuickBtn");
     var registerBtn = UI.qs("#registerSubmitBtn");
 
     if (loginBtn) loginBtn.addEventListener("click", loginWithCredentials);
-    if (quickBtn) quickBtn.addEventListener("click", quickLoginTestStudent);
     if (registerBtn) registerBtn.addEventListener("click", doRegister);
 
     var usernameInput = UI.qs("#loginUsernameInput");
@@ -275,9 +266,6 @@
       renderUserInfo(window.Auth.getCurrentUser());
     }
   }
-
-  window.loginWithCredentials = loginWithCredentials;
-  window.quickLoginTestStudent = quickLoginTestStudent;
 
   document.addEventListener("DOMContentLoaded", function () {
     initLoginPage();

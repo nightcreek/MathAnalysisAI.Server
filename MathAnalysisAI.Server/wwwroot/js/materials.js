@@ -67,68 +67,11 @@
     container.innerHTML = html;
   }
 
-  const DEFAULT_NETWORK_RESOURCES = [
-    {
-      category: "教材与参考书",
-      title: "华东师范大学 · 数学分析（第四版）",
-      description: "国内经典数学分析教材，适合本科基础阶段系统学习。",
-      link: "https://book.douban.com/subject/26802081/"
-    },
-    {
-      category: "教材与参考书",
-      title: "陶哲轩 · Analysis I / Analysis II",
-      description: "从自然数出发的现代分析入门，强调直觉与严格性的结合。",
-      link: "https://terrytao.wordpress.com/books/analysis-i/"
-    },
-    {
-      category: "在线课程",
-      title: "MIT 18.100 Real Analysis (OCW)",
-      description: "MIT OpenCourseWare 上的实分析公开课，含完整视频与习题。",
-      link: "https://ocw.mit.edu/courses/18-100a-real-analysis-fall-2020/"
-    },
-    {
-      category: "在线课程",
-      title: "可汗学院 · Calculus",
-      description: "直观视频讲解微积分核心概念，作为先修或复习非常合适。",
-      link: "https://www.khanacademy.org/math/calculus-1"
-    },
-    {
-      category: "交互式工具",
-      title: "Desmos Graphing Calculator",
-      description: "在线图形计算器，可输入函数直观查看收敛、连续性、极值等分析行为。",
-      link: "https://www.desmos.com/calculator"
-    },
-    {
-      category: "交互式工具",
-      title: "Wolfram MathWorld",
-      description: "权威的在线数学百科，定义、定理与例子可以作为参考书补充。",
-      link: "https://mathworld.wolfram.com/"
-    },
-    {
-      category: "习题与讨论",
-      title: "Math Stack Exchange",
-      description: "遇到具体题目或概念困惑时，可以在这里搜索类似问题或提问。",
-      link: "https://math.stackexchange.com/"
-    },
-    {
-      category: "符号计算",
-      title: "SymPy - Python Symbolic Mathematics",
-      description: "免费的 Python 符号计算库，可以辅助推导极限、积分与级数。",
-      link: "https://www.sympy.org/"
-    },
-    {
-      category: "中文开放课程",
-      title: "中国大学 MOOC · 数学分析",
-      description: "国内多所高校在 MOOC 平台开设的数学分析公开课程，适合中文环境学习。",
-      link: "https://www.icourse163.org/search.htm?search=%E6%95%B0%E5%AD%A6%E5%88%86%E6%9E%90"
-    }
-  ];
-
   function renderNetworkResources(resources) {
     const container = UI.qs("#networkResourcesGrid");
     if (!container) return;
 
-    const arr = Array.isArray(resources) ? resources : DEFAULT_NETWORK_RESOURCES;
+    const arr = Array.isArray(resources) ? resources : [];
     if (!arr.length) {
       container.innerHTML = "<div class='hint'>暂无推荐的外部资源。</div>";
       return;
@@ -254,7 +197,27 @@
     bindMaterialEvents();
     loadMaterialsChapters();
     loadCourseMaterials();
-    renderNetworkResources(DEFAULT_NETWORK_RESOURCES);
+    fetchNetworkResources();
+  }
+
+  async function fetchNetworkResources() {
+    var container = UI.qs("#networkResourcesGrid");
+    if (!container) return;
+
+    container.innerHTML = "<div class='hint'>加载中…</div>";
+
+    var courseId = window.AppConfig && window.AppConfig.resolveCourseId ? window.AppConfig.resolveCourseId() : null;
+    var params = "";
+    if (courseId) {
+      params = "?courseId=" + encodeURIComponent(courseId);
+    }
+
+    try {
+      var data = await Api.getJson("/api/resources" + params);
+      renderNetworkResources(data);
+    } catch (_) {
+      container.innerHTML = "<div class='hint'>网络资源加载失败，请稍后重试。</div>";
+    }
   }
 
   document.addEventListener("DOMContentLoaded", function () {

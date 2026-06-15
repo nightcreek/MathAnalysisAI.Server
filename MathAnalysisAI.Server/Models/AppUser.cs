@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace MathAnalysisAI.Server.Models
 {
@@ -32,6 +33,13 @@ namespace MathAnalysisAI.Server.Models
 
         [MaxLength(128)]
         public string? ClassName { get; set; }
+
+        public int? TeacherId { get; set; }
+
+        [ForeignKey(nameof(TeacherId))]
+        public AppUser? Teacher { get; set; }
+
+        public ICollection<AppUser> Students { get; set; } = new List<AppUser>();
 
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 

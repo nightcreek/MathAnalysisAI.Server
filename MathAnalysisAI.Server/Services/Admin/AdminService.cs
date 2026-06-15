@@ -174,4 +174,99 @@ public class AdminService
             DailyStats = dailyStats
         };
     }
+
+    public async Task<(bool success, string message, int? userId)> CreateTeacherAsync(
+        string username,
+        string password,
+        string? realName,
+        int bcryptWorkFactor = 12,
+        CancellationToken cancellationToken = default)
+    {
+        var existing = await _db.AppUsers
+            .AnyAsync(x => x.Username == username, cancellationToken);
+        if (existing)
+            return (false, "用户名已被占用。", null);
+
+        var passwordHash = BCrypt.Net.BCrypt.HashPassword(password, bcryptWorkFactor);
+
+        var user = new AppUser
+        {
+            Username = username,
+            PasswordHash = passwordHash,
+            RealName = string.IsNullOrWhiteSpace(realName) ? username : realName.Trim(),
+            Role = AppUserRole.Teacher,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        _db.AppUsers.Add(user);
+        await _db.SaveChangesAsync(cancellationToken);
+
+        return (true, "教师账号创建成功。", user.Id);
+    }
+
+    public async Task<(int created, int skipped, List<string> errors)> ImportStudentsAsync(
+        int teacherId,
+        List<StudentImportItem> students,
+        int bcryptWorkFactor = 12,
+        CancellationToken cancellationToken = default)
+    {
+        var teacher = await _db.AppUsers
+            .FirstOrDefaultAsync(x => x.Id == teacherId &&
+                (x.Role == AppUserRole.Teacher || x.Role == AppUserRole.Admin), cancellationToken);
+
+        if (teacher == null)
+            return (0, 0, new List<string> { "教师不存在或权限不足。" });
+
+        var created = 0;
+        var skipped = 0;
+        var errors = new List<string>();
+
+        foreach (var item in students)
+        {
+            if (string.IsNullOrWhiteSpace(item.RealName) && string.IsNullOrWhiteSpace(item.StudentNumber))
+            {
+                skipped++;
+                continue;
+            }
+
+            var username = !string.IsNullOrWhiteSpace(item.StudentNumber)
+                ? item.StudentNumber.Trim()
+                : (item.RealName ?? "").Trim();
+
+            if (string.IsNullOrWhiteSpace(username))
+            {
+                skipped++;
+                continue;
+            }
+
+            var existing = await _db.AppUsers.AnyAsync(x => x.Username == username, cancellationToken);
+            if (existing)
+            {
+                skipped++;
+                continue;
+            }
+
+            var defaultPassword = !string.IsNullOrWhiteSpace(item.StudentNumber)
+                ? item.StudentNumber.Trim()
+                : username;
+            var passwordHash = BCrypt.Net.BCrypt.HashPassword(defaultPassword, bcryptWorkFactor);
+
+            var user = new AppUser
+            {
+                Username = username,
+                PasswordHash = passwordHash,
+                RealName = item.RealName?.Trim() ?? username,
+                StudentNumber = item.StudentNumber?.Trim(),
+                Role = AppUserRole.Student,
+                TeacherId = teacherId,
+                CreatedAt = DateTime.UtcNow
+            };
+
+            _db.AppUsers.Add(user);
+            created++;
+        }
+
+        await _db.SaveChangesAsync(cancellationToken);
+        return (created, skipped, errors);
+    }
 }

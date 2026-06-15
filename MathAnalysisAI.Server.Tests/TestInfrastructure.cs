@@ -58,6 +58,8 @@ internal sealed class FakeUserContext : IUserContext
     public Task<bool> IsInRoleAsync(string role, CancellationToken cancellationToken = default) => Task.FromResult(CurrentUser != null && string.Equals(CurrentUser.Role, role, StringComparison.OrdinalIgnoreCase));
     public Task<bool> IsInAnyRoleAsync(IEnumerable<string> roles, CancellationToken cancellationToken = default) => Task.FromResult(CurrentUser != null && roles.Any(role => string.Equals(CurrentUser.Role, role, StringComparison.OrdinalIgnoreCase)));
     public Task<bool> IsAuthenticatedAsync(CancellationToken cancellationToken = default) => Task.FromResult(CurrentUser != null);
+    public string? GetImpersonatedRole() => null;
+    public void SetImpersonatedRole(string? role) { }
 }
 
 internal sealed class FakeSession : ISession

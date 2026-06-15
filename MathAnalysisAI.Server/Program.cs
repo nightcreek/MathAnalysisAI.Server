@@ -35,6 +35,10 @@ using System.Net;
 using System.Threading.RateLimiting;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Load server.env if present (before other config sources to allow overrides)
+LoadServerEnvFile(builder);
+
 builder.Host.UseSerilog((context, services, configuration) =>
     configuration.ReadFrom.Configuration(context.Configuration));
 
@@ -56,6 +60,7 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
 builder.Services.AddControllers();
 builder.Services.AddHttpContextAccessor();
 builder.Services.Configure<AuthOptions>(builder.Configuration.GetSection(AuthOptions.SectionName));
+builder.Services.Configure<AdminOptions>(builder.Configuration.GetSection(AdminOptions.SectionName));
 builder.Services.Configure<LLMOptions>(builder.Configuration.GetSection(LLMOptions.SectionName));
 builder.Services.Configure<PhotoSolutionOcrOptions>(builder.Configuration.GetSection(PhotoSolutionOcrOptions.SectionName));
 builder.Services.Configure<AnalysisContextOptions>(builder.Configuration.GetSection(AnalysisContextOptions.SectionName));
@@ -321,6 +326,14 @@ if (!skipRuntimeStartup)
         var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
         var testUserId = await AppUserSeeder.SeedDevelopmentTestStudentAsync(db);
         logger.LogInformation("Development test user seeding completed. UserId: {UserId}", testUserId);
+
+        var adminUsername = builder.Configuration["Admin:Username"];
+        var adminPassword = builder.Configuration["Admin:Password"];
+        if (!string.IsNullOrWhiteSpace(adminUsername) && !string.IsNullOrWhiteSpace(adminPassword))
+        {
+            var adminUserId = await AdminUserSeeder.SeedAdminAsync(db, adminUsername, adminPassword, authOptions.BcryptWorkFactor);
+            logger.LogInformation("Admin user seeding completed. UserId: {UserId}, Username: {Username}", adminUserId, adminUsername);
+        }
     }
     catch (Exception ex)
     {
@@ -372,6 +385,29 @@ app.UseEndpoints(endpoints =>
 if (!skipRuntimeStartup)
 {
     app.Run();
+}
+
+static void LoadServerEnvFile(WebApplicationBuilder builder)
+{
+    var envFilePath = Path.Combine(builder.Environment.ContentRootPath, "server.env");
+    if (!File.Exists(envFilePath)) return;
+
+    var data = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
+    foreach (var line in File.ReadAllLines(envFilePath))
+    {
+        var trimmed = line.Trim();
+        if (string.IsNullOrEmpty(trimmed) || trimmed.StartsWith("#")) continue;
+        var eqIdx = trimmed.IndexOf('=');
+        if (eqIdx < 1) continue;
+        var key = trimmed[..eqIdx].Trim();
+        var value = trimmed[(eqIdx + 1)..].Trim();
+        if (value.StartsWith("\"") && value.EndsWith("\""))
+            value = value[1..^1];
+        data[key] = value;
+    }
+
+    if (data.Count > 0)
+        builder.Configuration.AddInMemoryCollection(data);
 }
 
 static void ValidateAuthConfiguration(IHostEnvironment environment, AuthOptions authOptions)

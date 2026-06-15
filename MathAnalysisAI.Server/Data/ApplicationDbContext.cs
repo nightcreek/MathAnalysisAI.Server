@@ -32,6 +32,7 @@ namespace MathAnalysisAI.Server.Data
         public DbSet<CourseMaterial> CourseMaterials { get; set; }
         public DbSet<MaterialChunk> MaterialChunks { get; set; }
         public DbSet<MaterialChunkKnowledgePoint> MaterialChunkKnowledgePoints { get; set; }
+        public DbSet<NetworkResource> NetworkResources { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -422,11 +423,30 @@ namespace MathAnalysisAI.Server.Data
                 .Property(x => x.Confidence)
                 .HasPrecision(5, 4);
 
+            modelBuilder.Entity<NetworkResource>()
+                .HasOne(x => x.Course)
+                .WithMany()
+                .HasForeignKey(x => x.CourseId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<NetworkResource>()
+                .HasIndex(x => new { x.CourseId, x.IsEnabled });
+
+            modelBuilder.Entity<AppUser>()
+                .HasOne(u => u.Teacher)
+                .WithMany(t => t.Students)
+                .HasForeignKey(u => u.TeacherId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            modelBuilder.Entity<AppUser>()
+                .HasIndex(u => u.TeacherId);
+
             modelBuilder.Entity<Subject>().HasData(PlatformSeedData.Subjects);
             modelBuilder.Entity<Course>().HasData(PlatformSeedData.Courses);
             modelBuilder.Entity<Chapter>().HasData(PlatformSeedData.Chapters);
             modelBuilder.Entity<KnowledgePoint>().HasData(PlatformSeedData.KnowledgePoints);
             modelBuilder.Entity<KnowledgeDependency>().HasData(PlatformSeedData.KnowledgeDependencies);
+            modelBuilder.Entity<NetworkResource>().HasData(PlatformSeedData.SeedNetworkResources);
         }
     }
 }

@@ -5,60 +5,73 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>管理后台 - 数学分析智能体</title>
     <link rel="stylesheet" href="/css/app.css">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"
-            integrity="sha256-BmtB4uom5IJhNrR9TkjBwfW5C/w4yR/m7GHkZRw4tU="
-            crossorigin="anonymous"></script>
 </head>
 <body>
 <div class="app-shell">
-<div class="container" id="adminPageRoot">
-    <div id="adminNavContainer"></div>
+<div class="container">
+    <nav class="top-nav" aria-label="主导航"></nav>
 
     <div class="hero hero-left">
         <h1>管理后台</h1>
-        <p>系统运维监控、用户管理与数据统计。</p>
+        <p>创建教师账号、导入学生名单。仅管理员可访问。</p>
     </div>
 
+    <div id="adminToolsArea">
+
     <div class="card">
-        <div class="section-title">系统概览</div>
-        <div id="adminDashboardContainer" class="stats-summary-grid">
-            <div class="hint full">加载中...</div>
+        <div class="section-title">创建教师账号</div>
+        <div class="form-grid">
+            <div>
+                <label for="teacherUsername">用户名</label>
+                <input id="teacherUsername" type="text" placeholder="教师登录用户名" autocomplete="off">
+            </div>
+            <div>
+                <label for="teacherPassword">密码</label>
+                <input id="teacherPassword" type="password" placeholder="至少6位" autocomplete="new-password">
+            </div>
+            <div>
+                <label for="teacherRealName">姓名（选填）</label>
+                <input id="teacherRealName" type="text" placeholder="真实姓名">
+            </div>
+        </div>
+        <div class="actions">
+            <button id="createTeacherBtn">创建教师账号</button>
+            <span id="createTeacherStatus" class="status"></span>
         </div>
     </div>
 
     <div class="card">
-        <div class="section-title">最近 7 天趋势</div>
-        <div class="chart-container">
-            <canvas id="adminTrendChart" style="max-height:320px;"></canvas>
+        <div class="section-title">导入学生名单</div>
+        <p class="hint" style="margin-bottom:16px;">每行一个学生，格式：<code>姓名,学号</code> 或 <code>学号,姓名</code>，也可以只填学号。教师也可在资料管理页导入。</p>
+        <div class="form-grid">
+            <div>
+                <label for="studentImportTeacher">分配给教师</label>
+                <select id="studentImportTeacher"><option value="">加载中…</option></select>
+            </div>
         </div>
-    </div>
-
-    <div class="card">
-        <div class="section-title">用户管理</div>
-        <div class="materials-filter-grid">
-            <div>
-                <label for="adminUserSearch">搜索用户</label>
-                <input id="adminUserSearch" type="text" placeholder="用户名、姓名、学号...">
-            </div>
-            <div>
-                <label for="adminUserRoleFilter">角色</label>
-                <select id="adminUserRoleFilter">
-                    <option value="">全部角色</option>
-                    <option value="student">学生</option>
-                    <option value="teacher">教师</option>
-                    <option value="school_leader">学校管理员</option>
-                    <option value="admin">超级管理员</option>
-                </select>
-            </div>
+        <div class="form-grid">
             <div class="full">
-                <div class="materials-filter-actions">
-                    <button id="adminUserSearchBtn">搜索</button>
-                    <button id="adminUserClearBtn" class="btn-secondary">清除</button>
-                </div>
+                <label for="studentImportText">学生名单</label>
+                <textarea id="studentImportText" placeholder="张三,2024001
+李四,2024002
+王五,2024003" rows="8"></textarea>
             </div>
         </div>
-        <div id="adminUserListContainer" class="hint">加载中...</div>
-        <div id="adminUserPagination" class="actions" style="justify-content:center;"></div>
+        <div class="actions">
+            <button id="importStudentsBtn">导入学生</button>
+            <span id="importStudentsStatus" class="status"></span>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="section-title">教师列表</div>
+        <div class="materials-filter-actions" style="margin-bottom:16px;">
+            <button id="refreshTeachersBtn">刷新</button>
+            <span id="teacherListStatus" class="status"></span>
+        </div>
+        <div id="teachersListContainer" class="status">加载中…</div>
+    </div>
+
     </div>
 </div>
 </div>
@@ -68,6 +81,157 @@
 <script src="/js/ui.js"></script>
 <script src="/js/auth.js"></script>
 <script src="/js/nav.js"></script>
-<script src="/js/admin.js"></script>
+<script>
+(function () {
+  function renderTeacherList(teachers) {
+    var container = UI.qs("#teachersListContainer");
+    if (!container) return;
+
+    var arr = Array.isArray(teachers) ? teachers : [];
+    if (!arr.length) {
+      container.className = "status";
+      container.textContent = "暂无教师账号。";
+      return;
+    }
+
+    var html = "";
+    arr.forEach(function (t) {
+      html += "<div class='result-section' style='display:flex;justify-content:space-between;flex-wrap:wrap;gap:12px;'>";
+      html += "<div>";
+      html += "<div class='kicker'>" + UI.escapeHtml(t.role || "teacher") + " · " + (t.studentCount || 0) + " 名学生</div>";
+      html += "<strong>" + UI.escapeHtml(t.realName || t.username) + "</strong>";
+      html += "<span style='color:var(--text-fade); margin-left:8px;'>@" + UI.escapeHtml(t.username) + "</span>";
+      html += "</div>";
+      html += "</div>";
+    });
+    container.className = "";
+    container.innerHTML = html;
+  }
+
+  async function loadTeachers() {
+    var statusEl = UI.qs("#teacherListStatus");
+    UI.showStatus(statusEl, "加载中…", false);
+    try {
+      var teachers = await Api.getJson("/api/admin/teachers");
+      renderTeacherList(teachers);
+      UI.showStatus(statusEl, "已刷新。", false);
+    } catch (_) {
+      UI.qs("#teachersListContainer").className = "status error";
+      UI.qs("#teachersListContainer").textContent = "加载失败。";
+      UI.showStatus(statusEl, "加载失败。", true);
+    }
+  }
+
+  async function populateTeacherSelects() {
+    try {
+      var teachers = await Api.getJson("/api/admin/teachers");
+      var select = UI.qs("#studentImportTeacher");
+      if (!select) return;
+      var html = "<option value=''>-- 选择教师 --</option>";
+      (teachers || []).forEach(function (t) {
+        html += "<option value='" + t.id + "'>" + UI.escapeHtml(t.realName || t.username) + " @" + UI.escapeHtml(t.username) + "</option>";
+      });
+      select.innerHTML = html;
+    } catch (_) {}
+  }
+
+  async function createTeacher() {
+    var statusEl = UI.qs("#createTeacherStatus");
+    var btn = UI.qs("#createTeacherBtn");
+    var username = (UI.qs("#teacherUsername").value || "").trim();
+    var password = UI.qs("#teacherPassword").value;
+    var realName = (UI.qs("#teacherRealName").value || "").trim();
+
+    if (!username) { UI.showStatus(statusEl, "请输入用户名。", true); return; }
+    if (!password || password.length < 6) { UI.showStatus(statusEl, "密码至少6位。", true); return; }
+
+    btn.disabled = true;
+    UI.showStatus(statusEl, "正在创建…", false);
+
+    try {
+      await Api.postJson("/api/admin/teachers", { username: username, password: password, realName: realName || null });
+      UI.showStatus(statusEl, "创建成功。", false);
+      UI.qs("#teacherUsername").value = "";
+      UI.qs("#teacherPassword").value = "";
+      UI.qs("#teacherRealName").value = "";
+      loadTeachers();
+      populateTeacherSelects();
+    } catch (err) {
+      UI.showStatus(statusEl, UI.formatApiErrorMessage(err, "创建"), true);
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  async function importStudents() {
+    var statusEl = UI.qs("#importStudentsStatus");
+    var btn = UI.qs("#importStudentsBtn");
+    var teacherId = parseInt(UI.qs("#studentImportTeacher").value);
+    var text = (UI.qs("#studentImportText").value || "").trim();
+
+    if (!teacherId) { UI.showStatus(statusEl, "请选择教师。", true); return; }
+    if (!text) { UI.showStatus(statusEl, "请输入学生名单。", true); return; }
+
+    var students = [];
+    text.split("\n").forEach(function (line) {
+      line = line.trim();
+      if (!line) return;
+      var parts = line.split(/[,，\t]+/);
+      var a = (parts[0] || "").trim();
+      var b = (parts[1] || "").trim();
+
+      var name, number;
+      if (/^\d+$/.test(a)) {
+        number = a; name = b;
+      } else if (/^\d+$/.test(b)) {
+        number = b; name = a;
+      } else {
+        name = a; number = b;
+      }
+
+      if (name || number) {
+        students.push({ realName: name || null, studentNumber: number || null });
+      }
+    });
+
+    if (!students.length) { UI.showStatus(statusEl, "未能解析任何学生。", true); return; }
+
+    btn.disabled = true;
+    UI.showStatus(statusEl, "正在导入 " + students.length + " 名学生…", false);
+
+    try {
+      var result = await Api.postJson("/api/admin/import-students", { teacherId: teacherId, students: students });
+      UI.showStatus(statusEl, "导入完成：创建 " + (result.created || 0) + "，跳过 " + (result.skipped || 0) + "。", false);
+      UI.qs("#studentImportText").value = "";
+      loadTeachers();
+    } catch (err) {
+      UI.showStatus(statusEl, UI.formatApiErrorMessage(err, "导入"), true);
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  function bindEvents() {
+    var createBtn = UI.qs("#createTeacherBtn");
+    var importBtn = UI.qs("#importStudentsBtn");
+    var refreshBtn = UI.qs("#refreshTeachersBtn");
+
+    if (createBtn) createBtn.addEventListener("click", createTeacher);
+    if (importBtn) importBtn.addEventListener("click", importStudents);
+    if (refreshBtn) refreshBtn.addEventListener("click", function () { loadTeachers(); populateTeacherSelects(); });
+  }
+
+  function initAdminTools() {
+    if (!UI.qs("#adminToolsArea")) return;
+    bindEvents();
+    loadTeachers();
+    populateTeacherSelects();
+  }
+
+  document.addEventListener("DOMContentLoaded", function () {
+    initAdminTools();
+  });
+})();
+</script>
 </body>
 </html>

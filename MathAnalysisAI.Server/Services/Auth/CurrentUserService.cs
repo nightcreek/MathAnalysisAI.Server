@@ -9,6 +9,7 @@ namespace MathAnalysisAI.Server.Services.Auth;
 public class CurrentUserService : IUserContext
 {
     private const string SessionUserIdKey = "auth_user_id";
+    private const string SessionImpersonatedRoleKey = "impersonated_role";
 
     private readonly ApplicationDbContext _db;
     private readonly IHttpContextAccessor _httpContextAccessor;
@@ -44,6 +45,13 @@ public class CurrentUserService : IUserContext
 
             if (sessionUser != null)
             {
+                var impersonatedRole = GetImpersonatedRole();
+                if (!string.IsNullOrWhiteSpace(impersonatedRole)
+                    && string.Equals(sessionUser.Role, AppUserRole.Admin, StringComparison.OrdinalIgnoreCase))
+                {
+                    sessionUser.Role = impersonatedRole;
+                }
+
                 return sessionUser;
             }
 
@@ -71,6 +79,27 @@ public class CurrentUserService : IUserContext
         }
 
         return fallbackUser;
+    }
+
+    public string? GetImpersonatedRole()
+    {
+        var httpContext = _httpContextAccessor.HttpContext;
+        return httpContext?.Session.GetString(SessionImpersonatedRoleKey);
+    }
+
+    public void SetImpersonatedRole(string? role)
+    {
+        var httpContext = _httpContextAccessor.HttpContext;
+        if (httpContext == null) return;
+
+        if (string.IsNullOrWhiteSpace(role))
+        {
+            httpContext.Session.Remove(SessionImpersonatedRoleKey);
+        }
+        else
+        {
+            httpContext.Session.SetString(SessionImpersonatedRoleKey, role);
+        }
     }
 
     public async Task<int?> GetCurrentUserIdAsync(CancellationToken cancellationToken = default)

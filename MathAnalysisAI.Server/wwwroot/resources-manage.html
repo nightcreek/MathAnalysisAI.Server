@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>网络资源管理 - 数学分析智能体</title>
+    <link rel="stylesheet" href="/css/app.css">
+</head>
+<body>
+<div class="app-shell">
+<div class="container">
+    <nav class="top-nav" aria-label="主导航"></nav>
+
+    <div class="hero hero-left">
+        <h1>网络资源管理</h1>
+        <p>添加、编辑和删除推荐的外部学习资源链接。仅教师和管理员可访问。</p>
+    </div>
+
+    <div id="resourcesManagerArea">
+    <div class="card">
+        <div class="section-title">添加资源</div>
+        <div class="form-grid">
+            <div class="full">
+                <label for="resourceCategoryInput">分类</label>
+                <input id="resourceCategoryInput" type="text" placeholder="例如：教材与参考书、在线课程、交互式工具">
+            </div>
+            <div class="full">
+                <label for="resourceTitleInput">标题</label>
+                <input id="resourceTitleInput" type="text" placeholder="例如：华东师范大学 · 数学分析（第四版）">
+            </div>
+            <div class="full">
+                <label for="resourceLinkInput">链接</label>
+                <input id="resourceLinkInput" type="url" placeholder="https://...">
+            </div>
+            <div class="full">
+                <label for="resourceDescriptionInput">描述</label>
+                <textarea id="resourceDescriptionInput" placeholder="简要描述该资源的内容和用途"></textarea>
+            </div>
+            <div>
+                <label for="resourceSortOrderInput">排序（数字越小越靠前）</label>
+                <input id="resourceSortOrderInput" type="number" value="10" min="0">
+            </div>
+        </div>
+        <div class="actions">
+            <button id="addResourceBtn">添加资源</button>
+            <button id="cancelEditBtn" class="btn-secondary" style="display:none;">取消编辑</button>
+            <span id="addResourceStatus" class="status"></span>
+        </div>
+        <input type="hidden" id="editingResourceId" value="">
+    </div>
+
+    <div class="card">
+        <div class="section-title">资源列表</div>
+        <div class="materials-filter-actions" style="margin-bottom:16px;">
+            <button id="resourcesRefreshBtn">刷新</button>
+            <span id="resourcesListStatus" class="status"></span>
+        </div>
+        <div id="resourcesListContainer" class="status">加载中…</div>
+    </div>
+    </div>
+</div>
+</div>
+
+<script src="/js/config.js"></script>
+<script src="/js/api.js"></script>
+<script src="/js/ui.js"></script>
+<script src="/js/auth.js"></script>
+<script src="/js/nav.js"></script>
+<script>
+(function () {
+  function renderList(items) {
+    var container = UI.qs("#resourcesListContainer");
+    if (!container) return;
+
+    var arr = Array.isArray(items) ? items : [];
+    if (!arr.length) {
+      container.className = "status";
+      container.textContent = "暂无网络资源，请添加第一个。";
+      return;
+    }
+
+    var html = "";
+    arr.forEach(function (item) {
+      html += "<div class='result-section' style='display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px;'>";
+      html += "<div style='flex:1;min-width:0;'>";
+      html += "<div class='kicker'>" + UI.escapeHtml(item.category || "未分类") + " · 排序 " + (item.sortOrder || 0) + (item.isEnabled ? "" : " · 已禁用") + "</div>";
+      html += "<strong>" + UI.escapeHtml(item.title || "") + "</strong>";
+      html += "<p style='margin-top:4px;'>" + UI.escapeHtml(item.description || "") + "</p>";
+      if (item.link) {
+        html += "<a class='jump-link' href='" + UI.escapeHtml(item.link) + "' target='_blank' rel='noopener'>打开链接 →</a>";
+      }
+      html += "</div>";
+      html += "<div class='actions' style='margin-top:0;flex-shrink:0;'>";
+      html += "<button class='btn-secondary edit-resource-btn' data-id='" + item.id + "' style='padding:6px 14px;font-size:12px;'>编辑</button>";
+      html += "<button class='btn-secondary delete-resource-btn' data-id='" + item.id + "' style='padding:6px 14px;font-size:12px;color:var(--danger);border-color:var(--danger);'>删除</button>";
+      html += "</div>";
+      html += "</div>";
+    });
+
+    container.className = "";
+    container.innerHTML = html;
+
+    container.querySelectorAll(".edit-resource-btn").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        var id = parseInt(btn.getAttribute("data-id"));
+        var found = arr.find(function (x) { return x.id === id; });
+        if (found) populateEditForm(found);
+      });
+    });
+
+    container.querySelectorAll(".delete-resource-btn").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        var id = parseInt(btn.getAttribute("data-id"));
+        if (confirm("确定要删除此资源吗？")) deleteResource(id);
+      });
+    });
+  }
+
+  function populateEditForm(item) {
+    UI.qs("#resourceCategoryInput").value = item.category || "";
+    UI.qs("#resourceTitleInput").value = item.title || "";
+    UI.qs("#resourceLinkInput").value = item.link || "";
+    UI.qs("#resourceDescriptionInput").value = item.description || "";
+    UI.qs("#resourceSortOrderInput").value = item.sortOrder || 0;
+    UI.qs("#editingResourceId").value = item.id;
+    UI.qs("#addResourceBtn").textContent = "保存修改";
+    UI.qs("#cancelEditBtn").style.display = "";
+  }
+
+  function resetEditForm() {
+    UI.qs("#resourceCategoryInput").value = "";
+    UI.qs("#resourceTitleInput").value = "";
+    UI.qs("#resourceLinkInput").value = "";
+    UI.qs("#resourceDescriptionInput").value = "";
+    UI.qs("#resourceSortOrderInput").value = "10";
+    UI.qs("#editingResourceId").value = "";
+    UI.qs("#addResourceBtn").textContent = "添加资源";
+    UI.qs("#cancelEditBtn").style.display = "none";
+  }
+
+  async function loadResources() {
+    var statusEl = UI.qs("#resourcesListStatus");
+    var container = UI.qs("#resourcesListContainer");
+
+    UI.showStatus(statusEl, "加载中…", false);
+
+    var courseId = window.AppConfig && window.AppConfig.resolveCourseId ? window.AppConfig.resolveCourseId() : null;
+    var params = "";
+    if (courseId) {
+      params = "?courseId=" + encodeURIComponent(courseId);
+    }
+
+    try {
+      var data = await Api.getJson("/api/resources" + params);
+      renderList(data);
+      UI.showStatus(statusEl, "已刷新。", false);
+    } catch (_) {
+      container.className = "status error";
+      container.textContent = "加载失败，请稍后重试。";
+      UI.showStatus(statusEl, "加载失败。", true);
+    }
+  }
+
+  async function addOrUpdateResource() {
+    var statusEl = UI.qs("#addResourceStatus");
+    var btn = UI.qs("#addResourceBtn");
+    var editingId = UI.qs("#editingResourceId").value;
+
+    var category = (UI.qs("#resourceCategoryInput").value || "").trim();
+    var title = (UI.qs("#resourceTitleInput").value || "").trim();
+    var link = (UI.qs("#resourceLinkInput").value || "").trim();
+    var description = (UI.qs("#resourceDescriptionInput").value || "").trim();
+    var sortOrder = parseInt(UI.qs("#resourceSortOrderInput").value) || 0;
+
+    if (!category) { UI.showStatus(statusEl, "请输入分类。", true); return; }
+    if (!title) { UI.showStatus(statusEl, "请输入标题。", true); return; }
+
+    var courseId = window.AppConfig && window.AppConfig.resolveCourseId ? window.AppConfig.resolveCourseId() : null;
+    if (!courseId) {
+      UI.showStatus(statusEl, "无法确定当前课程，请从课程页面进入。", true);
+      return;
+    }
+
+    btn.disabled = true;
+
+    try {
+      if (editingId) {
+        var updatePayload = { category: category, title: title, link: link || null, description: description || null, sortOrder: sortOrder };
+        await Api.putJson("/api/resources/" + editingId, updatePayload);
+        UI.showStatus(statusEl, "保存成功。", false);
+        resetEditForm();
+      } else {
+        var createPayload = { courseId: parseInt(courseId), category: category, title: title, link: link || null, description: description || null, sortOrder: sortOrder };
+        await Api.postJson("/api/resources", createPayload);
+        UI.showStatus(statusEl, "添加成功。", false);
+        resetEditForm();
+      }
+      loadResources();
+    } catch (err) {
+      UI.showStatus(statusEl, UI.formatApiErrorMessage(err, "保存"), true);
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  async function deleteResource(id) {
+    var statusEl = UI.qs("#resourcesListStatus");
+    try {
+      await Api.delete("/api/resources/" + id);
+      UI.showStatus(statusEl, "已删除。", false);
+      loadResources();
+    } catch (err) {
+      UI.showStatus(statusEl, "删除失败。", true);
+    }
+  }
+
+  function bindEvents() {
+    var addBtn = UI.qs("#addResourceBtn");
+    var cancelBtn = UI.qs("#cancelEditBtn");
+    var refreshBtn = UI.qs("#resourcesRefreshBtn");
+
+    if (addBtn) addBtn.addEventListener("click", addOrUpdateResource);
+    if (cancelBtn) cancelBtn.addEventListener("click", resetEditForm);
+    if (refreshBtn) refreshBtn.addEventListener("click", loadResources);
+
+    var enterInputs = document.querySelectorAll("#resourceCategoryInput, #resourceTitleInput, #resourceLinkInput, #resourceSortOrderInput");
+    enterInputs.forEach(function (input) {
+      input.addEventListener("keydown", function (evt) {
+        if (evt.key === "Enter") {
+          evt.preventDefault();
+          addOrUpdateResource();
+        }
+      });
+    });
+  }
+
+  function initResourcesManager() {
+    if (!UI.qs("#resourcesManagerArea")) return;
+    bindEvents();
+    loadResources();
+  }
+
+  document.addEventListener("DOMContentLoaded", function () {
+    initResourcesManager();
+  });
+})();
+</script>
+</body>
+</html>

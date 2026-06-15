@@ -56,5 +56,28 @@ window.Api = (function () {
     return data;
   }
 
-  return { getJson: getJson, postJson: postJson, postFormData: postFormData };
+  async function putJson(url, payload) {
+    var res = await fetch(url, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+    var text = await res.text();
+    var data = null;
+    try { data = text ? JSON.parse(text) : null; } catch (_) { data = null; }
+    if (!res.ok) { throw enrichError(res, data); }
+    return data;
+  }
+
+  async function del(url) {
+    var res = await fetch(url, { method: "DELETE" });
+    if (res.status === 204) return null;
+    var text = await res.text();
+    var data = null;
+    try { data = text ? JSON.parse(text) : null; } catch (_) { data = null; }
+    if (!res.ok) { throw enrichError(res, data); }
+    return data;
+  }
+
+  return { getJson: getJson, postJson: postJson, postFormData: postFormData, putJson: putJson, delete: del };
 })();
