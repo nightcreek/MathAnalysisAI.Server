@@ -3,6 +3,7 @@ using MathAnalysisAI.Server.DTOs.Auth;
 using MathAnalysisAI.Server.Models;
 using MathAnalysisAI.Server.Options;
 using MathAnalysisAI.Server.Services.Auth;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
@@ -31,6 +32,24 @@ public class AuthController : ControllerBase
         _environment = environment;
         _authOptions = authOptions.Value ?? new AuthOptions();
         _userContext = userContext;
+    }
+
+    /// <summary>
+    /// 暴露当前部署使用的认证模式，供前端决定是否显示密码字段。
+    /// </summary>
+    [HttpGet("info")]
+    [AllowAnonymous]
+    public ActionResult GetAuthInfo()
+    {
+        var mode = _authOptions.GetNormalizedMode();
+        return Ok(new
+        {
+            mode = mode,
+            requirePassword = _authOptions.IsLocalPasswordMode(),
+            allowRegistration = _authOptions.AllowRegistration
+                && (_authOptions.IsLocalPasswordMode() || (_authOptions.IsDevelopmentUsernameMode() && _environment.IsDevelopment())),
+            isDevelopmentEnvironment = _environment.IsDevelopment()
+        });
     }
 
     [HttpGet("me")]

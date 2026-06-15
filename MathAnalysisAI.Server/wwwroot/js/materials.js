@@ -20,33 +20,11 @@
     return kind || "未知";
   }
 
-  function toDisplayChunkType(chunkType) {
-    const normalized = String(chunkType || "").toLowerCase();
-    if (normalized === "definition") return "定义";
-    if (normalized === "theorem") return "定理";
-    if (normalized === "proof") return "证明";
-    if (normalized === "example") return "例题";
-    if (normalized === "exercise") return "习题";
-    if (normalized === "method") return "方法";
-    if (normalized === "remark") return "备注";
-    if (normalized === "explanation") return "讲解";
-    if (normalized === "unknown") return "未分类";
-    return chunkType || "未知";
-  }
-
   function formatDateTime(value) {
     if (!value) return "-";
     const dt = new Date(value);
     if (Number.isNaN(dt.getTime())) return "-";
     return dt.toLocaleString("zh-CN", { hour12: false });
-  }
-
-  function formatFileSize(bytes) {
-    const value = Number(bytes || 0);
-    if (!Number.isFinite(value) || value <= 0) return "0 B";
-    if (value < 1024) return value + " B";
-    if (value < 1024 * 1024) return (value / 1024).toFixed(1) + " KB";
-    return (value / 1024 / 1024).toFixed(2) + " MB";
   }
 
   function renderList(items) {
@@ -71,11 +49,14 @@
       html += "<div class='result-section'>";
       html += "<div><strong>标题：</strong>" + UI.escapeHtml(item.title || "-") + "</div>";
       html += "<div><strong>类型：</strong>" + UI.escapeHtml(kindText) + "</div>";
-      html += "<div><strong>文件名：</strong>" + UI.escapeHtml(item.originalFileName || "-") + "（" + UI.escapeHtml(formatFileSize(item.fileSizeBytes)) + "）</div>";
+      html += "<div><strong>文件名：</strong>" + UI.escapeHtml(item.originalFileName || "-") + "</div>";
       html += "<div><strong>解析状态：</strong><span class='status-chip'>" + UI.escapeHtml(statusText) + "</span></div>";
       html += "<div><strong>分块数量：</strong>" + UI.escapeHtml(chunkCount) + "</div>";
       html += "<div><strong>上传时间：</strong>" + UI.escapeHtml(formatDateTime(item.uploadedAt)) + "</div>";
       html += "<div><strong>解析说明：</strong>" + UI.escapeHtml(parseMessage) + "</div>";
+      if (item.downloadUrl) {
+        html += "<div class='actions'><a class='jump-link' href='" + UI.escapeHtml(item.downloadUrl) + "' target='_blank' rel='noopener'>下载/查看原文件 →</a></div>";
+      }
       if (showOcrHint) {
         html += "<div class='hint warning-hint'>该 PDF 可能是扫描版，后续需要 OCR 处理。</div>";
       }
@@ -86,37 +67,84 @@
     container.innerHTML = html;
   }
 
-  function renderSearchResults(items) {
-    const container = UI.qs("#materialSearchResultContainer");
+  const DEFAULT_NETWORK_RESOURCES = [
+    {
+      category: "教材与参考书",
+      title: "华东师范大学 · 数学分析（第四版）",
+      description: "国内经典数学分析教材，适合本科基础阶段系统学习。",
+      link: "https://book.douban.com/subject/26802081/"
+    },
+    {
+      category: "教材与参考书",
+      title: "陶哲轩 · Analysis I / Analysis II",
+      description: "从自然数出发的现代分析入门，强调直觉与严格性的结合。",
+      link: "https://terrytao.wordpress.com/books/analysis-i/"
+    },
+    {
+      category: "在线课程",
+      title: "MIT 18.100 Real Analysis (OCW)",
+      description: "MIT OpenCourseWare 上的实分析公开课，含完整视频与习题。",
+      link: "https://ocw.mit.edu/courses/18-100a-real-analysis-fall-2020/"
+    },
+    {
+      category: "在线课程",
+      title: "可汗学院 · Calculus",
+      description: "直观视频讲解微积分核心概念，作为先修或复习非常合适。",
+      link: "https://www.khanacademy.org/math/calculus-1"
+    },
+    {
+      category: "交互式工具",
+      title: "Desmos Graphing Calculator",
+      description: "在线图形计算器，可输入函数直观查看收敛、连续性、极值等分析行为。",
+      link: "https://www.desmos.com/calculator"
+    },
+    {
+      category: "交互式工具",
+      title: "Wolfram MathWorld",
+      description: "权威的在线数学百科，定义、定理与例子可以作为参考书补充。",
+      link: "https://mathworld.wolfram.com/"
+    },
+    {
+      category: "习题与讨论",
+      title: "Math Stack Exchange",
+      description: "遇到具体题目或概念困惑时，可以在这里搜索类似问题或提问。",
+      link: "https://math.stackexchange.com/"
+    },
+    {
+      category: "符号计算",
+      title: "SymPy - Python Symbolic Mathematics",
+      description: "免费的 Python 符号计算库，可以辅助推导极限、积分与级数。",
+      link: "https://www.sympy.org/"
+    },
+    {
+      category: "中文开放课程",
+      title: "中国大学 MOOC · 数学分析",
+      description: "国内多所高校在 MOOC 平台开设的数学分析公开课程，适合中文环境学习。",
+      link: "https://www.icourse163.org/search.htm?search=%E6%95%B0%E5%AD%A6%E5%88%86%E6%9E%90"
+    }
+  ];
+
+  function renderNetworkResources(resources) {
+    const container = UI.qs("#networkResourcesGrid");
     if (!container) return;
 
-    const arr = Array.isArray(items) ? items : [];
+    const arr = Array.isArray(resources) ? resources : DEFAULT_NETWORK_RESOURCES;
     if (!arr.length) {
-      container.className = "status";
-      container.textContent = "未检索到相关资料片段。若资料为扫描版 PDF，需要先完成 OCR。";
+      container.innerHTML = "<div class='hint'>暂无推荐的外部资源。</div>";
       return;
     }
 
     let html = "";
     arr.forEach((item) => {
-      const score = typeof item.score === "number" ? item.score.toFixed(3) : String(item.score || "0");
-      const matched = Array.isArray(item.matchedKnowledgePoints) ? item.matchedKnowledgePoints : [];
-
-      html += "<div class='result-section'>";
-      html += "<div><strong>标题：</strong>" + UI.escapeHtml(item.title || "-") + "</div>";
-      html += "<div><strong>类型：</strong>" + UI.escapeHtml(toDisplayKind(item.materialKind)) + "</div>";
-      html += "<div><strong>小节：</strong>" + UI.escapeHtml(item.sectionTitle || "-") + "</div>";
-      html += "<div><strong>路径：</strong>" + UI.escapeHtml(item.sectionPath || "-") + "</div>";
-      html += "<div><strong>页码：</strong>" + UI.escapeHtml((item.pageStart ?? "-") + " - " + (item.pageEnd ?? "-")) + "</div>";
-      html += "<div><strong>片段类型：</strong>" + UI.escapeHtml(toDisplayChunkType(item.chunkType)) + "</div>";
-      html += "<div><strong>相关度：</strong><span class='status-chip'>" + UI.escapeHtml(score) + "</span></div>";
-      html += "<div><strong>匹配知识点：</strong>" + (matched.length ? UI.renderList(matched) : "<span class='status'>暂无</span>") + "</div>";
-      html += "<div><strong>片段预览：</strong></div>";
-      html += "<div class='material-preview-box'>" + UI.escapeHtml(item.contentPreview || "") + "</div>";
+      html += "<div class='usage-item'>";
+      html += "<div class='section-title-compact section-title'>" + UI.escapeHtml(item.category || "未分类") + "</div>";
+      html += "<strong style='margin-top:4px; display:block;'>" + UI.escapeHtml(item.title || "") + "</strong>";
+      html += "<p>" + UI.escapeHtml(item.description || "") + "</p>";
+      if (item.link) {
+        html += "<a class='jump-link' href='" + UI.escapeHtml(item.link) + "' target='_blank' rel='noopener'>前往查看 →</a>";
+      }
       html += "</div>";
     });
-
-    container.className = "";
     container.innerHTML = html;
   }
 
@@ -130,30 +158,25 @@
       return;
     }
 
-    UI.showStatus(statusEl, "加载中...", false);
+    UI.showStatus(statusEl, "加载中…", false);
 
     const params = new URLSearchParams();
-    var courseId = window.AppConfig && window.AppConfig.resolveCourseId ? window.AppConfig.resolveCourseId() : null;
+    const courseId = window.AppConfig && window.AppConfig.resolveCourseId ? window.AppConfig.resolveCourseId() : null;
     if (!courseId) {
-      var courses = window.AppConfig.getCachedCourses();
-      if (!courses || !courses.length) {
-        try { courses = await window.AppConfig.fetchCourses(); } catch (_) {}
+      const courses = window.AppConfig && window.AppConfig.getCachedCourses ? window.AppConfig.getCachedCourses() : [];
+      if (courses && courses.length) {
+        params.set("courseId", String(courses[0].id));
       }
-      if (courses && courses.length) courseId = courses[0].id;
+    } else {
+      params.set("courseId", String(courseId));
     }
-    if (!courseId) { console.warn("No course available."); return; }
-    params.set("courseId", String(courseId));
     params.set("take", "50");
 
     const chapterValue = chapterSelect.value;
-    if (chapterValue) {
-      params.set("chapterId", chapterValue);
-    }
+    if (chapterValue) params.set("chapterId", chapterValue);
 
     const parseStatusValue = parseStatusSelect.value;
-    if (parseStatusValue) {
-      params.set("parseStatus", parseStatusValue);
-    }
+    if (parseStatusValue) params.set("parseStatus", parseStatusValue);
 
     try {
       const data = await Api.getJson("/api/course-materials?" + params.toString());
@@ -166,248 +189,75 @@
     }
   }
 
-  function renderMaterialResult(data) {
-    const materialId = data && data.materialId != null ? data.materialId : "-";
-    const title = data && data.title ? data.title : "-";
-    const originalFileName = data && data.originalFileName ? data.originalFileName : "-";
-    const parseStatus = data && data.parseStatus ? data.parseStatus : "-";
-    const parseMessage = data && data.parseMessage ? data.parseMessage : "";
-    const chunkCount = data && data.chunkCount != null ? data.chunkCount : 0;
-
-    let html = "";
-    html += "<div class='result-section'>";
-    html += "<div><strong>资料编号：</strong>" + UI.escapeHtml(materialId) + "</div>";
-    html += "<div><strong>资料标题：</strong>" + UI.escapeHtml(title) + "</div>";
-    html += "<div><strong>原始文件：</strong>" + UI.escapeHtml(originalFileName) + "</div>";
-    html += "<div><strong>解析状态：</strong><span class='status-chip'>" + UI.escapeHtml(toDisplayStatus(parseStatus)) + "</span></div>";
-    html += "<div><strong>解析说明：</strong>" + UI.escapeHtml(parseMessage || "无") + "</div>";
-    html += "<div><strong>分块数量：</strong>" + UI.escapeHtml(chunkCount) + "</div>";
-    if (String(parseStatus).toLowerCase() === "ocr_pending") {
-      html += "<div class='hint warning-hint'>该 PDF 可能是扫描版，后续需要 OCR 处理。</div>";
-    }
-    html += "</div>";
-    return html;
-  }
-
-  async function uploadCourseMaterial() {
-    const uploadBtn = UI.qs("#uploadMaterialBtn");
-    const statusEl = UI.qs("#uploadMaterialStatus");
-    const resultBox = UI.qs("#materialsUploadResult") || UI.qs("#materialResultBox");
-
-    if (!uploadBtn || !statusEl || !resultBox) return;
-
-    const titleInput = UI.qs("#materialTitleInput");
-    const chapterSelect = UI.qs("#materialChapterSelect");
-    const kindSelect = UI.qs("#materialKindSelect");
-    const fileInput = UI.qs("#materialPdfFile");
-
-    const file = fileInput && fileInput.files && fileInput.files[0] ? fileInput.files[0] : null;
-    if (!file) {
-      UI.showStatus(statusEl, "请先选择 PDF 文件。", true);
-      return;
-    }
-
-    const name = (file.name || "").toLowerCase();
-    if (!name.endsWith(".pdf")) {
-      UI.showStatus(statusEl, "当前只支持 PDF 文件上传。", true);
-      return;
-    }
-
-    const chapterId = parseInt(chapterSelect.value, 10);
-    const formData = new FormData();
-    var courseId = window.AppConfig && window.AppConfig.resolveCourseId ? window.AppConfig.resolveCourseId() : null;
-    if (!courseId) {
-      var courses = window.AppConfig.getCachedCourses();
-      if (!courses || !courses.length) {
-        try { courses = await window.AppConfig.fetchCourses(); } catch (_) {}
-      }
-      if (courses && courses.length) courseId = courses[0].id;
-    }
-    formData.append("courseId", String(courseId));
-    if (!Number.isNaN(chapterId)) {
-      formData.append("chapterId", String(chapterId));
-    }
-
-    const title = titleInput && titleInput.value ? titleInput.value.trim() : "";
-    if (title) {
-      formData.append("title", title);
-    }
-
-    const kind = kindSelect && kindSelect.value ? kindSelect.value : "textbook";
-    formData.append("materialKind", kind);
-    formData.append("visibility", "course_internal");
-    formData.append("file", file);
-
-    uploadBtn.disabled = true;
-    UI.showStatus(statusEl, "正在上传并解析，请稍候……", false);
-
-    try {
-      const data = await Api.postFormData("/api/course-materials/upload", formData);
-      resultBox.className = "";
-      resultBox.innerHTML = renderMaterialResult(data || {});
-      UI.showStatus(statusEl, "上传完成。", false);
-      await loadCourseMaterials();
-    } catch (err) {
-      let message = "上传失败，请稍后重试。";
-      if (err && err.status === 400) {
-        message = "上传失败，请检查文件格式或填写内容。";
-      }
-      UI.showStatus(statusEl, message, true);
-    } finally {
-      uploadBtn.disabled = false;
-    }
-  }
-
-  async function searchCourseMaterials() {
-    const button = UI.qs("#materialSearchBtn");
-    const statusEl = UI.qs("#materialSearchStatus");
-    const resultContainer = UI.qs("#materialSearchResultContainer");
-    const qInput = UI.qs("#materialSearchQInput");
-    const chapterSelect = UI.qs("#materialSearchChapterSelect");
-    const topKInput = UI.qs("#materialSearchTopKInput");
-    const studentSolutionInput = UI.qs("#materialSearchStudentSolutionInput");
-
-    if (!button || !statusEl || !resultContainer || !qInput || !chapterSelect || !topKInput || !studentSolutionInput) {
-      return;
-    }
-
-    const q = (qInput.value || "").trim();
-    if (!q) {
-      UI.showStatus(statusEl, "请输入检索关键词或题目文本。", true);
-      return;
-    }
-
-    let topK = parseInt(topKInput.value, 10);
-    if (Number.isNaN(topK)) {
-      topK = 3;
-    }
-    topK = Math.max(1, Math.min(8, topK));
-    topKInput.value = String(topK);
-
-    const params = new URLSearchParams();
-    var courseId = window.AppConfig && window.AppConfig.resolveCourseId ? window.AppConfig.resolveCourseId() : null;
-    if (!courseId) {
-      var courses = window.AppConfig.getCachedCourses();
-      if ((!courses || !courses.length) && window.AppConfig.fetchCourses) {
-        try { courses = await window.AppConfig.fetchCourses(); } catch (_) {}
-      }
-      if (courses && courses.length) courseId = courses[0].id;
-    }
-    if (!courseId) { console.warn("No course available for material search."); return; }
-    params.set("courseId", String(courseId));
-    params.set("q", q);
-    params.set("topK", String(topK));
-
-    const chapterValue = chapterSelect.value;
-    if (chapterValue) {
-      params.set("chapterId", chapterValue);
-    }
-
-    const studentSolutionText = (studentSolutionInput.value || "").trim();
-    if (studentSolutionText) {
-      params.set("studentSolutionText", studentSolutionText);
-    }
-
-    button.disabled = true;
-    UI.showStatus(statusEl, "检索中...", false);
-
-    try {
-      const data = await Api.getJson("/api/course-materials/search?" + params.toString());
-      renderSearchResults(data);
-      UI.showStatus(statusEl, "检索完成。", false);
-    } catch (_) {
-      resultContainer.className = "status error";
-      resultContainer.textContent = "资料检索失败，请稍后重试。";
-      UI.showStatus(statusEl, "检索失败。", true);
-    } finally {
-      button.disabled = false;
-    }
-  }
-
-  function wireMaterialListFilters() {
-    const chapterSelect = UI.qs("#materialsListChapterSelect");
-    const parseStatusSelect = UI.qs("#materialsListStatusSelect");
-    if (chapterSelect) {
-      chapterSelect.addEventListener("change", function () {
-        loadCourseMaterials();
-      });
-    }
-    if (parseStatusSelect) {
-      parseStatusSelect.addEventListener("change", function () {
-        loadCourseMaterials();
-      });
-    }
-  }
-
-  function refreshCourseMaterials() {
-    loadCourseMaterials();
-  }
-
   async function loadMaterialsChapters() {
-    var courseId = window.AppConfig && window.AppConfig.resolveCourseId ? window.AppConfig.resolveCourseId() : null;
+    const courseId = window.AppConfig && window.AppConfig.resolveCourseId ? window.AppConfig.resolveCourseId() : null;
     if (!courseId) {
-      var courses = window.AppConfig.getCachedCourses();
-      if (!courses || !courses.length) {
-        try { courses = await window.AppConfig.fetchCourses(); } catch (_) {}
+      const courses = window.AppConfig && window.AppConfig.getCachedCourses ? window.AppConfig.getCachedCourses() : [];
+      if (courses && courses.length) {
+        await loadChaptersForSelect(String(courses[0].id));
       }
-      if (courses && courses.length) courseId = courses[0].id;
+      return;
     }
-    if (!courseId) { console.warn("No course available for chapters."); return; }
+    await loadChaptersForSelect(String(courseId));
+  }
 
+  async function loadChaptersForSelect(courseId) {
     try {
-      var chapters = await Api.getJson("/api/courses/" + courseId + "/chapters");
-      var listSelect = UI.qs("#materialsListChapterSelect");
-      var uploadSelect = UI.qs("#materialChapterSelect");
-
+      const chapters = await Api.getJson("/api/courses/" + courseId + "/chapters");
+      const listSelect = UI.qs("#materialsListChapterSelect");
       if (listSelect) {
-        var listHtml = '<option value="">全部章节</option>';
+        let listHtml = "<option value=''>全部章节</option>";
         if (Array.isArray(chapters)) {
           chapters.forEach(function (ch) {
-            listHtml += '<option value="' + ch.id + '">' + UI.escapeHtml(ch.title || ch.name || "") + '</option>';
+            listHtml += "<option value='" + ch.id + "'>" + UI.escapeHtml(ch.title || ch.name || "") + "</option>";
           });
         }
         listSelect.innerHTML = listHtml;
-      }
-
-      if (uploadSelect) {
-        var uploadHtml = "";
-        if (Array.isArray(chapters)) {
-          chapters.forEach(function (ch) {
-            uploadHtml += '<option value="' + ch.id + '">' + UI.escapeHtml(ch.title || ch.name || "") + '</option>';
-          });
-        }
-        uploadSelect.innerHTML = uploadHtml;
       }
     } catch (_) {
       console.warn("Failed to load chapters.");
     }
   }
 
-  function initMaterialsPage() {
-    if (!UI.qs("#materialsListContainer")) {
-      return;
-    }
-    wireMaterialListFilters();
-    loadMaterialsChapters();
-    loadCourseMaterials();
+  function switchMaterialsPane(view) {
+    document.querySelectorAll(".materials-pane").forEach(function (pane) {
+      const match = pane.getAttribute("data-materials-pane") === view;
+      pane.style.display = match ? "" : "none";
+    });
+    document.querySelectorAll("[data-materials-view]").forEach(function (btn) {
+      const match = btn.getAttribute("data-materials-view") === view;
+      if (match) btn.classList.add("is-active");
+      else btn.classList.remove("is-active");
+    });
   }
 
-  window.uploadCourseMaterial = uploadCourseMaterial;
-  window.refreshCourseMaterials = refreshCourseMaterials;
-  window.searchCourseMaterials = searchCourseMaterials;
-
   function bindMaterialEvents() {
-    var uploadBtn = UI.qs("#uploadMaterialBtn");
-    var refreshBtn = UI.qs("#materialsRefreshBtn");
-    var searchBtn = UI.qs("#materialSearchBtn");
+    const refreshBtn = UI.qs("#materialsRefreshBtn");
+    if (refreshBtn) refreshBtn.addEventListener("click", loadCourseMaterials);
 
-    if (uploadBtn) uploadBtn.addEventListener("click", uploadCourseMaterial);
-    if (refreshBtn) refreshBtn.addEventListener("click", refreshCourseMaterials);
-    if (searchBtn) searchBtn.addEventListener("click", searchCourseMaterials);
+    const chapterSelect = UI.qs("#materialsListChapterSelect");
+    if (chapterSelect) chapterSelect.addEventListener("change", loadCourseMaterials);
+
+    const statusSelect = UI.qs("#materialsListStatusSelect");
+    if (statusSelect) statusSelect.addEventListener("change", loadCourseMaterials);
+
+    document.querySelectorAll("[data-materials-view]").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        const view = btn.getAttribute("data-materials-view");
+        switchMaterialsPane(view);
+      });
+    });
+  }
+
+  function initMaterialsPage() {
+    if (!UI.qs("#materialsListContainer")) return;
+    bindMaterialEvents();
+    loadMaterialsChapters();
+    loadCourseMaterials();
+    renderNetworkResources(DEFAULT_NETWORK_RESOURCES);
   }
 
   document.addEventListener("DOMContentLoaded", function () {
     initMaterialsPage();
-    bindMaterialEvents();
   });
 })();

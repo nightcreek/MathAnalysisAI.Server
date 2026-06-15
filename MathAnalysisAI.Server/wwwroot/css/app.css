@@ -218,7 +218,22 @@ body {
     padding: 14px 20px;
     border: 1px solid var(--border-subtle);
     border-radius: var(--radius-lg);
-    background: var(--paper);
+    background: rgba(22, 27, 34, 0.85);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    position: sticky;
+    top: 12px;
+    z-index: 100;
+}
+
+/* On pages where we use app-shell wrapper, allow the nav to stay pinned */
+.app-shell > .container > .top-nav {
+    margin-bottom: 28px;
+}
+
+/* Spacing below hero when nav is sticky */
+.hero {
+    margin-top: 10px;
 }
 .brand { display: flex; flex-direction: column; gap: 2px; }
 .brand-link {

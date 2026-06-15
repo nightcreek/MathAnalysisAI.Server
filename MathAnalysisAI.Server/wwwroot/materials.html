@@ -13,17 +13,17 @@
 
     <div class="hero hero-left">
         <h1>课程资料</h1>
-        <p>查看教师或管理员上传的课程资料。学生端当前以只读查看为主，上传与调试入口仅对教师/管理员开放。</p>
+        <p>浏览教师上传的课程资料、章节解析与外部学习资源。学生端默认以只读模式展示。</p>
     </div>
 
-    <div id="materialsStudentNotice" class="card" style="display:none;">
-        <div class="section-title">只读查看</div>
-        <div class="hint">
-            当前以学生视角打开课程资料页。课程资料入口会继续保留，但本轮前端未单独接入学生只读资料列表；上传、解析管理和检索调试入口仅对教师或管理员开放。
+    <div class="card">
+        <div class="mode-switch" role="tablist" aria-label="资料视图切换">
+            <button class="mode-switch-btn is-active" data-materials-view="list" type="button">课程资料</button>
+            <button class="mode-switch-btn" data-materials-view="resources" type="button">网络资源</button>
         </div>
     </div>
 
-    <div id="materialsListArea" class="card">
+    <div id="materialsListArea" class="card materials-pane is-active" data-materials-pane="list">
         <div class="section-title">已上传资料</div>
         <div class="materials-filter-grid">
             <div>
@@ -48,7 +48,13 @@
                 <span id="materialsListStatus" class="status"></span>
             </div>
         </div>
-        <div id="materialsListContainer" class="status">加载中...</div>
+        <div id="materialsListContainer" class="status">加载中…</div>
+    </div>
+
+    <div id="materialsResourcesArea" class="card materials-pane" data-materials-pane="resources" style="display:none;">
+        <div class="section-title">网络资源</div>
+        <p class="hint">以下为与课程相关的推荐外部学习资源。按分类浏览，点击卡片前往对应站点查看原始内容。</p>
+        <div id="networkResourcesGrid" class="usage-grid"></div>
     </div>
 </div>
 </div>
