@@ -305,11 +305,24 @@ builder.Services.AddScoped<ISymbolicMathService, SymPySymbolicMathService>();
 
 var app = builder.Build();
 
-// Runtime PromptProfile seeding (idempotent, safe to skip when DB/tables are unavailable)
+// Runtime DB migration + seeding (idempotent)
 if (!skipRuntimeStartup)
 {
     using var scope = app.Services.CreateScope();
     var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+
+    try
+    {
+        var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+        logger.LogInformation("Applying pending EF Core migrations…");
+        await db.Database.MigrateAsync();
+        logger.LogInformation("EF Core migrations applied successfully.");
+    }
+    catch (Exception ex)
+    {
+        logger.LogWarning(ex, "EF Core migration skipped or failed (DB may not be available yet).");
+    }
+
     try
     {
         var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
@@ -392,6 +405,8 @@ static void LoadServerEnvFile(WebApplicationBuilder builder)
     var envFilePath = Path.Combine(builder.Environment.ContentRootPath, "server.env");
     if (!File.Exists(envFilePath)) return;
 
+    var encryptionKey = ConfigEncryptionService.LoadEncryptionKey();
+
     var data = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
     foreach (var line in File.ReadAllLines(envFilePath))
     {
@@ -403,6 +418,20 @@ static void LoadServerEnvFile(WebApplicationBuilder builder)
         var value = trimmed[(eqIdx + 1)..].Trim();
         if (value.StartsWith("\"") && value.EndsWith("\""))
             value = value[1..^1];
+
+        if (ConfigEncryptionService.IsEncrypted(value))
+        {
+            if (encryptionKey == null)
+            {
+                throw new InvalidOperationException(
+                    $"Config key '{key}' uses an encrypted value (ENC: prefix) but " +
+                    "MATHANALYSIS_ENCRYPTION_KEY environment variable is not set. " +
+                    "Set the 64-character hex encryption key to decrypt sensitive config values.");
+            }
+
+            value = ConfigEncryptionService.Decrypt(value[4..], encryptionKey);
+        }
+
         data[key] = value;
     }
 

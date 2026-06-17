@@ -46,4 +46,17 @@
 	  <Folder Include="uploads\" />
 	</ItemGroup>
 
+	<ItemGroup>
+	  <Compile Remove="Tools\ConfigEncryptor\**" />
+	  <Content Remove="Tools\ConfigEncryptor\**" />
+	  <None Remove="Tools\ConfigEncryptor\**" />
+	</ItemGroup>
+
+	<ItemGroup>
+	  <Content Include="Tools\Symbolic\symbolic_worker.py">
+	    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+	    <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+	  </Content>
+	</ItemGroup>
+
 </Project>

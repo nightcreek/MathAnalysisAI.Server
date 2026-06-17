@@ -9,8 +9,13 @@
 <body>
 <div class="login-centered" id="loginPageRoot">
     <div class="login-card">
-        <h2>登录</h2>
-        <p class="login-brand-sub">数学分析智能体</p>
+        <h2>数学分析智能体</h2>
+        <p class="login-brand-sub">MathAnalysisAI</p>
+
+        <div class="mode-switch" id="loginModeSwitch">
+            <button class="mode-switch-btn is-active" data-tab="login">登录</button>
+            <button class="mode-switch-btn" data-tab="register">注册</button>
+        </div>
 
         <div id="loginSection">
             <p id="loginPageHint">登录后可使用学习分析、拍照解题等功能。</p>
@@ -21,7 +26,15 @@
                 </div>
                 <div class="full" id="passwordFieldGroup" style="display:none">
                     <label for="loginPasswordInput">密码</label>
-                    <input id="loginPasswordInput" type="password" placeholder="请输入密码" autocomplete="current-password">
+                    <div class="password-input-wrapper">
+                        <input id="loginPasswordInput" type="password" placeholder="请输入密码" autocomplete="current-password">
+                        <button type="button" class="password-toggle" id="loginPasswordToggle" aria-label="显示密码" tabindex="-1">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                <circle cx="12" cy="12" r="3"></circle>
+                            </svg>
+                        </button>
+                    </div>
                 </div>
             </div>
             <div class="actions">
@@ -32,7 +45,6 @@
         </div>
 
         <div id="registerSection" style="display:none">
-            <div class="section-title">注册新账号</div>
             <p class="hint">输入用户名和密码即可注册。姓名和学号可选，之后可加入班级再补充。</p>
             <div class="form-grid">
                 <div class="full">
@@ -41,7 +53,15 @@
                 </div>
                 <div class="full">
                     <label for="registerPasswordInput">密码</label>
-                    <input id="registerPasswordInput" type="password" placeholder="请输入密码（至少4位）" autocomplete="new-password">
+                    <div class="password-input-wrapper">
+                        <input id="registerPasswordInput" type="password" placeholder="请输入密码（至少4位）" autocomplete="new-password">
+                        <button type="button" class="password-toggle" id="registerPasswordToggle" aria-label="显示密码" tabindex="-1">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                <circle cx="12" cy="12" r="3"></circle>
+                            </svg>
+                        </button>
+                    </div>
                 </div>
                 <div class="half">
                     <label for="registerRealNameInput">真实姓名（选填）</label>

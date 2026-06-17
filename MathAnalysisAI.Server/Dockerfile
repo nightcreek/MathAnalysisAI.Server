@@ -13,7 +13,11 @@ FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
 WORKDIR /app
 
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends curl \
+    && apt-get install -y --no-install-recommends \
+        curl \
+        python3 \
+        python3-pip \
+        python3-sympy \
     && rm -rf /var/lib/apt/lists/*
 
 COPY --from=build /app/publish .
