@@ -18,6 +18,10 @@ public sealed class AuthOptions
     public string? CookieSecurePolicy { get; set; }
     public string? CookieSameSite { get; set; }
     public string? CookieName { get; set; }
+    public string? TokenSigningKey { get; set; }
+    public string? TokenIssuer { get; set; }
+    public string? TokenAudience { get; set; }
+    public int AccessTokenLifetimeMinutes { get; set; } = 720;
     public int BcryptWorkFactor { get; set; } = 12;
     public bool AllowRegistration { get; set; }
     public int MinPasswordLength { get; set; } = 6;
@@ -35,5 +39,15 @@ public sealed class AuthOptions
     public bool IsLocalPasswordMode()
     {
         return string.Equals(GetNormalizedMode(), ModeLocalPassword, StringComparison.OrdinalIgnoreCase);
+    }
+
+    public bool IsOidcMode()
+    {
+        return string.Equals(GetNormalizedMode(), ModeOidc, StringComparison.OrdinalIgnoreCase);
+    }
+
+    public bool IsDisabledMode()
+    {
+        return string.Equals(GetNormalizedMode(), ModeDisabled, StringComparison.OrdinalIgnoreCase);
     }
 }

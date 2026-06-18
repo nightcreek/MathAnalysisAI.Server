@@ -1,4 +1,5 @@
 using MathAnalysisAI.Server.Data;
+using MathAnalysisAI.Server.Services.ExceptionHandling;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -9,57 +10,75 @@ namespace MathAnalysisAI.Server.Controllers;
 public class CourseController : ControllerBase
 {
     private readonly ApplicationDbContext _db;
+    private readonly ILogger<CourseController> _logger;
 
-    public CourseController(ApplicationDbContext db)
+    public CourseController(ApplicationDbContext db, ILogger<CourseController> logger)
     {
         _db = db;
+        _logger = logger;
     }
 
     [HttpGet]
     public async Task<IActionResult> GetAll(CancellationToken cancellationToken)
     {
-        var courses = await _db.Courses
-            .AsNoTracking()
-            .OrderBy(c => c.Id)
-            .Select(c => new
-            {
-                c.Id,
-                c.Name,
-                c.Code,
-                c.SubjectId,
-                chapterCount = c.Chapters.Count
-            })
-            .ToListAsync(cancellationToken);
+        try
+        {
+            var courses = await _db.Courses
+                .AsNoTracking()
+                .OrderBy(c => c.Id)
+                .Select(c => new
+                {
+                    c.Id,
+                    c.Name,
+                    c.Code,
+                    c.SubjectId,
+                    chapterCount = c.Chapters.Count
+                })
+                .ToListAsync(cancellationToken);
 
-        return Ok(courses);
+            return Ok(courses);
+        }
+        catch (Exception ex) when (ApiExceptionClassifier.IsDatabaseFailure(ex))
+        {
+            _logger.LogWarning(ex, "Courses endpoint degraded due to database/schema issue.");
+            return this.DegradedOk(Array.Empty<object>());
+        }
     }
 
     [HttpGet("{courseId:int}/chapters")]
     public async Task<IActionResult> GetChapters(int courseId, CancellationToken cancellationToken)
     {
-        var courseExists = await _db.Courses
-            .AsNoTracking()
-            .AnyAsync(c => c.Id == courseId, cancellationToken);
-
-        if (!courseExists)
+        try
         {
-            return NotFound(new { message = "Course not found." });
-        }
+            var courseExists = await _db.Courses
+                .AsNoTracking()
+                .AnyAsync(c => c.Id == courseId, cancellationToken);
 
-        var chapters = await _db.Chapters
-            .AsNoTracking()
-            .Where(c => c.CourseId == courseId)
-            .OrderBy(c => c.OrderIndex)
-            .ThenBy(c => c.Id)
-            .Select(c => new
+            if (!courseExists)
             {
-                c.Id,
-                c.Name,
-                c.Code,
-                c.OrderIndex
-            })
-            .ToListAsync(cancellationToken);
+                return this.ApiError(StatusCodes.Status404NotFound, "COURSE_NOT_FOUND", "Course not found.");
+            }
 
-        return Ok(chapters);
+            var chapters = await _db.Chapters
+                .AsNoTracking()
+                .Where(c => c.CourseId == courseId)
+                .OrderBy(c => c.OrderIndex)
+                .ThenBy(c => c.Id)
+                .Select(c => new
+                {
+                    c.Id,
+                    c.Name,
+                    c.Code,
+                    c.OrderIndex
+                })
+                .ToListAsync(cancellationToken);
+
+            return Ok(chapters);
+        }
+        catch (Exception ex) when (ApiExceptionClassifier.IsDatabaseFailure(ex))
+        {
+            _logger.LogWarning(ex, "Course chapters endpoint degraded due to database/schema issue. CourseId={CourseId}", courseId);
+            return this.DegradedOk(Array.Empty<object>());
+        }
     }
 }

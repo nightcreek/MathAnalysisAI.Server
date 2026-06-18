@@ -410,6 +410,17 @@
         currentUserId = window.Auth.getCurrentUserId();
       }
     }
+
+    if (currentUserId == null) {
+      var resultContainer = UI.qs("#resultContainer");
+      if (resultContainer) {
+        UI.renderLoginRequired(resultContainer, "当前登录已失效，请重新登录后再继续分析。", function () {
+          window.location.href = "/login.html";
+        });
+      }
+      throw new Error("AUTH_REQUIRED");
+    }
+
     return currentUserId;
   }
 
@@ -475,6 +486,10 @@
       box.innerHTML = renderAnalysisReport(data || {});
       UI.showStatus(status, "分析完成。", false);
     } catch (err) {
+      if (err && err.message === "AUTH_REQUIRED") {
+        UI.showStatus(status, "当前登录已失效，请重新登录。", true);
+        return;
+      }
       UI.showStatus(status, UI.formatApiErrorMessage(err, "analysis"), true);
     } finally {
       btn.disabled = false;
@@ -509,7 +524,7 @@
     box.innerHTML = '<div class="streaming-container"><div class="streaming-indicator"><span class="streaming-dot"></span> 正在生成分析结果…</div><pre class="streaming-content"></pre></div>';
 
     try {
-      var response = await fetch("/api/learning-analysis/analyze/stream", {
+      var response = await Api.fetchWithAuth("/api/learning-analysis/analyze/stream", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload)
@@ -524,6 +539,10 @@
         err.status = response.status;
         err.data = errorData;
         err.isAuthRequired = response.status === 401;
+        err.serverMessage = errorData && errorData.message ? errorData.message : "";
+        if (err.isAuthRequired && window.Auth && typeof window.Auth.handleUnauthorizedResponse === "function") {
+          window.Auth.handleUnauthorizedResponse(err);
+        }
         throw err;
       }
 
@@ -574,6 +593,10 @@
 
       UI.showStatus(status, "分析完成。", false);
     } catch (err) {
+      if (err && err.message === "AUTH_REQUIRED") {
+        UI.showStatus(status, "当前登录已失效，请重新登录。", true);
+        return;
+      }
       UI.showStatus(status, UI.formatApiErrorMessage(err, "analysis"), true);
       if (box.querySelector(".streaming-container")) {
         box.innerHTML = '<div class="empty-state"><h3>分析失败</h3><p>' + UI.escapeHtml(err.message || "未知错误") + '</p></div>';
@@ -592,13 +615,32 @@
      if (!courseId) {
        try {
          var courses = await window.AppConfig.fetchCourses();
+         var courseState = window.AppConfig.getCourseLoadState();
+         if (courseState.status === "degraded") {
+           chapterSelect.innerHTML = '<option value="">课程加载降级</option>';
+           UI.renderBootstrapError("#resultContainer", courseState.message, loadChapters, courseState.traceId || "");
+           return;
+         }
          if (courses && courses.length) courseId = courses[0].id;
-       } catch (_) {}
+       } catch (err) {
+         chapterSelect.innerHTML = '<option value="">课程加载失败</option>';
+         UI.renderBootstrapError("#resultContainer", UI.formatApiErrorMessage(err, "bootstrap"), loadChapters, err && err.traceId ? err.traceId : "");
+         return;
+       }
      }
-     if (!courseId) { console.warn("No course available for chapter loading."); return; }
+     if (!courseId) {
+       chapterSelect.innerHTML = '<option value="">无可用课程</option>';
+       return;
+     }
 
      try {
-       var chapters = await Api.getJson("/api/courses/" + courseId + "/chapters");
+       var result = await Api.getJsonDetailed("/api/courses/" + courseId + "/chapters");
+       var chapters = Array.isArray(result.data) ? result.data : [];
+       if (result.meta && result.meta.degraded) {
+         chapterSelect.innerHTML = '<option value="">章节加载降级</option>';
+         UI.renderBootstrapError("#resultContainer", "章节列表当前处于降级状态，请稍后重试。", loadChapters, result.meta.traceId);
+         return;
+       }
        if (!chapters || !chapters.length) {
          chapterSelect.innerHTML = '<option value="">暂无章节</option>';
          return;
@@ -617,7 +659,8 @@
          chapterSelect.value = defaultChapterId;
        }
      } catch (err) {
-       console.warn("Failed to load chapters:", err);
+       chapterSelect.innerHTML = '<option value="">章节加载失败</option>';
+       UI.renderBootstrapError("#resultContainer", UI.formatApiErrorMessage(err, "bootstrap"), loadChapters, err && err.traceId ? err.traceId : "");
      }
    }
 

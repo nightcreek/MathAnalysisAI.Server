@@ -1,30 +1,21 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 
-namespace MathAnalysisAI.Server.Controllers
+namespace MathAnalysisAI.Server.Controllers;
+
+[ApiController]
+[Route("api/health")]
+[DisableRateLimiting]
+public class HealthController : ControllerBase
 {
-    [ApiController]
-    [Route("api/health")]
-    [DisableRateLimiting]
-    public class HealthController : ControllerBase
+    [HttpGet]
+    public IActionResult Get()
     {
-        private readonly IWebHostEnvironment _environment;
-
-        public HealthController(IWebHostEnvironment environment)
+        return Ok(new
         {
-            _environment = environment;
-        }
-
-        [HttpGet]
-        public IActionResult Get()
-        {
-            return Ok(new
-            {
-                status = "ok",
-                service = "MathAnalysisAI.Server",
-                timestampUtc = DateTime.UtcNow,
-                environment = _environment.EnvironmentName
-            });
-        }
+            status = "ok",
+            service = "MathAnalysisAI.Server",
+            timestampUtc = DateTime.UtcNow
+        });
     }
 }

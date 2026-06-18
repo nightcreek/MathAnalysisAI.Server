@@ -5,6 +5,8 @@ using MathAnalysisAI.Server.Filters;
 using MathAnalysisAI.Server.Models;
 using MathAnalysisAI.Server.Services.Analysis;
 using MathAnalysisAI.Server.Services.Analysis.Structuring;
+using MathAnalysisAI.Server.Services.Auth;
+using MathAnalysisAI.Server.Services.ExceptionHandling;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
@@ -18,17 +20,20 @@ public class LearningAnalysisController : ControllerBase
 {
     private readonly AnalysisService _analysisService;
     private readonly IProblemStructuringService _problemStructuringService;
+    private readonly IUserContext _userContext;
     private readonly ApplicationDbContext _db;
     private readonly ILogger<LearningAnalysisController> _logger;
 
     public LearningAnalysisController(
         AnalysisService analysisService,
         IProblemStructuringService problemStructuringService,
+        IUserContext userContext,
         ApplicationDbContext db,
         ILogger<LearningAnalysisController> logger)
     {
         _analysisService = analysisService;
         _problemStructuringService = problemStructuringService;
+        _userContext = userContext;
         _db = db;
         _logger = logger;
     }
@@ -41,13 +46,13 @@ public class LearningAnalysisController : ControllerBase
     {
         if (request is null)
         {
-            return BadRequest("Request body is required.");
+            return this.ApiError(StatusCodes.Status400BadRequest, "ANALYSIS_REQUEST_REQUIRED", "Request body is required.");
         }
 
-        var currentUser = HttpContext.GetCurrentUser();
+        var currentUser = await _userContext.GetCurrentUserAsync(cancellationToken);
         if (currentUser == null)
         {
-            return Unauthorized(new { message = "Not logged in." });
+            return this.ApiError(StatusCodes.Status401Unauthorized, "AUTH_NOT_LOGGED_IN", "Not logged in.");
         }
 
         var originalRequestUserId = request.UserId;
@@ -60,6 +65,7 @@ public class LearningAnalysisController : ControllerBase
                 currentUser.Role);
 
             return StatusCode(StatusCodes.Status403Forbidden, new { message = "Forbidden userId mismatch." });
+            
         }
 
         request.UserId = currentUser.Id;
@@ -151,15 +157,7 @@ public class LearningAnalysisController : ControllerBase
         }
         catch (ArgumentException ex)
         {
-            return BadRequest(ex.Message);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Unexpected error occurred in learning analysis endpoint.");
-            return StatusCode(StatusCodes.Status500InternalServerError, new
-            {
-                message = "An internal server error occurred."
-            });
+            return this.ApiError(StatusCodes.Status400BadRequest, "ANALYSIS_INVALID_REQUEST", ex.Message);
         }
     }
 
@@ -189,7 +187,7 @@ public class LearningAnalysisController : ControllerBase
             return;
         }
 
-        var currentUser = HttpContext.GetCurrentUser();
+        var currentUser = await _userContext.GetCurrentUserAsync(cancellationToken);
         if (currentUser == null)
         {
             HttpContext.Response.StatusCode = StatusCodes.Status401Unauthorized;

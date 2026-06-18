@@ -178,7 +178,11 @@
       if (courses && courses.length) courseId = courses[0].id;
     }
     form.append("courseId", String(courseId || ""));
-    form.append("chapterId", Number.isNaN(chapterId) ? String(AppConfig.defaultChapterId) : String(chapterId));
+    if (!Number.isNaN(chapterId)) {
+      form.append("chapterId", String(chapterId));
+    } else if (AppConfig.defaultChapterId != null) {
+      form.append("chapterId", String(AppConfig.defaultChapterId));
+    }
     if (hintInput.value && hintInput.value.trim()) {
       form.append("userHint", hintInput.value.trim());
     }

@@ -29,6 +29,9 @@
 		<!-- Swagger -->
 		<PackageReference Include="Swashbuckle.AspNetCore" Version="10.1.5" />
 
+		<!-- JWT Bearer authentication -->
+		<PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.0" />
+
 		<!-- JSON -->
 		<PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
 

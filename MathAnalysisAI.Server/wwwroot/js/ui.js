@@ -24,6 +24,50 @@ window.UI = {
     if (!arr.length) return "<div class='status'>暂无</div>";
     return "<ul class='list'>" + arr.map(x => "<li>" + this.escapeHtml(x) + "</li>").join("") + "</ul>";
   },
+  renderErrorPanel(target, options) {
+    var el = typeof target === "string" ? document.querySelector(target) : target;
+    if (!el) return;
+
+    var opts = options || {};
+    var title = this.escapeHtml(opts.title || "系统暂时不可用");
+    var message = this.escapeHtml(opts.message || "请稍后重试。");
+    var actionId = opts.actionLabel ? "error-panel-action-" + Date.now() + "-" + Math.floor(Math.random() * 1000) : "";
+
+    el.className = opts.containerClassName || "";
+    el.innerHTML =
+      "<div class='result-section'>" +
+      "<div class='section-title'>" + title + "</div>" +
+      "<div class='status error'>" + message + "</div>" +
+      (opts.traceId ? "<div class='hint'>TraceId: " + this.escapeHtml(opts.traceId) + "</div>" : "") +
+      (opts.actionLabel
+        ? "<div class='actions'><button type='button' class='btn-secondary' id='" + actionId + "'>" + this.escapeHtml(opts.actionLabel) + "</button></div>"
+        : "") +
+      "</div>";
+
+    if (actionId && typeof opts.onAction === "function") {
+      var btn = document.getElementById(actionId);
+      if (btn) {
+        btn.addEventListener("click", opts.onAction);
+      }
+    }
+  },
+  renderBootstrapError(target, message, onRetry, traceId) {
+    this.renderErrorPanel(target, {
+      title: "系统加载失败",
+      message: message || "基础数据加载失败，请稍后重试。",
+      traceId: traceId || "",
+      actionLabel: onRetry ? "重试" : "",
+      onAction: onRetry
+    });
+  },
+  renderLoginRequired(target, message, onLogin) {
+    this.renderErrorPanel(target, {
+      title: "需要重新登录",
+      message: message || "当前登录已失效，请重新登录后继续。",
+      actionLabel: onLogin ? "重新登录" : "",
+      onAction: onLogin
+    });
+  },
   formatRateLimitMessage(err) {
     var msg = (err && err.rateLimitMessage) || "请求过于频繁，请稍后重试。";
     var ra = (err && err.retryAfter) ? Number(err.retryAfter) : null;
@@ -37,35 +81,23 @@ window.UI = {
       return this.formatRateLimitMessage(err);
     }
 
-    var errorCode = err && err.errorCode ? String(err.errorCode) : "";
+    var errorCode = err && err.errorCode ? String(err.errorCode).toUpperCase() : "";
     var status = err && Number.isFinite(Number(err.status)) ? Number(err.status) : null;
     var serverMessage = err && err.serverMessage ? String(err.serverMessage) : "";
     var normalizedContext = String(context || "default").toLowerCase();
 
     var errorMap = {
-      auth_not_logged_in: "当前未登录，请先登录后再继续。",
-      auth_invalid_username: "用户名不存在或当前不可用。",
-      auth_username_required: "请输入用户名。",
-      auth_mode_disabled: "当前部署未启用登录入口，请联系管理员。",
-      auth_mode_local_password_not_available: "当前部署要求密码登录，但服务器尚未启用该登录入口。",
-      auth_mode_oidc_not_available: "当前部署要求统一认证登录，请联系管理员接入 OIDC 登录入口。",
-      auth_mode_unavailable: "当前部署未启用开发期用户名登录。",
-      llm_timeout: "模型分析超时，请稍后重试。",
-      llm_temporary_unavailable: "模型服务暂时不可用，请稍后重试。",
-      missing_base_url: "模型服务尚未完成配置，请联系管理员。",
-      missing_api_key: "模型服务尚未完成配置，请联系管理员。",
-      invalid_api_key: "模型服务配置无效，请联系管理员。",
-      missing_litellm_base_url: "模型服务尚未完成配置，请联系管理员。",
-      missing_litellm_api_key: "模型服务尚未完成配置，请联系管理员。",
-      invalid_litellm_api_key: "模型服务配置无效，请联系管理员。",
-      response_parse_failed: "模型返回格式异常，本次分析未能可靠生成。",
-      litellm_response_parse_failed: "模型返回格式异常，本次分析未能可靠生成。",
-      request_canceled: "本次请求已取消，请重新发起。",
-      ocr_timeout: "OCR 识别超时，请稍后重试或改为手动输入。",
-      ocr_temporary_unavailable: "OCR 服务暂时不可用，请稍后重试或改为手动输入。",
-      ocr_config_error: "OCR 服务尚未完成配置，请联系管理员或改为手动输入。",
-      ocr_response_parse_failed: "OCR 返回格式异常，请手动检查后重试。",
-      ocr_provider_failure: "OCR 服务调用失败，请稍后重试或改为手动输入。"
+      AUTH_NOT_LOGGED_IN: "当前未登录，请先登录后再继续。",
+      AUTH_SESSION_EXPIRED: "当前登录已过期，请重新登录后再继续。",
+      AUTH_INVALID_CREDENTIALS: "用户名或密码错误。",
+      AUTH_USERNAME_REQUIRED: "请输入用户名。",
+      AUTH_PASSWORD_REQUIRED: "请输入密码。",
+      AUTH_MODE_DISABLED: "当前部署未启用登录入口，请联系管理员。",
+      AUTH_MODE_OIDC_REQUIRED: "当前部署要求统一认证登录，请使用统一认证入口。",
+      AUTH_MODE_UNAVAILABLE: "当前部署未启用该登录入口。",
+      DATABASE_UNAVAILABLE: "数据库暂时不可用或尚未完成初始化，请稍后重试。",
+      DEPENDENCY_UNAVAILABLE: "依赖服务暂时不可用，请稍后重试。",
+      INTERNAL_SERVER_ERROR: "系统发生了未预期错误，请稍后重试。"
     };
 
     if (errorCode && errorMap[errorCode]) {
@@ -86,8 +118,8 @@ window.UI = {
 
     if (status === 401) {
       return normalizedContext === "login"
-        ? "当前登录不可用，请检查认证配置或联系管理员。"
-        : "当前未登录，请先登录后再继续。";
+        ? "当前登录不可用，请检查认证配置。"
+        : "当前登录已失效，请重新登录后继续。";
     }
 
     if (status === 403) {
@@ -96,12 +128,6 @@ window.UI = {
 
     if (status === 404 && normalizedContext === "analysis") {
       return "关联的 OCR 记录不存在，请重新上传并确认后再分析。";
-    }
-
-    if (status === 502) {
-      return normalizedContext === "ocr"
-        ? "OCR 服务暂时不可用，请稍后重试或改为手动输入。"
-        : "模型服务暂时不可用，请稍后重试。";
     }
 
     if (status === 503) {

@@ -1,16 +1,16 @@
 (function () {
   function renderLeaderboard(rows) {
-    const data = Array.isArray(rows) ? rows : [];
+    var data = Array.isArray(rows) ? rows : [];
     if (!data.length) return "<div class='status'>暂无排行榜数据，完成一次分析后会显示在这里。</div>";
 
-    let html = "<table class='rank-table'><thead><tr>" +
+    var html = "<table class='rank-table'><thead><tr>" +
       "<th>排名</th><th>用户名</th><th>练习次数</th><th>正确数</th><th>错误数</th><th>正确率</th><th>积分</th>" +
       "</tr></thead><tbody>";
 
-    data.forEach((x, idx) => {
-      const rank = x.rank || (idx + 1);
-      const accuracy = x.accuracyRate == null ? "-" : String(x.accuracyRate);
-      const score = x.rankingScore == null ? "-" : String(x.rankingScore);
+    data.forEach(function (x, idx) {
+      var rank = x.rank || (idx + 1);
+      var accuracy = x.accuracyRate == null ? "-" : String(x.accuracyRate);
+      var score = x.rankingScore == null ? "-" : String(x.rankingScore);
       html += "<tr>" +
         "<td>" + UI.escapeHtml(rank) + "</td>" +
         "<td>" + UI.escapeHtml(x.username || "") + "</td>" +
@@ -26,9 +26,9 @@
   }
 
   function getSelectedCourseId() {
-    const select = document.getElementById("leaderboardCourseSelect");
+    var select = document.getElementById("leaderboardCourseSelect");
     if (select && select.value) {
-      const id = Number(select.value);
+      var id = Number(select.value);
       if (Number.isFinite(id) && id > 0) return id;
     }
     return AppConfig.resolveCourseId() || null;
@@ -37,36 +37,59 @@
   var isLoading = false;
 
   async function loadLeaderboard() {
-    const box = UI.qs("#leaderboardContainer");
-    if (!box) return;
+    var box = UI.qs("#leaderboardContainer");
+    if (!box || isLoading) return;
 
-    if (isLoading) return;
+    var courseId = getSelectedCourseId();
+    if (!courseId) {
+      UI.renderBootstrapError(box, "课程列表尚未准备好。", initLeaderboardPage, "");
+      return;
+    }
 
-    const courseId = getSelectedCourseId();
     isLoading = true;
     UI.showStatus(box, "加载中...", false);
+
     try {
-      const rows = await Api.getJson("/api/leaderboard/public?courseId=" + courseId + "&take=" + AppConfig.leaderboardTake);
-      box.className = "";
-      box.innerHTML = renderLeaderboard(rows);
-    } catch (_) {
-      UI.showStatus(box, "排行榜加载失败，请稍后重试。", true);
+      var result = await Api.getJsonDetailed("/api/leaderboard/public?courseId=" + courseId + "&take=" + AppConfig.leaderboardTake);
+      if (result.meta && result.meta.degraded) {
+        UI.renderBootstrapError(box, "排行榜当前处于降级状态，请稍后重试。", loadLeaderboard, result.meta.traceId);
+      } else {
+        box.className = "";
+        box.innerHTML = renderLeaderboard(result.data);
+      }
+    } catch (err) {
+      UI.renderErrorPanel(box, {
+        title: "排行榜加载失败",
+        message: UI.formatApiErrorMessage(err, "leaderboard"),
+        traceId: err && err.traceId ? err.traceId : "",
+        actionLabel: "重试",
+        onAction: loadLeaderboard
+      });
     } finally {
       isLoading = false;
     }
   }
 
   async function loadLeaderboardCourses() {
-    const select = document.getElementById("leaderboardCourseSelect");
+    var select = document.getElementById("leaderboardCourseSelect");
     if (!select) return;
 
     try {
-      const courses = await window.AppConfig.fetchCourses();
+      var courses = await window.AppConfig.fetchCourses();
+      var courseState = window.AppConfig.getCourseLoadState();
+
+      if (courseState.status === "degraded") {
+        select.innerHTML = '<option value="">课程加载降级</option>';
+        UI.renderBootstrapError("#leaderboardContainer", courseState.message, loadLeaderboardCourses, courseState.traceId || "");
+        return;
+      }
+
       select.innerHTML = "";
       if (!courses || !courses.length) {
         select.innerHTML = '<option value="">无可用课程</option>';
         return;
       }
+
       courses.forEach(function (course) {
         var option = document.createElement("option");
         option.value = course.id;
@@ -81,9 +104,10 @@
         select.value = courses[0].id;
       }
 
-      loadLeaderboard();
-    } catch (_) {
+      await loadLeaderboard();
+    } catch (err) {
       select.innerHTML = '<option value="">加载失败</option>';
+      UI.renderBootstrapError("#leaderboardContainer", UI.formatApiErrorMessage(err, "bootstrap"), loadLeaderboardCourses, err && err.traceId ? err.traceId : "");
     }
   }
 
@@ -95,13 +119,12 @@
     loadLeaderboard();
   }
 
-  function initLeaderboardPage() {
-    loadLeaderboardCourses().then(function () {
-      const select = document.getElementById("leaderboardCourseSelect");
-      if (select) {
-        select.addEventListener("change", handleCourseChange);
-      }
-    });
+  async function initLeaderboardPage() {
+    await loadLeaderboardCourses();
+    var select = document.getElementById("leaderboardCourseSelect");
+    if (select) {
+      select.addEventListener("change", handleCourseChange);
+    }
   }
 
   window.loadLeaderboard = loadLeaderboard;

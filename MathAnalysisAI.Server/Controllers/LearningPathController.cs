@@ -1,5 +1,6 @@
 using MathAnalysisAI.Server.DTOs.Knowledge;
 using MathAnalysisAI.Server.Filters;
+using MathAnalysisAI.Server.Services.Auth;
 using MathAnalysisAI.Server.Services.Knowledge;
 using Microsoft.AspNetCore.Mvc;
 
@@ -11,10 +12,12 @@ namespace MathAnalysisAI.Server.Controllers;
 public class LearningPathController : ControllerBase
 {
     private readonly LearningPathService _learningPathService;
+    private readonly IUserContext _userContext;
 
-    public LearningPathController(LearningPathService learningPathService)
+    public LearningPathController(LearningPathService learningPathService, IUserContext userContext)
     {
         _learningPathService = learningPathService;
+        _userContext = userContext;
     }
 
     [HttpGet]
@@ -32,7 +35,7 @@ public class LearningPathController : ControllerBase
             });
         }
 
-        var userId = HttpContext.GetCurrentUserId();
+        var userId = await _userContext.GetCurrentUserIdAsync(cancellationToken);
         if (userId == null)
         {
             return Unauthorized();
@@ -56,7 +59,7 @@ public class LearningPathController : ControllerBase
             });
         }
 
-        var userId = HttpContext.GetCurrentUserId();
+        var userId = await _userContext.GetCurrentUserIdAsync(cancellationToken);
         if (userId == null)
         {
             return Unauthorized();

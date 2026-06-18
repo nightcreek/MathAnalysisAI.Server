@@ -1,23 +1,57 @@
 (function () {
   var AppConfig = window.AppConfig || {};
-
   var _courseCache = null;
   var _courseCachePromise = null;
+  var _courseLoadState = { status: "idle", message: "", traceId: "" };
 
-  function fetchCourses() {
+  function setCourseLoadState(state) {
+    _courseLoadState = state || { status: "idle", message: "", traceId: "" };
+  }
+
+  function clearCourseCache() {
+    _courseCache = null;
+    _courseCachePromise = null;
+    setCourseLoadState({ status: "idle", message: "", traceId: "" });
+  }
+
+  function fetchCourses(options) {
+    var forceReload = options && options.forceReload === true;
+    if (forceReload) {
+      clearCourseCache();
+    }
+
     if (_courseCachePromise) return _courseCachePromise;
-    _courseCachePromise = fetch("/api/courses")
-      .then(function (r) { if (!r.ok) throw new Error("Failed to fetch courses"); return r.json(); })
-      .then(function (courses) {
-        _courseCache = courses && courses.length ? courses : [];
+
+    setCourseLoadState({ status: "loading", message: "", traceId: "" });
+
+    _courseCachePromise = Api.getJsonDetailed("/api/courses")
+      .then(function (result) {
+        var courses = Array.isArray(result.data) ? result.data : [];
+        _courseCache = courses;
+
+        if (result.meta && result.meta.degraded) {
+          setCourseLoadState({
+            status: "degraded",
+            message: "课程列表当前处于降级状态，请稍后重试。",
+            traceId: result.meta.traceId || ""
+          });
+        } else {
+          setCourseLoadState({ status: "ready", message: "", traceId: result.meta ? result.meta.traceId || "" : "" });
+        }
+
         return _courseCache;
       })
       .catch(function (err) {
-        console.warn("Failed to load courses:", err);
-        _courseCache = [];
         _courseCachePromise = null;
-        return [];
+        _courseCache = null;
+        setCourseLoadState({
+          status: "error",
+          message: (window.UI && UI.formatApiErrorMessage) ? UI.formatApiErrorMessage(err, "bootstrap") : "课程列表加载失败。",
+          traceId: err && err.traceId ? err.traceId : ""
+        });
+        throw err;
       });
+
     return _courseCachePromise;
   }
 
@@ -39,7 +73,11 @@
   };
 
   AppConfig.fetchCourses = fetchCourses;
+  AppConfig.clearCourseCache = clearCourseCache;
   AppConfig.getCachedCourses = function () { return _courseCache || []; };
+  AppConfig.getCourseLoadState = function () { return _courseLoadState; };
+  AppConfig.leaderboardTake = AppConfig.leaderboardTake || 10;
+  AppConfig.defaultChapterId = AppConfig.defaultChapterId || null;
 
   AppConfig.persistCourseId = function (courseId) {
     try { sessionStorage.setItem("math_analysis_course_id", String(courseId)); } catch (_) {}

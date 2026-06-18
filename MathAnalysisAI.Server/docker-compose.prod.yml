@@ -36,7 +36,7 @@ services:
     ports:
       - "127.0.0.1:5131:5131"
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:5131/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:5131/ready"]
       interval: 30s
       timeout: 5s
       retries: 3

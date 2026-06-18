@@ -1,7 +1,8 @@
 using MathAnalysisAI.Server.DTOs.Symbolic;
-using MathAnalysisAI.Server.Filters;
-using MathAnalysisAI.Server.Models;
+using MathAnalysisAI.Server.Services.Auth;
+using MathAnalysisAI.Server.Services.ExceptionHandling;
 using MathAnalysisAI.Server.Services.Symbolic;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 
@@ -9,23 +10,14 @@ namespace MathAnalysisAI.Server.Controllers;
 
 [ApiController]
 [Route("api/symbolic")]
+[Authorize(Policy = AuthPolicies.AdminOnly)]
 public class SymbolicController : ControllerBase
 {
     private readonly ISymbolicMathService _symbolicMathService;
-    private readonly IWebHostEnvironment _environment;
-    private readonly IConfiguration _configuration;
-    private readonly ILogger<SymbolicController> _logger;
 
-    public SymbolicController(
-        ISymbolicMathService symbolicMathService,
-        IWebHostEnvironment environment,
-        IConfiguration configuration,
-        ILogger<SymbolicController> logger)
+    public SymbolicController(ISymbolicMathService symbolicMathService)
     {
         _symbolicMathService = symbolicMathService;
-        _environment = environment;
-        _configuration = configuration;
-        _logger = logger;
     }
 
     [HttpPost("compute")]
@@ -34,60 +26,22 @@ public class SymbolicController : ControllerBase
         [FromBody] SymbolicComputeRequestDto? request,
         CancellationToken cancellationToken)
     {
-        var authResult = EnsureSymbolicAccessAsync(cancellationToken);
-        if (authResult != null)
-        {
-            return authResult;
-        }
-
         if (request is null)
         {
-            return BadRequest(new { message = "Request body is required." });
+            return this.ApiError(StatusCodes.Status400BadRequest, "SYMBOLIC_REQUEST_REQUIRED", "Request body is required.");
         }
 
         if (string.IsNullOrWhiteSpace(request.Operation))
         {
-            return BadRequest(new { message = "Field 'operation' is required." });
+            return this.ApiError(StatusCodes.Status400BadRequest, "SYMBOLIC_OPERATION_REQUIRED", "Field 'operation' is required.");
         }
 
         if (string.IsNullOrWhiteSpace(request.Expression))
         {
-            return BadRequest(new { message = "Field 'expression' is required." });
+            return this.ApiError(StatusCodes.Status400BadRequest, "SYMBOLIC_EXPRESSION_REQUIRED", "Field 'expression' is required.");
         }
 
         var response = await _symbolicMathService.ComputeAsync(request, cancellationToken);
         return Ok(response);
-    }
-
-    private ActionResult? EnsureSymbolicAccessAsync(CancellationToken cancellationToken)
-    {
-        if (ShouldAllowDevelopmentOverride())
-        {
-            return null;
-        }
-
-        var user = (Models.AppUser?)HttpContext.Items["CurrentUser"];
-        if (user == null)
-        {
-            return Unauthorized(new { message = "Not logged in." });
-        }
-
-        if (string.Equals(user.Role?.Trim(), AppUserRole.Admin, StringComparison.OrdinalIgnoreCase))
-        {
-            return null;
-        }
-
-        _logger.LogWarning(
-            "Forbidden symbolic compute access. UserId={UserId}, Role={Role}",
-            user.Id,
-            user.Role);
-
-        return StatusCode(StatusCodes.Status403Forbidden, new { message = "Forbidden." });
-    }
-
-    private bool ShouldAllowDevelopmentOverride()
-    {
-        var enabled = _configuration.GetValue<bool>("Auth:EnableDevelopmentSymbolicAccessOverride");
-        return enabled && _environment.IsDevelopment();
     }
 }

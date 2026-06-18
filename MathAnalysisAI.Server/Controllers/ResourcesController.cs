@@ -1,43 +1,44 @@
 using MathAnalysisAI.Server.Data;
 using MathAnalysisAI.Server.DTOs.Resources;
 using MathAnalysisAI.Server.Models;
+using MathAnalysisAI.Server.Services.Auth;
+using MathAnalysisAI.Server.Services.ExceptionHandling;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
-namespace MathAnalysisAI.Server.Controllers
+namespace MathAnalysisAI.Server.Controllers;
+
+[ApiController]
+[Route("api/resources")]
+public class ResourcesController : ControllerBase
 {
-    [ApiController]
-    [Route("api/resources")]
-    public class ResourcesController : ControllerBase
+    private readonly ApplicationDbContext _db;
+    private readonly IUserContext _userContext;
+    private readonly ILogger<ResourcesController> _logger;
+
+    public ResourcesController(
+        ApplicationDbContext db,
+        IUserContext userContext,
+        ILogger<ResourcesController> logger)
     {
-        private readonly ApplicationDbContext _db;
-        private readonly IConfiguration _configuration;
-        private readonly IWebHostEnvironment _environment;
+        _db = db;
+        _userContext = userContext;
+        _logger = logger;
+    }
 
-        public ResourcesController(
-            ApplicationDbContext db,
-            IConfiguration configuration,
-            IWebHostEnvironment environment)
+    [HttpGet]
+    public async Task<IActionResult> List(
+        [FromQuery] int? courseId,
+        CancellationToken cancellationToken)
+    {
+        try
         {
-            _db = db;
-            _configuration = configuration;
-            _environment = environment;
-        }
-
-        [HttpGet]
-        public async Task<ActionResult<List<NetworkResourceListItemDto>>> List(
-            [FromQuery] int? courseId,
-            CancellationToken cancellationToken)
-        {
-            var query = _db.NetworkResources.AsNoTracking();
+            var query = _db.NetworkResources.AsNoTracking().Where(x => x.IsEnabled);
 
             if (courseId.HasValue && courseId.Value > 0)
             {
-                query = query.Where(x => x.CourseId == courseId.Value && x.IsEnabled);
-            }
-            else
-            {
-                query = query.Where(x => x.IsEnabled);
+                query = query.Where(x => x.CourseId == courseId.Value);
             }
 
             var items = await query
@@ -61,146 +62,151 @@ namespace MathAnalysisAI.Server.Controllers
 
             return Ok(items);
         }
-
-        [HttpPost]
-        public async Task<ActionResult<NetworkResourceListItemDto>> Create(
-            [FromBody] NetworkResourceCreateDto dto,
-            CancellationToken cancellationToken)
+        catch (Exception ex) when (ApiExceptionClassifier.IsDatabaseFailure(ex))
         {
-            var authResult = EnsureResourceManager();
-            if (authResult != null) return authResult;
+            _logger.LogWarning(ex, "Resources endpoint degraded due to database/schema issue.");
+            return this.DegradedOk(Array.Empty<NetworkResourceListItemDto>());
+        }
+    }
 
-            if (dto.CourseId <= 0)
-                return BadRequest(new { message = "courseId is required." });
-
-            if (string.IsNullOrWhiteSpace(dto.Category))
-                return BadRequest(new { message = "category is required." });
-
-            if (string.IsNullOrWhiteSpace(dto.Title))
-                return BadRequest(new { message = "title is required." });
-
-            var courseExists = await _db.Courses.AnyAsync(x => x.Id == dto.CourseId, cancellationToken);
-            if (!courseExists)
-                return BadRequest(new { message = "Course not found." });
-
-            var now = DateTime.UtcNow;
-            var entity = new NetworkResource
-            {
-                CourseId = dto.CourseId,
-                Category = dto.Category.Trim(),
-                Title = dto.Title.Trim(),
-                Description = dto.Description?.Trim(),
-                Link = dto.Link?.Trim(),
-                SortOrder = dto.SortOrder,
-                IsEnabled = true,
-                CreatedAt = now,
-                UpdatedAt = now
-            };
-
-            _db.NetworkResources.Add(entity);
-            await _db.SaveChangesAsync(cancellationToken);
-
-            return CreatedAtAction(nameof(GetById), new { id = entity.Id }, MapToDto(entity));
+    [HttpPost]
+    [Authorize(Policy = AuthPolicies.TeacherOrAdmin)]
+    public async Task<ActionResult<NetworkResourceListItemDto>> Create(
+        [FromBody] NetworkResourceCreateDto dto,
+        CancellationToken cancellationToken)
+    {
+        if (dto.CourseId <= 0)
+        {
+            return this.ApiError(StatusCodes.Status400BadRequest, "RESOURCE_COURSE_REQUIRED", "courseId is required.");
         }
 
-        [HttpGet("{id:int}")]
-        public async Task<ActionResult<NetworkResourceListItemDto>> GetById(
-            int id,
-            CancellationToken cancellationToken)
+        if (string.IsNullOrWhiteSpace(dto.Category))
         {
-            var entity = await _db.NetworkResources
-                .AsNoTracking()
-                .FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
-
-            if (entity == null)
-                return NotFound();
-
-            return Ok(MapToDto(entity));
+            return this.ApiError(StatusCodes.Status400BadRequest, "RESOURCE_CATEGORY_REQUIRED", "category is required.");
         }
 
-        [HttpPut("{id:int}")]
-        public async Task<ActionResult<NetworkResourceListItemDto>> Update(
-            int id,
-            [FromBody] NetworkResourceUpdateDto dto,
-            CancellationToken cancellationToken)
+        if (string.IsNullOrWhiteSpace(dto.Title))
         {
-            var authResult = EnsureResourceManager();
-            if (authResult != null) return authResult;
-
-            var entity = await _db.NetworkResources.FindAsync(new object[] { id }, cancellationToken);
-            if (entity == null)
-                return NotFound();
-
-            if (dto.Category != null) entity.Category = dto.Category.Trim();
-            if (dto.Title != null) entity.Title = dto.Title.Trim();
-            if (dto.Description != null) entity.Description = dto.Description.Trim();
-            if (dto.Link != null) entity.Link = dto.Link.Trim();
-            if (dto.SortOrder.HasValue) entity.SortOrder = dto.SortOrder.Value;
-            if (dto.IsEnabled.HasValue) entity.IsEnabled = dto.IsEnabled.Value;
-            entity.UpdatedAt = DateTime.UtcNow;
-
-            await _db.SaveChangesAsync(cancellationToken);
-            return Ok(MapToDto(entity));
+            return this.ApiError(StatusCodes.Status400BadRequest, "RESOURCE_TITLE_REQUIRED", "title is required.");
         }
 
-        [HttpDelete("{id:int}")]
-        public async Task<ActionResult> Delete(
-            int id,
-            CancellationToken cancellationToken)
+        var courseExists = await _db.Courses.AnyAsync(x => x.Id == dto.CourseId, cancellationToken);
+        if (!courseExists)
         {
-            var authResult = EnsureResourceManager();
-            if (authResult != null) return authResult;
-
-            var entity = await _db.NetworkResources.FindAsync(new object[] { id }, cancellationToken);
-            if (entity == null)
-                return NotFound();
-
-            _db.NetworkResources.Remove(entity);
-            await _db.SaveChangesAsync(cancellationToken);
-
-            return NoContent();
+            return this.ApiError(StatusCodes.Status400BadRequest, "RESOURCE_COURSE_NOT_FOUND", "Course not found.");
         }
 
-        private ActionResult? EnsureResourceManager()
+        var now = DateTime.UtcNow;
+        var entity = new NetworkResource
         {
-            if (ShouldAllowDevelopmentOverride())
-                return null;
+            CourseId = dto.CourseId,
+            Category = dto.Category.Trim(),
+            Title = dto.Title.Trim(),
+            Description = dto.Description?.Trim(),
+            Link = dto.Link?.Trim(),
+            SortOrder = dto.SortOrder,
+            IsEnabled = true,
+            CreatedAt = now,
+            UpdatedAt = now
+        };
 
-            var user = (AppUser?)HttpContext.Items["CurrentUser"];
-            if (user == null)
-                return Unauthorized(new { message = "Not logged in." });
+        _db.NetworkResources.Add(entity);
+        await _db.SaveChangesAsync(cancellationToken);
 
-            var role = user.Role?.Trim();
-            if (string.Equals(role, "teacher", StringComparison.OrdinalIgnoreCase)
-                || string.Equals(role, "admin", StringComparison.OrdinalIgnoreCase))
-            {
-                return null;
-            }
+        return CreatedAtAction(nameof(GetById), new { id = entity.Id }, MapToDto(entity));
+    }
 
-            return StatusCode(StatusCodes.Status403Forbidden, new { message = "Forbidden." });
+    [HttpGet("{id:int}")]
+    public async Task<ActionResult<NetworkResourceListItemDto>> GetById(
+        int id,
+        CancellationToken cancellationToken)
+    {
+        var entity = await _db.NetworkResources
+            .AsNoTracking()
+            .FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
+
+        if (entity == null)
+        {
+            return this.ApiError(StatusCodes.Status404NotFound, "RESOURCE_NOT_FOUND", "Resource not found.");
         }
 
-        private bool ShouldAllowDevelopmentOverride()
+        if (!entity.IsEnabled && !await CanManageResourcesAsync(cancellationToken))
         {
-            var enabled = _configuration.GetValue<bool>("Auth:EnableDevelopmentMaterialAccessOverride");
-            return enabled && _environment.IsDevelopment();
+            return this.ApiError(StatusCodes.Status404NotFound, "RESOURCE_NOT_FOUND", "Resource not found.");
         }
 
-        private static NetworkResourceListItemDto MapToDto(NetworkResource entity)
+        return Ok(MapToDto(entity));
+    }
+
+    [HttpPut("{id:int}")]
+    [Authorize(Policy = AuthPolicies.TeacherOrAdmin)]
+    public async Task<ActionResult<NetworkResourceListItemDto>> Update(
+        int id,
+        [FromBody] NetworkResourceUpdateDto dto,
+        CancellationToken cancellationToken)
+    {
+        var entity = await _db.NetworkResources.FindAsync(new object[] { id }, cancellationToken);
+        if (entity == null)
         {
-            return new NetworkResourceListItemDto
-            {
-                Id = entity.Id,
-                CourseId = entity.CourseId,
-                Category = entity.Category,
-                Title = entity.Title,
-                Description = entity.Description,
-                Link = entity.Link,
-                SortOrder = entity.SortOrder,
-                IsEnabled = entity.IsEnabled,
-                CreatedAt = entity.CreatedAt,
-                UpdatedAt = entity.UpdatedAt
-            };
+            return this.ApiError(StatusCodes.Status404NotFound, "RESOURCE_NOT_FOUND", "Resource not found.");
         }
+
+        if (dto.Category != null) entity.Category = dto.Category.Trim();
+        if (dto.Title != null) entity.Title = dto.Title.Trim();
+        if (dto.Description != null) entity.Description = dto.Description.Trim();
+        if (dto.Link != null) entity.Link = dto.Link.Trim();
+        if (dto.SortOrder.HasValue) entity.SortOrder = dto.SortOrder.Value;
+        if (dto.IsEnabled.HasValue) entity.IsEnabled = dto.IsEnabled.Value;
+        entity.UpdatedAt = DateTime.UtcNow;
+
+        await _db.SaveChangesAsync(cancellationToken);
+        return Ok(MapToDto(entity));
+    }
+
+    [HttpDelete("{id:int}")]
+    [Authorize(Policy = AuthPolicies.TeacherOrAdmin)]
+    public async Task<ActionResult> Delete(
+        int id,
+        CancellationToken cancellationToken)
+    {
+        var entity = await _db.NetworkResources.FindAsync(new object[] { id }, cancellationToken);
+        if (entity == null)
+        {
+            return this.ApiError(StatusCodes.Status404NotFound, "RESOURCE_NOT_FOUND", "Resource not found.");
+        }
+
+        _db.NetworkResources.Remove(entity);
+        await _db.SaveChangesAsync(cancellationToken);
+
+        return NoContent();
+    }
+
+    private async Task<bool> CanManageResourcesAsync(CancellationToken cancellationToken)
+    {
+        var user = await _userContext.GetCurrentUserAsync(cancellationToken);
+        if (user == null)
+        {
+            return false;
+        }
+
+        return string.Equals(user.Role, AppUserRole.Teacher, StringComparison.OrdinalIgnoreCase)
+               || string.Equals(user.Role, AppUserRole.Admin, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static NetworkResourceListItemDto MapToDto(NetworkResource entity)
+    {
+        return new NetworkResourceListItemDto
+        {
+            Id = entity.Id,
+            CourseId = entity.CourseId,
+            Category = entity.Category,
+            Title = entity.Title,
+            Description = entity.Description,
+            Link = entity.Link,
+            SortOrder = entity.SortOrder,
+            IsEnabled = entity.IsEnabled,
+            CreatedAt = entity.CreatedAt,
+            UpdatedAt = entity.UpdatedAt
+        };
     }
 }
