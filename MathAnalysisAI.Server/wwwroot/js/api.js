@@ -9,14 +9,24 @@ window.MathAnalysisAuthStorageKeys = window.MathAnalysisAuthStorageKeys || {
 
 window.Api = (function () {
   function readAccessToken() {
+    var token = "";
     try {
       if (window.Auth && typeof window.Auth.getAccessToken === "function") {
-        return window.Auth.getAccessToken() || "";
+        token = window.Auth.getAccessToken() || "";
       }
-      return sessionStorage.getItem(window.MathAnalysisAuthStorageKeys.accessToken) || "";
     } catch (_) {
-      return "";
+      token = "";
     }
+
+    if (!token && window.MathAnalysisAuthStorageKeys) {
+      try {
+        token = sessionStorage.getItem(window.MathAnalysisAuthStorageKeys.accessToken) || "";
+      } catch (_) {
+        token = "";
+      }
+    }
+
+    return token;
   }
 
   function buildHeaders(extraHeaders, contentType) {

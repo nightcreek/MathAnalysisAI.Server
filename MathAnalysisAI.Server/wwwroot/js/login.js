@@ -114,7 +114,7 @@
       throw new Error("服务器未返回有效的 accessToken。");
     }
 
-    console.info("[Login] " + source + " accessToken:", accessToken);
+    console.info("[Login] " + source + " token length:", accessToken.length);
 
     var persisted = window.Auth.setAccessToken(accessToken, result.expiresAtUtc);
     var storedToken = readPersistedAccessToken();
