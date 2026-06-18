@@ -101,18 +101,6 @@ namespace MathAnalysisAI.Server.Migrations
                     { 2016, new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc), "prerequisite", 1042, 1056 }
                 });
 
-            migrationBuilder.CreateIndex(
-                name: "IX_Problems_StructuredProblemId",
-                table: "Problems",
-                column: "StructuredProblemId");
-
-            migrationBuilder.AddForeignKey(
-                name: "FK_StructuredProblems_AppUsers_CreatedByUserId",
-                table: "StructuredProblems",
-                column: "CreatedByUserId",
-                principalTable: "AppUsers",
-                principalColumn: "Id",
-                onDelete: ReferentialAction.Cascade);
         }
 
         /// <inheritdoc />

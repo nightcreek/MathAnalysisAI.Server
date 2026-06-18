@@ -78,7 +78,7 @@ namespace MathAnalysisAI.Server.Migrations
                 column: "TeacherId",
                 principalTable: "AppUsers",
                 principalColumn: "Id",
-                onDelete: ReferentialAction.SetNull);
+                onDelete: ReferentialAction.NoAction);
         }
 
         /// <inheritdoc />
