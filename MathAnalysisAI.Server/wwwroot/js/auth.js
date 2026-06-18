@@ -1,16 +1,38 @@
 (function () {
   var keys = window.MathAnalysisAuthStorageKeys;
+  var accessTokenMemory = "";
+  var accessTokenExpiresAtMemory = "";
   var currentUser = null;
   var loaded = false;
   var loadingPromise = null;
   var authInfoCache = null;
   var authInfoPromise = null;
   var lastAuthState = null;
+  var loggedStorageFailures = {};
+  var loggedAuthWarnings = {};
+
+  function logStorageFailure(action, key, err) {
+    var failureKey = action + ":" + key + ":" + ((err && err.name) || "error");
+    if (loggedStorageFailures[failureKey]) {
+      return;
+    }
+    loggedStorageFailures[failureKey] = true;
+    console.error("[Auth] sessionStorage " + action + " failed for key \"" + key + "\".", err);
+  }
+
+  function warnOnce(id, message) {
+    if (loggedAuthWarnings[id]) {
+      return;
+    }
+    loggedAuthWarnings[id] = true;
+    console.warn(message);
+  }
 
   function safeGetSession(key) {
     try {
       return sessionStorage.getItem(key);
-    } catch (_) {
+    } catch (err) {
+      logStorageFailure("read", key, err);
       return null;
     }
   }
@@ -18,13 +40,21 @@
   function safeSetSession(key, value) {
     try {
       sessionStorage.setItem(key, value);
-    } catch (_) {}
+      return sessionStorage.getItem(key) === value;
+    } catch (err) {
+      logStorageFailure("write", key, err);
+      return false;
+    }
   }
 
   function safeRemoveSession(key) {
     try {
       sessionStorage.removeItem(key);
-    } catch (_) {}
+      return true;
+    } catch (err) {
+      logStorageFailure("remove", key, err);
+      return false;
+    }
   }
 
   function resetCache() {
@@ -36,8 +66,32 @@
     lastAuthState = state || null;
   }
 
-  function getAccessToken() {
+  function getStoredAccessToken() {
+    var token = safeGetSession(keys.accessToken);
+    if (typeof token === "string" && token.length > 0) {
+      accessTokenMemory = token;
+      return token;
+    }
+
+    if (accessTokenMemory) {
+      warnOnce("access-token-memory-fallback", "[Auth] sessionStorage token missing, falling back to in-memory token cache.");
+    }
+
+    return accessTokenMemory || "";
+  }
+
+  function getStoredAccessTokenExpiry() {
     var expiresAt = safeGetSession(keys.accessTokenExpiresAt);
+    if (typeof expiresAt === "string" && expiresAt.length > 0) {
+      accessTokenExpiresAtMemory = expiresAt;
+      return expiresAt;
+    }
+
+    return accessTokenExpiresAtMemory || "";
+  }
+
+  function getAccessToken() {
+    var expiresAt = getStoredAccessTokenExpiry();
     if (expiresAt) {
       var expiresAtMs = Date.parse(expiresAt);
       if (Number.isFinite(expiresAtMs) && expiresAtMs <= Date.now() + 5000) {
@@ -49,7 +103,7 @@
       }
     }
 
-    return safeGetSession(keys.accessToken) || "";
+    return getStoredAccessToken() || "";
   }
 
   function hasAccessToken() {
@@ -57,18 +111,38 @@
   }
 
   function setAccessToken(token, expiresAtUtc) {
-    if (!token) return;
-    safeSetSession(keys.accessToken, String(token));
-    if (expiresAtUtc) {
-      safeSetSession(keys.accessTokenExpiresAt, String(expiresAtUtc));
+    var normalizedToken = String(token || "").trim();
+    if (!normalizedToken) {
+      console.error("[Auth] Refused to persist an empty access token.");
+      return false;
+    }
+
+    accessTokenMemory = normalizedToken;
+    accessTokenExpiresAtMemory = expiresAtUtc ? String(expiresAtUtc) : "";
+
+    var tokenPersisted = safeSetSession(keys.accessToken, normalizedToken);
+    var expiryPersisted = true;
+    if (accessTokenExpiresAtMemory) {
+      expiryPersisted = safeSetSession(keys.accessTokenExpiresAt, accessTokenExpiresAtMemory);
     } else {
       safeRemoveSession(keys.accessTokenExpiresAt);
     }
+
+    if (!tokenPersisted || !expiryPersisted) {
+      console.error("[Auth] Access token persistence verification failed.", {
+        tokenPersisted: tokenPersisted,
+        expiryPersisted: expiryPersisted
+      });
+    }
+
     setLastAuthState(null);
     resetCache();
+    return tokenPersisted && expiryPersisted;
   }
 
   function clearAccessToken() {
+    accessTokenMemory = "";
+    accessTokenExpiresAtMemory = "";
     safeRemoveSession(keys.accessToken);
     safeRemoveSession(keys.accessTokenExpiresAt);
     currentUser = null;
@@ -347,7 +421,10 @@
 
     var expiresIn = Number(tokenPayload.expires_in || 3600);
     var expiresAtUtc = new Date(Date.now() + Math.max(expiresIn, 60) * 1000).toISOString();
-    setAccessToken(tokenPayload.access_token, expiresAtUtc);
+    if (!setAccessToken(tokenPayload.access_token, expiresAtUtc)) {
+      clearOidcTempState();
+      throw new Error("Failed to persist access token in sessionStorage.");
+    }
     clearOidcTempState();
 
     await loadCurrentUser(true);

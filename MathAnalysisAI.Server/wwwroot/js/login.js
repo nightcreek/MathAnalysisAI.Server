@@ -53,7 +53,7 @@
 
   async function detectAuthMode() {
     if (window.Auth && window.Auth.loadCurrentUser) {
-      await window.Auth.loadCurrentUser();
+      await window.Auth.loadCurrentUser(true);
     }
 
     var user = window.Auth && window.Auth.getCurrentUser ? window.Auth.getCurrentUser() : null;
@@ -97,6 +97,44 @@
 
     authMode = "unavailable";
     authModeErrorMessage = "当前认证模式无法识别，请联系管理员检查配置。";
+  }
+
+  function readPersistedAccessToken() {
+    try {
+      return sessionStorage.getItem(window.MathAnalysisAuthStorageKeys.accessToken) || "";
+    } catch (err) {
+      console.error("[Login] Failed to read persisted access token from sessionStorage.", err);
+      throw new Error("浏览器无法保存登录状态，请检查会话存储设置后重试。");
+    }
+  }
+
+  async function persistAuthenticatedSession(result, source) {
+    var accessToken = result && result.accessToken ? String(result.accessToken).trim() : "";
+    if (!accessToken) {
+      throw new Error("服务器未返回有效的 accessToken。");
+    }
+
+    console.info("[Login] " + source + " accessToken:", accessToken);
+
+    var persisted = window.Auth.setAccessToken(accessToken, result.expiresAtUtc);
+    var storedToken = readPersistedAccessToken();
+    if (!persisted || storedToken !== accessToken) {
+      console.error("[Login] Access token persistence verification failed.", {
+        source: source,
+        persisted: persisted,
+        storedTokenLength: storedToken.length,
+        accessTokenLength: accessToken.length
+      });
+      if (window.Auth && window.Auth.clearAccessToken) {
+        window.Auth.clearAccessToken();
+      }
+      throw new Error("登录状态保存失败，请检查浏览器会话存储后重试。");
+    }
+
+    await window.Auth.loadCurrentUser(true);
+    if (!window.Auth.getCurrentUser || !window.Auth.getCurrentUser()) {
+      throw new Error("登录成功，但用户信息加载失败。");
+    }
   }
 
   function applyAuthModeUI() {
@@ -254,8 +292,7 @@
 
     try {
       var result = await Api.postJson("/api/auth/login", payload);
-      window.Auth.setAccessToken(result.accessToken, result.expiresAtUtc);
-      await window.Auth.loadCurrentUser(true);
+      await persistAuthenticatedSession(result, "login");
       renderUserInfo(window.Auth.getCurrentUser());
       UI.showStatus(status, "登录成功，正在跳转…", false);
       setTimeout(function () {
@@ -298,8 +335,7 @@
         studentNumber: studentNumber || null
       });
 
-      window.Auth.setAccessToken(result.accessToken, result.expiresAtUtc);
-      await window.Auth.loadCurrentUser(true);
+      await persistAuthenticatedSession(result, "register");
       renderUserInfo(window.Auth.getCurrentUser());
       UI.showStatus(status, "注册成功，正在跳转…", false);
       setTimeout(function () {

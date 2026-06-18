@@ -21,8 +21,8 @@ window.Api = (function () {
 
   function buildHeaders(extraHeaders, contentType) {
     var headers = new Headers(extraHeaders || {});
-    var token = readAccessToken();
-    if (token && !headers.has("Authorization")) {
+    var token = String(readAccessToken() || "").trim();
+    if (token && token.length > 10 && !headers.has("Authorization")) {
       headers.set("Authorization", "Bearer " + token);
     }
     if (contentType && !headers.has("Content-Type")) {

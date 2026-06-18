@@ -209,12 +209,19 @@
     window.location.href = "/login.html";
   }
 
-  document.addEventListener("DOMContentLoaded", async function () {
+  async function bootstrapNavigation() {
+    var nav = document.querySelector(".top-nav");
+    if (nav) {
+      nav.setAttribute("aria-busy", "true");
+    }
+
     try {
       if (window.Auth && window.Auth.loadCurrentUser) {
-        await window.Auth.loadCurrentUser();
+        await window.Auth.loadCurrentUser(true);
       }
-    } catch (_) {}
+    } catch (err) {
+      console.error("[Nav] Failed to hydrate auth state before rendering navigation.", err);
+    }
 
     var auth = window.Auth;
     var user = auth ? auth.getCurrentUser() : null;
@@ -222,5 +229,21 @@
     setActiveNav();
     renderTopNavUserArea();
     guardDevPage();
+    document.body.setAttribute("data-auth-hydrated", "true");
+    if (nav) {
+      nav.setAttribute("aria-busy", "false");
+    }
+  }
+
+  document.addEventListener("DOMContentLoaded", function () {
+    document.body.setAttribute("data-auth-hydrated", "false");
+    bootstrapNavigation().catch(function (err) {
+      console.error("[Nav] Navigation bootstrap failed.", err);
+      var nav = document.querySelector(".top-nav");
+      if (nav) {
+        nav.setAttribute("aria-busy", "false");
+      }
+      document.body.setAttribute("data-auth-hydrated", "true");
+    });
   });
 })();
