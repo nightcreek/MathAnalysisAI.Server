@@ -28,6 +28,14 @@
     { href: "/admin.html", label: "管理", roles: ["admin"] }
   ];
 
+  function getCurrentNavLabel() {
+    var current = normalizePath(window.location.pathname);
+    var matched = standardNavLinks.find(function (item) {
+      return item.href === current;
+    });
+    return matched ? matched.label : "当前页面";
+  }
+
   function normalizePath(pathname) {
     if (!pathname || pathname === "/") return "/index.html";
     return routeMap[pathname] || pathname;
@@ -43,11 +51,18 @@
   function normalizeTopNavLinks(user) {
     var nav = document.querySelector(".top-nav");
     if (!nav) return;
+    var currentLabel = getCurrentNavLabel();
 
     nav.innerHTML =
+      "<div class='top-nav-head'>" +
       "<div class='brand'>" +
       "<a class='brand-link' href='/index.html'>数学分析智能体</a>" +
       "<span class='brand-subtitle'>MathAnalysisAI</span>" +
+      "</div>" +
+      "<div class='top-nav-head-actions'>" +
+      "<span class='top-nav-current' aria-current='page'>" + currentLabel + "</span>" +
+      "<button type='button' class='mobile-nav-toggle' aria-expanded='false' aria-label='打开导航菜单'>菜单</button>" +
+      "</div>" +
       "</div>" +
       "<div class='nav-links'></div>" +
       "<div class='top-nav-user'></div>";
@@ -67,6 +82,67 @@
         linksHost.appendChild(link);
       }
     });
+  }
+
+  function setMobileNavOpenState(nav, isOpen) {
+    if (!nav) return;
+
+    var isMobile = window.matchMedia("(max-width: 768px)").matches;
+    var toggle = nav.querySelector(".mobile-nav-toggle");
+    var linksHost = nav.querySelector(".nav-links");
+    var userArea = nav.querySelector(".top-nav-user");
+
+    nav.classList.toggle("nav-collapsed", isMobile);
+    nav.classList.toggle("nav-open", isMobile && !!isOpen);
+
+    if (toggle) {
+      toggle.hidden = !isMobile;
+      toggle.setAttribute("aria-expanded", isMobile && !!isOpen ? "true" : "false");
+      toggle.textContent = isMobile && !!isOpen ? "收起" : "菜单";
+      toggle.setAttribute("aria-label", isMobile && !!isOpen ? "收起导航菜单" : "打开导航菜单");
+    }
+
+    if (linksHost) {
+      linksHost.hidden = isMobile && !isOpen;
+    }
+
+    if (userArea) {
+      userArea.hidden = isMobile && !isOpen;
+    }
+  }
+
+  function ensureMobileNavBinding() {
+    var nav = document.querySelector(".top-nav");
+    if (!nav || nav.__mobileNavBound) {
+      setMobileNavOpenState(nav, nav && nav.classList.contains("nav-open"));
+      return;
+    }
+
+    nav.addEventListener("click", function (event) {
+      var toggle = event.target.closest(".mobile-nav-toggle");
+      if (toggle) {
+        var shouldOpen = !nav.classList.contains("nav-open");
+        setMobileNavOpenState(nav, shouldOpen);
+        return;
+      }
+
+      if (window.matchMedia("(max-width: 768px)").matches && event.target.closest(".top-nav-link, .top-nav-auth-link")) {
+        setMobileNavOpenState(nav, false);
+      }
+    });
+
+    var resizeHandler = function () {
+      if (window.matchMedia("(max-width: 768px)").matches) {
+        setMobileNavOpenState(nav, nav.classList.contains("nav-open"));
+      } else {
+        setMobileNavOpenState(nav, false);
+      }
+    };
+
+    window.addEventListener("resize", resizeHandler);
+    nav.__mobileNavBound = true;
+    nav.__mobileNavResizeHandler = resizeHandler;
+    setMobileNavOpenState(nav, false);
   }
 
   function getUserText(user) {
@@ -92,6 +168,7 @@
       normalizeTopNavLinks(newUser);
       setActiveNav();
       renderTopNavUserArea();
+      ensureMobileNavBinding();
     } catch (err) {
       console.error("Impersonation failed:", err);
     }
@@ -228,6 +305,7 @@
     normalizeTopNavLinks(user);
     setActiveNav();
     renderTopNavUserArea();
+    ensureMobileNavBinding();
     guardDevPage();
     document.body.setAttribute("data-auth-hydrated", "true");
     if (nav) {
