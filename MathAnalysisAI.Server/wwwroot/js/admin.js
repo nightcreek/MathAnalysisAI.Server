@@ -202,7 +202,7 @@
 
   async function updateUserRole(userId, newRole, selectEl) {
     try {
-      await Api.postJson("/api/admin/users/" + userId + "/role", { role: newRole }, "PUT");
+      await Api.putJson("/api/admin/users/" + userId + "/role", { role: newRole });
       selectEl.setAttribute("data-current-role", newRole);
     } catch (err) {
       var currentRole = selectEl.getAttribute("data-current-role");

@@ -1,9 +1,11 @@
 using MathAnalysisAI.Server.Data;
 using MathAnalysisAI.Server.DTOs.Admin;
-using MathAnalysisAI.Server.Filters;
 using MathAnalysisAI.Server.Models;
 using MathAnalysisAI.Server.Options;
 using MathAnalysisAI.Server.Services.Admin;
+using MathAnalysisAI.Server.Services.Auth;
+using MathAnalysisAI.Server.Services.ExceptionHandling;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
@@ -12,29 +14,36 @@ namespace MathAnalysisAI.Server.Controllers;
 
 [ApiController]
 [Route("api/admin")]
-[RequireAuth]
+[Authorize(Policy = AuthPolicies.AuthenticatedUser)]
 public class AdminController : ControllerBase
 {
     private readonly AdminService _adminService;
     private readonly ApplicationDbContext _db;
     private readonly AuthOptions _authOptions;
+    private readonly IUserContext _userContext;
 
-    public AdminController(AdminService adminService, ApplicationDbContext db, IOptions<AuthOptions> authOptions)
+    public AdminController(
+        AdminService adminService,
+        ApplicationDbContext db,
+        IOptions<AuthOptions> authOptions,
+        IUserContext userContext)
     {
         _adminService = adminService;
         _db = db;
         _authOptions = authOptions.Value ?? new AuthOptions();
+        _userContext = userContext;
     }
 
     [HttpGet("dashboard")]
+    [Authorize(Policy = AuthPolicies.AdminOnly)]
     public async Task<IActionResult> GetDashboard(CancellationToken cancellationToken)
     {
-        if (!IsAdmin()) return Forbid();
         var dashboard = await _adminService.GetDashboardAsync(cancellationToken);
         return Ok(dashboard);
     }
 
     [HttpGet("users")]
+    [Authorize(Policy = AuthPolicies.AdminOnly)]
     public async Task<IActionResult> ListUsers(
         [FromQuery] string? search,
         [FromQuery] string? role,
@@ -42,8 +51,6 @@ public class AdminController : ControllerBase
         [FromQuery] int pageSize = 20,
         CancellationToken cancellationToken = default)
     {
-        if (!IsAdmin()) return Forbid();
-
         var users = await _adminService.ListUsersAsync(search, role, page, pageSize, cancellationToken);
         var total = await _adminService.GetUserCountAsync(search, role, cancellationToken);
 
@@ -51,30 +58,32 @@ public class AdminController : ControllerBase
     }
 
     [HttpPut("users/{userId:int}/role")]
+    [Authorize(Policy = AuthPolicies.AdminOnly)]
     public async Task<IActionResult> UpdateUserRole(
         int userId,
         [FromBody] UpdateUserRoleRequestDto request,
         CancellationToken cancellationToken)
     {
-        if (!IsAdmin()) return Forbid();
-
         if (!ModelState.IsValid)
+        {
             return ValidationProblem(ModelState);
+        }
 
         var success = await _adminService.UpdateUserRoleAsync(userId, request.Role, cancellationToken);
         if (!success)
-            return NotFound(new { message = "User not found or invalid role." });
+        {
+            return this.ApiError(StatusCodes.Status404NotFound, "ADMIN_USER_NOT_FOUND_OR_ROLE_INVALID", "User not found or invalid role.");
+        }
 
         return Ok(new { message = "Role updated successfully." });
     }
 
     [HttpPost("teachers")]
+    [Authorize(Policy = AuthPolicies.AdminOnly)]
     public async Task<ActionResult> CreateTeacher(
         [FromBody] CreateTeacherRequestDto request,
         CancellationToken cancellationToken)
     {
-        if (!IsAdminOrTeacher()) return Forbid();
-
         var (success, message, userId) = await _adminService.CreateTeacherAsync(
             request.Username.Trim(),
             request.Password,
@@ -83,35 +92,63 @@ public class AdminController : ControllerBase
             cancellationToken);
 
         if (!success)
-            return BadRequest(new { message });
+        {
+            return this.ApiError(StatusCodes.Status400BadRequest, "ADMIN_CREATE_TEACHER_FAILED", message);
+        }
 
         return Ok(new { userId, username = request.Username.Trim(), message });
     }
 
     [HttpPost("import-students")]
+    [Authorize(Policy = AuthPolicies.TeacherOrAdmin)]
     public async Task<ActionResult> ImportStudents(
         [FromBody] ImportStudentsRequestDto request,
         CancellationToken cancellationToken)
     {
-        if (!IsAdminOrTeacher()) return Forbid();
-
         if (request.Students == null || request.Students.Count == 0)
-            return BadRequest(new { message = "No students to import." });
+        {
+            return this.ApiError(StatusCodes.Status400BadRequest, "ADMIN_NO_STUDENTS", "No students to import.");
+        }
+
+        var currentUser = await _userContext.GetCurrentUserAsync(cancellationToken);
+        if (currentUser == null)
+        {
+            return this.ApiError(StatusCodes.Status401Unauthorized, "AUTH_NOT_LOGGED_IN", "Not logged in.");
+        }
+
+        var isAdmin = string.Equals(currentUser.Role, AppUserRole.Admin, StringComparison.OrdinalIgnoreCase);
+        var effectiveTeacherId = request.TeacherId;
+
+        if (isAdmin)
+        {
+            if (effectiveTeacherId <= 0)
+            {
+                return this.ApiError(StatusCodes.Status400BadRequest, "ADMIN_TEACHER_REQUIRED", "TeacherId is required.");
+            }
+        }
+        else
+        {
+            if (request.TeacherId > 0 && request.TeacherId != currentUser.Id)
+            {
+                return this.ApiError(StatusCodes.Status403Forbidden, "ADMIN_TEACHER_SCOPE_FORBIDDEN", "Teachers can only import students into their own class.");
+            }
+
+            effectiveTeacherId = currentUser.Id;
+        }
 
         var (created, skipped, errors) = await _adminService.ImportStudentsAsync(
-            request.TeacherId,
+            effectiveTeacherId,
             request.Students,
             _authOptions.BcryptWorkFactor,
             cancellationToken);
 
-        return Ok(new { created, skipped, errors, total = request.Students.Count });
+        return Ok(new { created, skipped, errors, total = request.Students.Count, teacherId = effectiveTeacherId });
     }
 
     [HttpGet("teachers")]
+    [Authorize(Policy = AuthPolicies.AdminOnly)]
     public async Task<ActionResult> ListTeachers(CancellationToken cancellationToken)
     {
-        if (!IsAdminOrTeacher()) return Forbid();
-
         var teachers = await _db.AppUsers
             .AsNoTracking()
             .Where(x => x.Role == AppUserRole.Teacher || x.Role == AppUserRole.Admin)
@@ -131,11 +168,22 @@ public class AdminController : ControllerBase
     }
 
     [HttpGet("teachers/{teacherId:int}/students")]
+    [Authorize(Policy = AuthPolicies.TeacherOrAdmin)]
     public async Task<ActionResult> ListTeacherStudents(
         int teacherId,
         CancellationToken cancellationToken)
     {
-        if (!IsAdminOrTeacher()) return Forbid();
+        var currentUser = await _userContext.GetCurrentUserAsync(cancellationToken);
+        if (currentUser == null)
+        {
+            return this.ApiError(StatusCodes.Status401Unauthorized, "AUTH_NOT_LOGGED_IN", "Not logged in.");
+        }
+
+        var isAdmin = string.Equals(currentUser.Role, AppUserRole.Admin, StringComparison.OrdinalIgnoreCase);
+        if (!isAdmin && teacherId != currentUser.Id)
+        {
+            return this.ApiError(StatusCodes.Status403Forbidden, "ADMIN_TEACHER_SCOPE_FORBIDDEN", "Teachers can only view their own students.");
+        }
 
         var students = await _db.AppUsers
             .AsNoTracking()
@@ -152,20 +200,5 @@ public class AdminController : ControllerBase
             .ToListAsync(cancellationToken);
 
         return Ok(students);
-    }
-
-    private bool IsAdmin()
-    {
-        var currentUser = HttpContext.GetCurrentUser();
-        return currentUser != null
-            && string.Equals(currentUser.Role, "admin", StringComparison.OrdinalIgnoreCase);
-    }
-
-    private bool IsAdminOrTeacher()
-    {
-        var currentUser = HttpContext.GetCurrentUser();
-        return currentUser != null
-            && (string.Equals(currentUser.Role, "admin", StringComparison.OrdinalIgnoreCase)
-                || string.Equals(currentUser.Role, "teacher", StringComparison.OrdinalIgnoreCase));
     }
 }

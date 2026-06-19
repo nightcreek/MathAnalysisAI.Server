@@ -54,9 +54,6 @@
       html += "<div><strong>分块数量：</strong>" + UI.escapeHtml(chunkCount) + "</div>";
       html += "<div><strong>上传时间：</strong>" + UI.escapeHtml(formatDateTime(item.uploadedAt)) + "</div>";
       html += "<div><strong>解析说明：</strong>" + UI.escapeHtml(parseMessage) + "</div>";
-      if (item.downloadUrl) {
-        html += "<div class='actions'><a class='jump-link' href='" + UI.escapeHtml(item.downloadUrl) + "' target='_blank' rel='noopener'>下载/查看原文件 →</a></div>";
-      }
       if (showOcrHint) {
         html += "<div class='hint warning-hint'>该 PDF 可能是扫描版，后续需要 OCR 处理。</div>";
       }
@@ -91,6 +88,13 @@
     container.innerHTML = html;
   }
 
+  function renderBootstrapFailure(message, traceId) {
+    UI.renderBootstrapError("#materialsListContainer", message, function () {
+      window.AppConfig.clearCourseCache();
+      initMaterialsPage();
+    }, traceId);
+  }
+
   async function loadCourseMaterials() {
     const statusEl = UI.qs("#materialsListStatus");
     const chapterSelect = UI.qs("#materialsListChapterSelect");
@@ -106,71 +110,91 @@
     const params = new URLSearchParams();
     const courseId = window.AppConfig && window.AppConfig.resolveCourseId ? window.AppConfig.resolveCourseId() : null;
     if (!courseId) {
-      const courses = window.AppConfig && window.AppConfig.getCachedCourses ? window.AppConfig.getCachedCourses() : [];
-      if (courses && courses.length) {
-        params.set("courseId", String(courses[0].id));
-      }
-    } else {
-      params.set("courseId", String(courseId));
+      const state = window.AppConfig.getCourseLoadState();
+      renderBootstrapFailure(state.message || "课程列表尚未准备好。", state.traceId || "");
+      UI.showStatus(statusEl, "加载失败。", true);
+      return;
     }
+
+    params.set("courseId", String(courseId));
     params.set("take", "50");
 
-    const chapterValue = chapterSelect.value;
-    if (chapterValue) params.set("chapterId", chapterValue);
-
-    const parseStatusValue = parseStatusSelect.value;
-    if (parseStatusValue) params.set("parseStatus", parseStatusValue);
+    if (chapterSelect.value) params.set("chapterId", chapterSelect.value);
+    if (parseStatusSelect.value) params.set("parseStatus", parseStatusSelect.value);
 
     try {
       const data = await Api.getJson("/api/course-materials?" + params.toString());
       renderList(data);
       UI.showStatus(statusEl, "已刷新。", false);
-    } catch (_) {
-      container.className = "status error";
-      container.textContent = "资料列表加载失败，请稍后重试。";
+    } catch (err) {
+      if (err && err.isAuthRequired) {
+        UI.renderLoginRequired(container, UI.formatApiErrorMessage(err, "materials"), function () {
+          window.location.href = "/login.html";
+        });
+      } else {
+        UI.renderErrorPanel(container, {
+          title: "资料列表加载失败",
+          message: UI.formatApiErrorMessage(err, "materials"),
+          traceId: err && err.traceId ? err.traceId : "",
+          actionLabel: "重试",
+          onAction: loadCourseMaterials
+        });
+      }
       UI.showStatus(statusEl, "加载失败。", true);
     }
   }
 
   async function loadMaterialsChapters() {
-    const courseId = window.AppConfig && window.AppConfig.resolveCourseId ? window.AppConfig.resolveCourseId() : null;
-    if (!courseId) {
-      const courses = window.AppConfig && window.AppConfig.getCachedCourses ? window.AppConfig.getCachedCourses() : [];
-      if (courses && courses.length) {
-        await loadChaptersForSelect(String(courses[0].id));
-      }
+    const courseState = window.AppConfig.getCourseLoadState();
+    if (courseState.status === "degraded") {
+      renderBootstrapFailure(courseState.message, courseState.traceId);
       return;
     }
-    await loadChaptersForSelect(String(courseId));
-  }
 
-  async function loadChaptersForSelect(courseId) {
-    try {
-      const chapters = await Api.getJson("/api/courses/" + courseId + "/chapters");
-      const listSelect = UI.qs("#materialsListChapterSelect");
-      if (listSelect) {
-        let listHtml = "<option value=''>全部章节</option>";
-        if (Array.isArray(chapters)) {
-          chapters.forEach(function (ch) {
-            listHtml += "<option value='" + ch.id + "'>" + UI.escapeHtml(ch.title || ch.name || "") + "</option>";
-          });
+    let courseId = window.AppConfig && window.AppConfig.resolveCourseId ? window.AppConfig.resolveCourseId() : null;
+    if (!courseId) {
+      try {
+        const courses = await window.AppConfig.fetchCourses();
+        if (courses && courses.length) {
+          courseId = courses[0].id;
         }
-        listSelect.innerHTML = listHtml;
+      } catch (_) {
+        renderBootstrapFailure(window.AppConfig.getCourseLoadState().message, window.AppConfig.getCourseLoadState().traceId);
+        return;
       }
-    } catch (_) {
-      console.warn("Failed to load chapters.");
+    }
+
+    if (!courseId) {
+      renderBootstrapFailure("当前没有可用课程。", "");
+      return;
+    }
+
+    try {
+      const result = await Api.getJsonDetailed("/api/courses/" + courseId + "/chapters");
+      const chapters = Array.isArray(result.data) ? result.data : [];
+      const listSelect = UI.qs("#materialsListChapterSelect");
+      if (!listSelect) return;
+
+      if (result.meta && result.meta.degraded) {
+        UI.renderBootstrapError("#materialsListContainer", "章节列表当前处于降级状态，请稍后重试。", loadMaterialsChapters, result.meta.traceId);
+      }
+
+      let listHtml = "<option value=''>全部章节</option>";
+      chapters.forEach(function (ch) {
+        listHtml += "<option value='" + ch.id + "'>" + UI.escapeHtml(ch.title || ch.name || "") + "</option>";
+      });
+      listSelect.innerHTML = listHtml;
+    } catch (err) {
+      UI.renderBootstrapError("#materialsListContainer", UI.formatApiErrorMessage(err, "bootstrap"), loadMaterialsChapters, err && err.traceId ? err.traceId : "");
     }
   }
 
   function switchMaterialsPane(view) {
     document.querySelectorAll(".materials-pane").forEach(function (pane) {
-      const match = pane.getAttribute("data-materials-pane") === view;
-      pane.style.display = match ? "" : "none";
+      pane.style.display = pane.getAttribute("data-materials-pane") === view ? "" : "none";
     });
     document.querySelectorAll("[data-materials-view]").forEach(function (btn) {
-      const match = btn.getAttribute("data-materials-view") === view;
-      if (match) btn.classList.add("is-active");
-      else btn.classList.remove("is-active");
+      btn.classList.toggle("is-active", btn.getAttribute("data-materials-view") === view);
     });
   }
 
@@ -186,18 +210,9 @@
 
     document.querySelectorAll("[data-materials-view]").forEach(function (btn) {
       btn.addEventListener("click", function () {
-        const view = btn.getAttribute("data-materials-view");
-        switchMaterialsPane(view);
+        switchMaterialsPane(btn.getAttribute("data-materials-view"));
       });
     });
-  }
-
-  function initMaterialsPage() {
-    if (!UI.qs("#materialsListContainer")) return;
-    bindMaterialEvents();
-    loadMaterialsChapters();
-    loadCourseMaterials();
-    fetchNetworkResources();
   }
 
   async function fetchNetworkResources() {
@@ -207,17 +222,43 @@
     container.innerHTML = "<div class='hint'>加载中…</div>";
 
     var courseId = window.AppConfig && window.AppConfig.resolveCourseId ? window.AppConfig.resolveCourseId() : null;
-    var params = "";
-    if (courseId) {
-      params = "?courseId=" + encodeURIComponent(courseId);
-    }
+    var params = courseId ? ("?courseId=" + encodeURIComponent(courseId)) : "";
 
     try {
-      var data = await Api.getJson("/api/resources" + params);
-      renderNetworkResources(data);
-    } catch (_) {
-      container.innerHTML = "<div class='hint'>网络资源加载失败，请稍后重试。</div>";
+      var result = await Api.getJsonDetailed("/api/resources" + params);
+      if (result.meta && result.meta.degraded) {
+        UI.renderBootstrapError(container, "网络资源当前处于降级状态，请稍后重试。", fetchNetworkResources, result.meta.traceId);
+        return;
+      }
+      renderNetworkResources(result.data);
+    } catch (err) {
+      UI.renderErrorPanel(container, {
+        title: "网络资源加载失败",
+        message: UI.formatApiErrorMessage(err, "materials"),
+        traceId: err && err.traceId ? err.traceId : "",
+        actionLabel: "重试",
+        onAction: fetchNetworkResources
+      });
     }
+  }
+
+  async function initMaterialsPage() {
+    if (!UI.qs("#materialsListContainer")) return;
+    bindMaterialEvents();
+
+    try {
+      await window.AppConfig.fetchCourses();
+    } catch (_) {}
+
+    var courseState = window.AppConfig.getCourseLoadState();
+    if (courseState.status === "degraded" || courseState.status === "error") {
+      renderBootstrapFailure(courseState.message || "课程列表加载失败。", courseState.traceId || "");
+      return;
+    }
+
+    await loadMaterialsChapters();
+    await loadCourseMaterials();
+    await fetchNetworkResources();
   }
 
   document.addEventListener("DOMContentLoaded", function () {

@@ -1,7 +1,8 @@
 (function () {
   var authMode = null;
+  var authInfo = null;
   var showPasswordField = false;
-  var MIN_PASSWORD_LENGTH = 4;
+  var authModeErrorMessage = "";
 
   function renderUserInfo(user) {
     var info = UI.qs("#loginUserInfo");
@@ -17,35 +18,72 @@
     UI.setText(info, "当前用户：" + displayName + "（" + role + "）");
   }
 
+  function renderModeInfo() {
+    var section = UI.qs("#modeInfoSection");
+    var content = UI.qs("#modeInfoContent");
+    if (!section || !content) return;
+
+    if (!authInfo) {
+      section.style.display = "none";
+      return;
+    }
+
+    var mode = String(authInfo.mode || "").toLowerCase();
+    if (mode === "oidc" && authInfo.oidc) {
+      var scopes = Array.isArray(authInfo.oidc.scopes) ? authInfo.oidc.scopes.join(" ") : "";
+      content.textContent = "统一认证已启用。Authority: " + (authInfo.oidc.authority || "-") + " ClientId: " + (authInfo.oidc.clientId || "-") + " Scopes: " + scopes;
+      section.style.display = "block";
+      return;
+    }
+
+    if (mode === "developmentusername") {
+      content.textContent = "当前为开发期用户名登录模式。";
+      section.style.display = "block";
+      return;
+    }
+
+    if (mode === "localpassword") {
+      content.textContent = "当前为本地用户名密码登录模式。";
+      section.style.display = "block";
+      return;
+    }
+
+    section.style.display = "none";
+  }
+
   async function detectAuthMode() {
     if (window.Auth && window.Auth.loadCurrentUser) {
-      try { await window.Auth.loadCurrentUser(); } catch (_) {}
+      await window.Auth.loadCurrentUser(true);
     }
-    var user = window.Auth && window.Auth.getCurrentUser ? window.Auth.getCurrentUser() : null;
-    var fallbackApplied = window.Auth && window.Auth.isDevelopmentFallbackApplied
-      ? window.Auth.isDevelopmentFallbackApplied()
-      : false;
 
-    if (user && !fallbackApplied) {
+    var user = window.Auth && window.Auth.getCurrentUser ? window.Auth.getCurrentUser() : null;
+    if (user) {
       authMode = "authenticated";
       return;
     }
 
-    var serverMode = null;
     try {
-      var info = await Api.getJson("/api/auth/info");
-      if (info && info.mode) {
-        serverMode = String(info.mode).toLowerCase();
-      }
-    } catch (_) {}
+      authInfo = await window.Auth.loadAuthInfo(true);
+    } catch (err) {
+      authMode = "unavailable";
+      authModeErrorMessage = UI.formatApiErrorMessage(err, "login");
+      return;
+    }
 
-    if (serverMode === "local_password" || serverMode === "password") {
+    var serverMode = String((authInfo && authInfo.mode) || "").toLowerCase();
+    if (serverMode === "oidc") {
+      authMode = "oidc";
+      showPasswordField = false;
+      return;
+    }
+
+    if (serverMode === "localpassword") {
       authMode = "password_required";
       showPasswordField = true;
       return;
     }
 
-    if (serverMode === "development_username" || serverMode === "user_only") {
+    if (serverMode === "developmentusername") {
       authMode = "development_username";
       showPasswordField = false;
       return;
@@ -57,45 +95,113 @@
       return;
     }
 
-    authMode = "password_required";
-    showPasswordField = true;
+    authMode = "unavailable";
+    authModeErrorMessage = "当前认证模式无法识别，请联系管理员检查配置。";
+  }
+
+  function readPersistedAccessToken() {
+    try {
+      return sessionStorage.getItem(window.MathAnalysisAuthStorageKeys.accessToken) || "";
+    } catch (err) {
+      console.error("[Login] Failed to read persisted access token from sessionStorage.", err);
+      throw new Error("浏览器无法保存登录状态，请检查会话存储设置后重试。");
+    }
+  }
+
+  async function persistAuthenticatedSession(result, source) {
+    var accessToken = result && result.accessToken ? String(result.accessToken).trim() : "";
+    if (!accessToken) {
+      throw new Error("服务器未返回有效的 accessToken。");
+    }
+
+    console.info("[Login] " + source + " token length:", accessToken.length);
+
+    var persisted = window.Auth.setAccessToken(accessToken, result.expiresAtUtc);
+    var storedToken = readPersistedAccessToken();
+    if (!persisted || storedToken !== accessToken) {
+      console.error("[Login] Access token persistence verification failed.", {
+        source: source,
+        persisted: persisted,
+        storedTokenLength: storedToken.length,
+        accessTokenLength: accessToken.length
+      });
+      if (window.Auth && window.Auth.clearAccessToken) {
+        window.Auth.clearAccessToken();
+      }
+      throw new Error("登录状态保存失败，请检查浏览器会话存储后重试。");
+    }
+
+    await window.Auth.loadCurrentUser(true);
+    if (!window.Auth.getCurrentUser || !window.Auth.getCurrentUser()) {
+      throw new Error("登录成功，但用户信息加载失败。");
+    }
   }
 
   function applyAuthModeUI() {
+    var loginSection = UI.qs("#loginSection");
     var passwordGroup = UI.qs("#passwordFieldGroup");
     var registerSection = UI.qs("#registerSection");
     var pageHint = UI.qs("#loginPageHint");
-    var usernameInput = UI.qs("#loginUsernameInput");
+    var loginBtn = UI.qs("#loginSubmitBtn");
     var modeSwitch = UI.qs("#loginModeSwitch");
+    var loginFormGrid = UI.qs("#loginSection .form-grid");
+
+    renderModeInfo();
 
     if (authMode === "authenticated") {
-      if (pageHint) pageHint.textContent = "你已登录，可以正常使用所有功能。";
+      if (pageHint) pageHint.textContent = "你已登录，可以直接进入系统。";
       if (passwordGroup) passwordGroup.style.display = "none";
       if (registerSection) registerSection.style.display = "none";
       if (modeSwitch) modeSwitch.style.display = "none";
+      if (loginBtn) loginBtn.textContent = "进入首页";
       return;
     }
 
     if (authMode === "disabled") {
       if (pageHint) pageHint.textContent = "当前部署未启用登录入口，请联系管理员。";
+      if (loginFormGrid) loginFormGrid.style.display = "none";
+      if (registerSection) registerSection.style.display = "none";
+      if (modeSwitch) modeSwitch.style.display = "none";
+      if (loginBtn) loginBtn.style.display = "none";
+      return;
+    }
+
+    if (authMode === "oidc") {
+      if (pageHint) pageHint.textContent = "当前部署使用统一认证。点击下方按钮跳转到认证中心登录。";
+      if (loginFormGrid) loginFormGrid.style.display = "none";
       if (passwordGroup) passwordGroup.style.display = "none";
       if (registerSection) registerSection.style.display = "none";
       if (modeSwitch) modeSwitch.style.display = "none";
+      if (loginBtn) {
+        loginBtn.textContent = "使用统一认证登录";
+        loginBtn.style.display = "";
+      }
+      return;
+    }
+
+    if (authMode === "unavailable") {
+      if (pageHint) pageHint.textContent = authModeErrorMessage || "认证配置加载失败，请稍后重试。";
+      if (loginFormGrid) loginFormGrid.style.display = "none";
+      if (registerSection) registerSection.style.display = "none";
+      if (modeSwitch) modeSwitch.style.display = "none";
+      if (loginBtn) loginBtn.style.display = "none";
       return;
     }
 
     if (modeSwitch) modeSwitch.style.display = "";
+    if (loginFormGrid) loginFormGrid.style.display = "";
 
     if (authMode === "password_required") {
       if (pageHint) pageHint.textContent = "请使用用户名和密码登录。";
       if (passwordGroup) passwordGroup.style.display = "";
-      if (usernameInput) usernameInput.setAttribute("autocomplete", "username");
+      if (loginBtn) loginBtn.textContent = "登录";
       return;
     }
 
     if (pageHint) pageHint.textContent = "开发环境 - 输入用户名即可登录，也支持注册新账号。";
     showPasswordField = false;
     if (passwordGroup) passwordGroup.style.display = "none";
+    if (loginBtn) loginBtn.textContent = "登录";
   }
 
   function switchTab(tab) {
@@ -105,16 +211,14 @@
     var loginStatus = UI.qs("#loginStatus");
     var registerStatus = UI.qs("#registerStatus");
 
-    if (modeSwitch) {
-      var buttons = modeSwitch.querySelectorAll(".mode-switch-btn");
-      buttons.forEach(function (btn) {
-        if (btn.getAttribute("data-tab") === tab) {
-          btn.classList.add("is-active");
-        } else {
-          btn.classList.remove("is-active");
-        }
-      });
+    if (!modeSwitch || modeSwitch.style.display === "none") {
+      return;
     }
+
+    var buttons = modeSwitch.querySelectorAll(".mode-switch-btn");
+    buttons.forEach(function (btn) {
+      btn.classList.toggle("is-active", btn.getAttribute("data-tab") === tab);
+    });
 
     if (tab === "register") {
       if (loginSection) loginSection.style.display = "none";
@@ -148,6 +252,23 @@
     var status = UI.qs("#loginStatus");
     var loginBtn = UI.qs("#loginSubmitBtn");
 
+    if (authMode === "authenticated") {
+      window.location.href = "/index.html";
+      return;
+    }
+
+    if (authMode === "oidc") {
+      try {
+        loginBtn.disabled = true;
+        UI.showStatus(status, "正在跳转到统一认证中心…", false);
+        await window.Auth.beginOidcLogin();
+      } catch (err) {
+        UI.showStatus(status, UI.formatApiErrorMessage(err, "login"), true);
+        loginBtn.disabled = false;
+      }
+      return;
+    }
+
     var usernameValue = (username || "").trim();
     var passwordValue = (password || "").trim();
 
@@ -158,10 +279,6 @@
 
     if (showPasswordField && !passwordValue) {
       UI.showStatus(status, "请输入密码。", true);
-      return;
-    }
-    if (showPasswordField && passwordValue.length < MIN_PASSWORD_LENGTH) {
-      UI.showStatus(status, "密码长度不足 " + MIN_PASSWORD_LENGTH + " 位。", true);
       return;
     }
 
@@ -175,35 +292,17 @@
 
     try {
       var result = await Api.postJson("/api/auth/login", payload);
-
-      if (window.Auth && window.Auth.loadCurrentUser) {
-        await window.Auth.loadCurrentUser(true);
-      }
-
-      var user = window.Auth && window.Auth.getCurrentUser ? window.Auth.getCurrentUser() : null;
-      renderUserInfo(user);
+      await persistAuthenticatedSession(result, "login");
+      renderUserInfo(window.Auth.getCurrentUser());
       UI.showStatus(status, "登录成功，正在跳转…", false);
-
       setTimeout(function () {
         window.location.href = "/index.html";
-      }, 500);
+      }, 300);
     } catch (err) {
-      var msg = UI.formatApiErrorMessage(err, "login");
-      if (!err.status && err.message && err.message.toLowerCase().indexOf("failed to fetch") !== -1) {
-        msg = "无法连接服务器，请确认后端服务已启动。";
-      }
-      UI.showStatus(status, msg, true);
+      UI.showStatus(status, UI.formatApiErrorMessage(err, "login"), true);
     } finally {
       loginBtn.disabled = false;
     }
-  }
-
-  function loginWithCredentials() {
-    var input = UI.qs("#loginUsernameInput");
-    var passwordInput = UI.qs("#loginPasswordInput");
-    var username = input ? input.value : "";
-    var password = passwordInput ? passwordInput.value : "";
-    doLogin(username, password);
   }
 
   async function doRegister() {
@@ -220,129 +319,88 @@
       return;
     }
 
-    if (!password || password.length < MIN_PASSWORD_LENGTH) {
-      UI.showStatus(status, "请输入至少 " + MIN_PASSWORD_LENGTH + " 位的密码。", true);
+    if (!password) {
+      UI.showStatus(status, "请输入密码。", true);
       return;
     }
 
     registerBtn.disabled = true;
     UI.showStatus(status, "正在注册…", false);
 
-    var payload = {
-      username: username,
-      password: password,
-      realName: realName || null,
-      studentNumber: studentNumber || null
-    };
-
     try {
-      await Api.postJson("/api/auth/register", payload);
-      if (window.Auth && window.Auth.loadCurrentUser) {
-        await window.Auth.loadCurrentUser(true);
-      }
-      var user = window.Auth && window.Auth.getCurrentUser ? window.Auth.getCurrentUser() : null;
-      renderUserInfo(user);
+      var result = await Api.postJson("/api/auth/register", {
+        username: username,
+        password: password,
+        realName: realName || null,
+        studentNumber: studentNumber || null
+      });
+
+      await persistAuthenticatedSession(result, "register");
+      renderUserInfo(window.Auth.getCurrentUser());
       UI.showStatus(status, "注册成功，正在跳转…", false);
       setTimeout(function () {
         window.location.href = "/index.html";
-      }, 500);
+      }, 300);
     } catch (err) {
-      var msg = UI.formatApiErrorMessage(err, "register");
-      if (!err.status && err.message && err.message.toLowerCase().indexOf("failed to fetch") !== -1) {
-        msg = "无法连接服务器，请确认后端服务已启动。";
-      }
-      UI.showStatus(status, msg, true);
+      UI.showStatus(status, UI.formatApiErrorMessage(err, "register"), true);
     } finally {
       registerBtn.disabled = false;
     }
   }
 
   function bindEvents() {
-    var modeSwitch = UI.qs("#loginModeSwitch");
-    if (modeSwitch) {
-      modeSwitch.addEventListener("click", function (evt) {
-        var btn = evt.target.closest(".mode-switch-btn");
-        if (!btn) return;
-        var tab = btn.getAttribute("data-tab");
-        if (tab) switchTab(tab);
+    var loginBtn = UI.qs("#loginSubmitBtn");
+    if (loginBtn) {
+      loginBtn.addEventListener("click", function () {
+        var username = UI.qs("#loginUsernameInput") ? UI.qs("#loginUsernameInput").value : "";
+        var password = UI.qs("#loginPasswordInput") ? UI.qs("#loginPasswordInput").value : "";
+        doLogin(username, password);
       });
     }
-
-    var loginBtn = UI.qs("#loginSubmitBtn");
-    if (loginBtn) loginBtn.addEventListener("click", loginWithCredentials);
 
     var registerBtn = UI.qs("#registerSubmitBtn");
     if (registerBtn) registerBtn.addEventListener("click", doRegister);
 
-    var usernameInput = UI.qs("#loginUsernameInput");
-    var passwordInput = UI.qs("#loginPasswordInput");
-    if (usernameInput) {
-      usernameInput.addEventListener("keydown", function (evt) {
-        if (evt.key === "Enter") {
-          evt.preventDefault();
-          if (showPasswordField && passwordInput) {
-            passwordInput.focus();
-          } else {
-            loginWithCredentials();
-          }
-        }
+    UI.qsa(".mode-switch-btn").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        switchTab(btn.getAttribute("data-tab"));
       });
-    }
-    if (passwordInput) {
-      passwordInput.addEventListener("keydown", function (evt) {
-        if (evt.key === "Enter") {
-          evt.preventDefault();
-          loginWithCredentials();
-        }
+    });
+
+    var loginPasswordToggle = UI.qs("#loginPasswordToggle");
+    var loginPasswordInput = UI.qs("#loginPasswordInput");
+    if (loginPasswordToggle) {
+      loginPasswordToggle.addEventListener("click", function () {
+        togglePasswordVisibility(loginPasswordToggle, loginPasswordInput);
       });
     }
 
-    var registerUsernameInput = UI.qs("#registerUsernameInput");
+    var registerPasswordToggle = UI.qs("#registerPasswordToggle");
     var registerPasswordInput = UI.qs("#registerPasswordInput");
-    if (registerUsernameInput) {
-      registerUsernameInput.addEventListener("keydown", function (evt) {
-        if (evt.key === "Enter") {
-          evt.preventDefault();
-          if (registerPasswordInput) registerPasswordInput.focus();
-        }
-      });
-    }
-    if (registerPasswordInput) {
-      registerPasswordInput.addEventListener("keydown", function (evt) {
-        if (evt.key === "Enter") {
-          evt.preventDefault();
-          doRegister();
-        }
-      });
-    }
-
-    var loginToggle = UI.qs("#loginPasswordToggle");
-    if (loginToggle) {
-      loginToggle.addEventListener("click", function () {
-        togglePasswordVisibility(loginToggle, UI.qs("#loginPasswordInput"));
-      });
-    }
-    var registerToggle = UI.qs("#registerPasswordToggle");
-    if (registerToggle) {
-      registerToggle.addEventListener("click", function () {
-        togglePasswordVisibility(registerToggle, UI.qs("#registerPasswordInput"));
+    if (registerPasswordToggle) {
+      registerPasswordToggle.addEventListener("click", function () {
+        togglePasswordVisibility(registerPasswordToggle, registerPasswordInput);
       });
     }
   }
 
   async function initLoginPage() {
-    if (!UI.qs("#loginPageRoot")) return;
     bindEvents();
     await detectAuthMode();
     applyAuthModeUI();
-    switchTab("login");
+    renderUserInfo(window.Auth.getCurrentUser ? window.Auth.getCurrentUser() : null);
 
-    if (window.Auth && window.Auth.getCurrentUser) {
-      renderUserInfo(window.Auth.getCurrentUser());
+    var authState = window.Auth && window.Auth.getLastAuthState ? window.Auth.getLastAuthState() : null;
+    if (authState && authState.type === "expired") {
+      var status = UI.qs("#loginStatus");
+      UI.showStatus(status, authState.message || "当前登录已过期，请重新登录。", true);
     }
   }
 
   document.addEventListener("DOMContentLoaded", function () {
-    initLoginPage();
+    initLoginPage().catch(function (err) {
+      var status = UI.qs("#loginStatus");
+      UI.showStatus(status, UI.formatApiErrorMessage(err, "login"), true);
+    });
   });
 })();

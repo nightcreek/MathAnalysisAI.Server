@@ -1,16 +1,13 @@
 using Microsoft.AspNetCore.Diagnostics;
-using Microsoft.AspNetCore.Mvc;
 
 namespace MathAnalysisAI.Server.Services.ExceptionHandling;
 
 public class GlobalExceptionHandler : IExceptionHandler
 {
-    private readonly IHostEnvironment _environment;
     private readonly ILogger<GlobalExceptionHandler> _logger;
 
-    public GlobalExceptionHandler(IHostEnvironment environment, ILogger<GlobalExceptionHandler> logger)
+    public GlobalExceptionHandler(ILogger<GlobalExceptionHandler> logger)
     {
-        _environment = environment;
         _logger = logger;
     }
 
@@ -19,21 +16,31 @@ public class GlobalExceptionHandler : IExceptionHandler
         Exception exception,
         CancellationToken cancellationToken)
     {
-        _logger.LogError(exception, "Unhandled exception occurred. Path={Path}, Method={Method}",
-            httpContext.Request.Path, httpContext.Request.Method);
+        var (statusCode, errorCode, message, isRetryable) = ApiExceptionClassifier.Classify(exception);
+        var traceId = httpContext.TraceIdentifier;
 
-        httpContext.Response.StatusCode = StatusCodes.Status500InternalServerError;
-        httpContext.Response.ContentType = "application/problem+json";
-
-        var problemDetails = new ProblemDetails
+        if (statusCode >= StatusCodes.Status500InternalServerError)
         {
-            Status = StatusCodes.Status500InternalServerError,
-            Title = "An internal server error occurred.",
-            Detail = _environment.IsDevelopment() ? exception.ToString() : "An unexpected error occurred. Please try again later.",
-            Instance = httpContext.Request.Path
-        };
+            _logger.LogError(exception, "Unhandled exception occurred. Path={Path}, Method={Method}, TraceId={TraceId}",
+                httpContext.Request.Path, httpContext.Request.Method, traceId);
+        }
+        else
+        {
+            _logger.LogWarning(exception, "Request failed. Path={Path}, Method={Method}, TraceId={TraceId}",
+                httpContext.Request.Path, httpContext.Request.Method, traceId);
+        }
 
-        await httpContext.Response.WriteAsJsonAsync(problemDetails, cancellationToken);
+        httpContext.Response.StatusCode = statusCode;
+        httpContext.Response.ContentType = "application/json";
+        httpContext.Response.Headers["X-Trace-Id"] = traceId;
+
+        await httpContext.Response.WriteAsJsonAsync(new ApiErrorResponse
+        {
+            ErrorCode = errorCode,
+            Message = message,
+            TraceId = traceId,
+            IsRetryable = isRetryable
+        }, cancellationToken);
         return true;
     }
 }

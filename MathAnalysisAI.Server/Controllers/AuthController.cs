@@ -1,9 +1,9 @@
 using MathAnalysisAI.Server.Data;
 using MathAnalysisAI.Server.DTOs.Auth;
-using MathAnalysisAI.Server.Filters;
 using MathAnalysisAI.Server.Models;
 using MathAnalysisAI.Server.Options;
 using MathAnalysisAI.Server.Services.Auth;
+using MathAnalysisAI.Server.Services.ExceptionHandling;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
@@ -16,28 +16,29 @@ namespace MathAnalysisAI.Server.Controllers;
 [Route("api/[controller]")]
 public class AuthController : ControllerBase
 {
-    private const string SessionUserIdKey = "auth_user_id";
-
     private readonly ApplicationDbContext _db;
     private readonly IWebHostEnvironment _environment;
     private readonly AuthOptions _authOptions;
+    private readonly OidcOptions _oidcOptions;
     private readonly IUserContext _userContext;
+    private readonly ILocalJwtTokenService _localJwtTokenService;
 
     public AuthController(
         ApplicationDbContext db,
         IWebHostEnvironment environment,
         IOptions<AuthOptions> authOptions,
-        IUserContext userContext)
+        IOptions<OidcOptions> oidcOptions,
+        IUserContext userContext,
+        ILocalJwtTokenService localJwtTokenService)
     {
         _db = db;
         _environment = environment;
         _authOptions = authOptions.Value ?? new AuthOptions();
+        _oidcOptions = oidcOptions.Value ?? new OidcOptions();
         _userContext = userContext;
+        _localJwtTokenService = localJwtTokenService;
     }
 
-    /// <summary>
-    /// 暴露当前部署使用的认证模式，供前端决定是否显示密码字段。
-    /// </summary>
     [HttpGet("info")]
     [AllowAnonymous]
     public ActionResult GetAuthInfo()
@@ -45,34 +46,42 @@ public class AuthController : ControllerBase
         var mode = _authOptions.GetNormalizedMode();
         return Ok(new
         {
-            mode = mode,
+            mode,
             requirePassword = _authOptions.IsLocalPasswordMode(),
-            allowRegistration = _authOptions.AllowRegistration
-                && (_authOptions.IsLocalPasswordMode() || (_authOptions.IsDevelopmentUsernameMode() && _environment.IsDevelopment())),
-            isDevelopmentEnvironment = _environment.IsDevelopment()
+            allowRegistration = CanRegister(),
+            isDevelopmentEnvironment = _environment.IsDevelopment(),
+            oidc = _authOptions.IsOidcMode()
+                ? new
+                {
+                    authority = _oidcOptions.Authority,
+                    audience = _oidcOptions.Audience,
+                    clientId = _oidcOptions.ClientId,
+                    scopes = _oidcOptions.GetScopeList(),
+                    redirectPath = _oidcOptions.RedirectPath,
+                    postLogoutRedirectPath = _oidcOptions.PostLogoutRedirectPath,
+                    requireHttpsMetadata = _oidcOptions.RequireHttpsMetadata
+                }
+                : null
         });
     }
 
     [HttpGet("me")]
+    [Authorize(Policy = AuthPolicies.AuthenticatedUser)]
     public async Task<ActionResult<CurrentUserDto>> GetCurrentUser(CancellationToken cancellationToken)
     {
         var user = await _userContext.GetCurrentUserAsync(cancellationToken);
-        if (user != null)
+        if (user == null)
         {
-            return Ok(MapToCurrentUser(user));
+            return this.ApiError(StatusCodes.Status401Unauthorized, "AUTH_NOT_LOGGED_IN", "Not logged in.");
         }
 
-        return Unauthorized(new
-        {
-            message = "Not logged in.",
-            errorCode = "auth_not_logged_in",
-            isRetryable = false
-        });
+        return Ok(MapToCurrentUser(user));
     }
 
     [HttpPost("login")]
+    [AllowAnonymous]
     [EnableRateLimiting("login")]
-    public async Task<ActionResult<CurrentUserDto>> Login([FromBody] LoginRequestDto request, CancellationToken cancellationToken)
+    public async Task<ActionResult<AuthTokenResponseDto>> Login([FromBody] LoginRequestDto request, CancellationToken cancellationToken)
     {
         var mode = _authOptions.GetNormalizedMode();
 
@@ -81,56 +90,58 @@ public class AuthController : ControllerBase
             return ValidationProblem(ModelState);
         }
 
+        if (_authOptions.IsOidcMode() || _authOptions.IsDisabledMode())
+        {
+            return BuildAuthModeError(mode);
+        }
+
         var username = request.Username?.Trim();
         if (string.IsNullOrWhiteSpace(username))
         {
-            return BadRequest(new
-            {
-                message = "Username is required.",
-                errorCode = "auth_username_required",
-                isRetryable = false
-            });
+            return this.ApiError(StatusCodes.Status400BadRequest, "AUTH_USERNAME_REQUIRED", "Username is required.");
         }
 
-        var user = await _db.AppUsers
-            .FirstOrDefaultAsync(x => x.Username == username, cancellationToken);
-
+        var user = await _db.AppUsers.FirstOrDefaultAsync(x => x.Username == username, cancellationToken);
         if (user == null)
         {
-            return Unauthorized(new
-            {
-                message = "Invalid username or password.",
-                errorCode = "auth_invalid_credentials",
-                isRetryable = false
-            });
+            return this.ApiError(StatusCodes.Status401Unauthorized, "AUTH_INVALID_CREDENTIALS", "Invalid username or password.");
         }
 
         if (_authOptions.IsLocalPasswordMode())
         {
-            return HandleLocalPasswordLogin(user, request.Password);
+            var passwordValue = request.Password?.Trim() ?? string.Empty;
+            if (string.IsNullOrWhiteSpace(passwordValue))
+            {
+                return this.ApiError(StatusCodes.Status400BadRequest, "AUTH_PASSWORD_REQUIRED", "Password is required.");
+            }
+
+            if (string.IsNullOrWhiteSpace(user.PasswordHash) || !BCrypt.Net.BCrypt.Verify(passwordValue, user.PasswordHash))
+            {
+                return this.ApiError(StatusCodes.Status401Unauthorized, "AUTH_INVALID_CREDENTIALS", "Invalid username or password.");
+            }
+
+            return Ok(BuildTokenResponse(user));
         }
 
         if (_authOptions.IsDevelopmentUsernameMode() && _environment.IsDevelopment())
         {
-            HttpContext.Session.SetInt32(SessionUserIdKey, user.Id);
-            return Ok(MapToCurrentUser(user));
+            return Ok(BuildTokenResponse(user));
         }
 
-        return StatusCode(StatusCodes.Status503ServiceUnavailable, BuildAuthModeError(mode));
+        return BuildAuthModeError(mode);
     }
 
     [HttpPost("register")]
+    [AllowAnonymous]
     [EnableRateLimiting("login")]
-    public async Task<ActionResult<CurrentUserDto>> Register([FromBody] RegisterRequestDto request, CancellationToken cancellationToken)
+    public async Task<ActionResult<AuthTokenResponseDto>> Register([FromBody] RegisterRequestDto request, CancellationToken cancellationToken)
     {
         if (!CanRegister())
         {
-            return StatusCode(StatusCodes.Status503ServiceUnavailable, new
-            {
-                message = "Registration is not available in the current deployment mode.",
-                errorCode = "auth_registration_disabled",
-                isRetryable = false
-            });
+            return this.ApiError(
+                StatusCodes.Status503ServiceUnavailable,
+                "AUTH_REGISTRATION_DISABLED",
+                "Registration is not available in the current deployment mode.");
         }
 
         if (!ModelState.IsValid)
@@ -141,38 +152,22 @@ public class AuthController : ControllerBase
         var username = request.Username?.Trim();
         if (string.IsNullOrWhiteSpace(username))
         {
-            return BadRequest(new
-            {
-                message = "Username is required.",
-                errorCode = "auth_username_required",
-                isRetryable = false
-            });
+            return this.ApiError(StatusCodes.Status400BadRequest, "AUTH_USERNAME_REQUIRED", "Username is required.");
         }
 
         var password = request.Password?.Trim() ?? string.Empty;
         var passwordError = ValidatePasswordStrength(password);
         if (passwordError != null)
         {
-            return BadRequest(new
-            {
-                message = passwordError,
-                errorCode = "auth_weak_password",
-                isRetryable = false
-            });
+            return this.ApiError(StatusCodes.Status400BadRequest, "AUTH_WEAK_PASSWORD", passwordError);
         }
 
         var existing = await _db.AppUsers
             .AsNoTracking()
             .AnyAsync(x => x.Username == username, cancellationToken);
-
         if (existing)
         {
-            return Conflict(new
-            {
-                message = "Username is already taken.",
-                errorCode = "auth_username_taken",
-                isRetryable = false
-            });
+            return this.ApiError(StatusCodes.Status409Conflict, "AUTH_USERNAME_TAKEN", "Username is already taken.");
         }
 
         var user = new AppUser
@@ -190,21 +185,19 @@ public class AuthController : ControllerBase
         _db.AppUsers.Add(user);
         await _db.SaveChangesAsync(cancellationToken);
 
-        HttpContext.Session.SetInt32(SessionUserIdKey, user.Id);
-        return CreatedAtAction(nameof(GetCurrentUser), null, MapToCurrentUser(user));
+        return CreatedAtAction(nameof(GetCurrentUser), null, BuildTokenResponse(user));
     }
 
     [HttpPut("password")]
+    [Authorize(Policy = AuthPolicies.AuthenticatedUser)]
     public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordRequestDto request, CancellationToken cancellationToken)
     {
         if (!_authOptions.IsLocalPasswordMode() && !(_authOptions.IsDevelopmentUsernameMode() && _environment.IsDevelopment()))
         {
-            return StatusCode(StatusCodes.Status503ServiceUnavailable, new
-            {
-                message = "Password management is not available in the current deployment mode.",
-                errorCode = "auth_password_not_available",
-                isRetryable = false
-            });
+            return this.ApiError(
+                StatusCodes.Status503ServiceUnavailable,
+                "AUTH_PASSWORD_NOT_AVAILABLE",
+                "Password management is not available in the current deployment mode.");
         }
 
         if (!ModelState.IsValid)
@@ -215,147 +208,151 @@ public class AuthController : ControllerBase
         var currentUser = await _userContext.GetCurrentUserAsync(cancellationToken);
         if (currentUser == null)
         {
-            return Unauthorized(new
-            {
-                message = "You must be logged in to change your password.",
-                errorCode = "auth_not_logged_in",
-                isRetryable = false
-            });
+            return this.ApiError(StatusCodes.Status401Unauthorized, "AUTH_NOT_LOGGED_IN", "You must be logged in to change your password.");
+        }
+
+        var trackedUser = await _db.AppUsers.FirstOrDefaultAsync(x => x.Id == currentUser.Id, cancellationToken);
+        if (trackedUser == null)
+        {
+            return this.ApiError(StatusCodes.Status404NotFound, "AUTH_USER_NOT_FOUND", "Current user record was not found.");
         }
 
         var newPassword = request.NewPassword?.Trim() ?? string.Empty;
         var passwordError = ValidatePasswordStrength(newPassword);
         if (passwordError != null)
         {
-            return BadRequest(new
-            {
-                message = passwordError,
-                errorCode = "auth_weak_password",
-                isRetryable = false
-            });
+            return this.ApiError(StatusCodes.Status400BadRequest, "AUTH_WEAK_PASSWORD", passwordError);
         }
 
-        currentUser.PasswordHash = BCrypt.Net.BCrypt.HashPassword(newPassword, _authOptions.BcryptWorkFactor);
+        trackedUser.PasswordHash = BCrypt.Net.BCrypt.HashPassword(newPassword, _authOptions.BcryptWorkFactor);
         await _db.SaveChangesAsync(cancellationToken);
 
         return Ok(new { success = true });
     }
 
     [HttpPost("logout")]
+    [AllowAnonymous]
     public IActionResult Logout()
     {
-        HttpContext.Session.Remove(SessionUserIdKey);
-        HttpContext.Session.Remove("impersonated_role");
         return Ok(new { success = true });
     }
 
     [HttpPost("impersonate")]
+    [Authorize(Policy = AuthPolicies.AdminOnly)]
     public IActionResult Impersonate([FromBody] ImpersonateRequestDto request)
     {
-        var user = HttpContext.GetCurrentUser();
-        if (user == null)
-            return Unauthorized(new { message = "Not logged in." });
-
-        if (!string.Equals(user.Role, AppUserRole.Admin, StringComparison.OrdinalIgnoreCase))
-            return StatusCode(StatusCodes.Status403Forbidden, new { message = "Only admin can impersonate." });
-
-        var role = request.Role?.Trim()?.ToLower();
+        var role = request.Role?.Trim()?.ToLowerInvariant();
         var validRoles = new HashSet<string> { "student", "teacher", "admin", "school_leader" };
 
         if (string.IsNullOrWhiteSpace(role))
         {
-            HttpContext.Session.Remove("impersonated_role");
             return Ok(new { role = (string?)null, message = "Impersonation cleared. Back to admin view." });
         }
 
         if (!validRoles.Contains(role))
-            return BadRequest(new { message = $"Invalid role: '{request.Role}'. Allowed: student, teacher, admin, school_leader." });
-
-        if (_userContext is CurrentUserService cus)
-            cus.SetImpersonatedRole(role);
-        else
-            HttpContext.Session.SetString("impersonated_role", role);
+        {
+            return this.ApiError(
+                StatusCodes.Status400BadRequest,
+                "AUTH_INVALID_IMPERSONATION_ROLE",
+                $"Invalid role: '{request.Role}'. Allowed: student, teacher, admin, school_leader.");
+        }
 
         return Ok(new { role, message = $"Now viewing as {role}." });
     }
 
     [HttpPost("join-class")]
+    [Authorize(Policy = AuthPolicies.AuthenticatedUser)]
     public async Task<IActionResult> JoinClass([FromBody] JoinClassRequestDto request, CancellationToken cancellationToken)
     {
         var currentUser = await _userContext.GetCurrentUserAsync(cancellationToken);
         if (currentUser == null)
-            return Unauthorized(new { message = "Not logged in." });
+        {
+            return this.ApiError(StatusCodes.Status401Unauthorized, "AUTH_NOT_LOGGED_IN", "Not logged in.");
+        }
 
         if (string.IsNullOrWhiteSpace(request.TeacherId) && string.IsNullOrWhiteSpace(request.TeacherUsername))
-            return BadRequest(new { message = "TeacherId or TeacherUsername is required." });
+        {
+            return this.ApiError(StatusCodes.Status400BadRequest, "AUTH_TEACHER_REQUIRED", "TeacherId or TeacherUsername is required.");
+        }
+
+        var trackedUser = await _db.AppUsers.FirstOrDefaultAsync(x => x.Id == currentUser.Id, cancellationToken);
+        if (trackedUser == null)
+        {
+            return this.ApiError(StatusCodes.Status404NotFound, "AUTH_USER_NOT_FOUND", "Current user record was not found.");
+        }
 
         AppUser? teacher = null;
-        if (!string.IsNullOrWhiteSpace(request.TeacherId) && int.TryParse(request.TeacherId, out var tId) && tId > 0)
-            teacher = await _db.AppUsers.FirstOrDefaultAsync(x => x.Id == tId
-                && (x.Role == AppUserRole.Teacher || x.Role == AppUserRole.Admin), cancellationToken);
+        if (!string.IsNullOrWhiteSpace(request.TeacherId)
+            && int.TryParse(request.TeacherId, out var teacherId)
+            && teacherId > 0)
+        {
+            teacher = await _db.AppUsers.FirstOrDefaultAsync(
+                x => x.Id == teacherId
+                    && (x.Role == AppUserRole.Teacher || x.Role == AppUserRole.Admin),
+                cancellationToken);
+        }
         else if (!string.IsNullOrWhiteSpace(request.TeacherUsername))
-            teacher = await _db.AppUsers.FirstOrDefaultAsync(x => x.Username == request.TeacherUsername.Trim()
-                && (x.Role == AppUserRole.Teacher || x.Role == AppUserRole.Admin), cancellationToken);
+        {
+            var teacherUsername = request.TeacherUsername.Trim();
+            teacher = await _db.AppUsers.FirstOrDefaultAsync(
+                x => x.Username == teacherUsername
+                    && (x.Role == AppUserRole.Teacher || x.Role == AppUserRole.Admin),
+                cancellationToken);
+        }
 
         if (teacher == null)
-            return NotFound(new { message = "Teacher not found." });
+        {
+            return this.ApiError(StatusCodes.Status404NotFound, "AUTH_TEACHER_NOT_FOUND", "Teacher not found.");
+        }
 
-        currentUser.TeacherId = teacher.Id;
+        trackedUser.TeacherId = teacher.Id;
 
         if (!string.IsNullOrWhiteSpace(request.RealName))
-            currentUser.RealName = request.RealName.Trim();
+        {
+            trackedUser.RealName = request.RealName.Trim();
+        }
 
         if (!string.IsNullOrWhiteSpace(request.StudentNumber))
-            currentUser.StudentNumber = request.StudentNumber.Trim();
+        {
+            trackedUser.StudentNumber = request.StudentNumber.Trim();
+        }
 
         if (!string.IsNullOrWhiteSpace(request.SchoolName))
-            currentUser.SchoolName = request.SchoolName.Trim();
+        {
+            trackedUser.SchoolName = request.SchoolName.Trim();
+        }
 
         if (!string.IsNullOrWhiteSpace(request.ClassName))
-            currentUser.ClassName = request.ClassName.Trim();
+        {
+            trackedUser.ClassName = request.ClassName.Trim();
+        }
 
         await _db.SaveChangesAsync(cancellationToken);
-
-        return Ok(MapToCurrentUser(currentUser));
+        return Ok(MapToCurrentUser(trackedUser));
     }
 
-    private ActionResult<CurrentUserDto> HandleLocalPasswordLogin(AppUser user, string? password)
+    private ActionResult<AuthTokenResponseDto> BuildAuthModeError(string mode)
     {
-        var passwordValue = password?.Trim() ?? string.Empty;
-
-        if (string.IsNullOrWhiteSpace(passwordValue))
+        if (string.Equals(mode, AuthOptions.ModeOidc, StringComparison.OrdinalIgnoreCase))
         {
-            return BadRequest(new
-            {
-                message = "Password is required.",
-                errorCode = "auth_password_required",
-                isRetryable = true
-            });
+            return this.ApiError(
+                StatusCodes.Status503ServiceUnavailable,
+                "AUTH_MODE_OIDC_REQUIRED",
+                "当前部署要求统一认证登录，请使用 OIDC 登录入口。");
         }
 
-        if (string.IsNullOrWhiteSpace(user.PasswordHash))
+        if (string.Equals(mode, AuthOptions.ModeDisabled, StringComparison.OrdinalIgnoreCase))
         {
-            return Unauthorized(new
-            {
-                message = "This account has no password set. Please contact the administrator.",
-                errorCode = "auth_no_password_set",
-                isRetryable = false
-            });
+            return this.ApiError(
+                StatusCodes.Status503ServiceUnavailable,
+                "AUTH_MODE_DISABLED",
+                "当前部署未启用登录入口，请联系管理员。");
         }
 
-        var verified = BCrypt.Net.BCrypt.Verify(passwordValue, user.PasswordHash);
-        if (!verified)
-        {
-            return Unauthorized(new
-            {
-                message = "Invalid username or password.",
-                errorCode = "auth_invalid_credentials",
-                isRetryable = false
-            });
-        }
-
-        HttpContext.Session.SetInt32(SessionUserIdKey, user.Id);
-        return Ok(MapToCurrentUser(user));
+        return this.ApiError(
+            StatusCodes.Status503ServiceUnavailable,
+            "AUTH_MODE_UNAVAILABLE",
+            "当前部署未启用该登录入口。");
     }
 
     private bool CanRegister()
@@ -365,18 +362,12 @@ public class AuthController : ControllerBase
             return false;
         }
 
-        var mode = _authOptions.GetNormalizedMode();
         if (_authOptions.IsLocalPasswordMode())
         {
             return true;
         }
 
-        if (_authOptions.IsDevelopmentUsernameMode() && _environment.IsDevelopment())
-        {
-            return true;
-        }
-
-        return false;
+        return _authOptions.IsDevelopmentUsernameMode() && _environment.IsDevelopment();
     }
 
     private string? ValidatePasswordStrength(string password)
@@ -394,12 +385,19 @@ public class AuthController : ControllerBase
         return null;
     }
 
+    private AuthTokenResponseDto BuildTokenResponse(AppUser user)
+    {
+        var token = _localJwtTokenService.IssueToken(user);
+        return new AuthTokenResponseDto
+        {
+            AccessToken = token.AccessToken,
+            ExpiresAtUtc = token.ExpiresAtUtc,
+            User = MapToCurrentUser(user)
+        };
+    }
+
     private CurrentUserDto MapToCurrentUser(AppUser user)
     {
-        string? impersonatedRole = null;
-        if (_userContext is CurrentUserService cus)
-            impersonatedRole = cus.GetImpersonatedRole();
-
         return new CurrentUserDto
         {
             UserId = user.Id,
@@ -411,47 +409,7 @@ public class AuthController : ControllerBase
             DepartmentName = user.DepartmentName,
             ClassName = user.ClassName,
             TeacherId = user.TeacherId,
-            ImpersonatedRole = impersonatedRole
-        };
-    }
-
-    private static object BuildAuthModeError(string mode)
-    {
-        if (string.Equals(mode, AuthOptions.ModeOidc, StringComparison.OrdinalIgnoreCase))
-        {
-            return new
-            {
-                message = "当前部署要求统一认证登录，请联系管理员接入 OIDC 登录入口。",
-                errorCode = "auth_mode_oidc_not_available",
-                isRetryable = false
-            };
-        }
-
-        if (string.Equals(mode, AuthOptions.ModeLocalPassword, StringComparison.OrdinalIgnoreCase))
-        {
-            return new
-            {
-                message = "当前部署要求密码登录，但服务器尚未启用该登录入口。",
-                errorCode = "auth_mode_local_password_not_available",
-                isRetryable = false
-            };
-        }
-
-        if (string.Equals(mode, AuthOptions.ModeDisabled, StringComparison.OrdinalIgnoreCase))
-        {
-            return new
-            {
-                message = "当前部署未启用登录入口，请联系管理员。",
-                errorCode = "auth_mode_disabled",
-                isRetryable = false
-            };
-        }
-
-        return new
-        {
-            message = "当前部署未启用开发期用户名登录。",
-            errorCode = "auth_mode_unavailable",
-            isRetryable = false
+            ImpersonatedRole = _userContext.GetImpersonatedRole()
         };
     }
 }

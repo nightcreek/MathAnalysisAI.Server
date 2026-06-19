@@ -12,7 +12,7 @@
     <script src="/vendor/mathlive/mathlive.min.js"></script>
     <link rel="stylesheet" href="/css/app.css">
 </head>
-<body>
+<body class="analysis-page">
 <div class="app-shell">
     <div class="container">
         <nav class="top-nav" aria-label="主导航">
@@ -67,7 +67,7 @@
 
                     <div id="photoOcrFormulaReview" class="ocr-review-card" style="display:none;">
                         <div class="section-title section-title-compact">识别出的公式</div>
-                        <div class="hint">点击公式即可直接编辑；确认无误后可复制或插入到题目、我的解答末尾。</div>
+                        <div class="hint">识别出的独立公式可直接编辑；如果只在正文中检测到公式片段，下方会以只读卡片展示。</div>
                         <div id="photoOcrFormulaList" class="ocr-formula-list"></div>
                     </div>
                 </section>
@@ -96,10 +96,18 @@
                         <div class="full">
                             <label for="problemTextInput">题目</label>
                             <textarea id="problemTextInput" placeholder="请输入数学分析题目，或在拍照识别模式下等待 OCR 回填。"></textarea>
+                            <div class="analysis-text-preview-card">
+                                <div class="hint">数学渲染预览</div>
+                                <div id="problemTextPreview" class="analysis-text-preview status">题目中的公式会在这里渲染预览。</div>
+                            </div>
                         </div>
                         <div class="full">
                             <label for="studentSolutionTextInput">我的解答</label>
                             <textarea id="studentSolutionTextInput" placeholder="请输入你的解题过程，或在拍照识别模式下等待 OCR 回填。"></textarea>
+                            <div class="analysis-text-preview-card">
+                                <div class="hint">数学渲染预览</div>
+                                <div id="studentSolutionTextPreview" class="analysis-text-preview status">解答中的公式会在这里渲染预览。</div>
+                            </div>
                         </div>
                     </div>
                     <div class="actions">

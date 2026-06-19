@@ -132,6 +132,9 @@ orleans.codegen.cs
 .env
 .env.*
 *.env.local
+server.env
+sqlserver.env
+litellm.env
 !/.env.example
 !.env.example
 !**/.env.example

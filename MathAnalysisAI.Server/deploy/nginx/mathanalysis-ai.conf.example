@@ -14,7 +14,8 @@
 #   3. Ensure production authentication is implemented (not DevelopmentUsername).
 #   4. Review and apply Tencent Cloud security group rules.
 #   5. Test with: nginx -t
-#   6. Verify with: curl -I https://your-domain/api/health
+#   6. Verify liveness with:  curl -I https://your-domain/health
+#      Verify readiness with: curl -I https://your-domain/ready
 #
 # Related docs:
 #   - Docs/NginxHttpsDesign.md

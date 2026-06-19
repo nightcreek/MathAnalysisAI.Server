@@ -6,7 +6,9 @@ using MathAnalysisAI.Server.Data;
 using MathAnalysisAI.Server.DTOs.PhotoSolutions;
 using MathAnalysisAI.Server.Filters;
 using MathAnalysisAI.Server.Models;
+using MathAnalysisAI.Server.Services.Auth;
 using MathAnalysisAI.Server.Services.OCR;
+using MathAnalysisAI.Server.Services.ExceptionHandling;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
@@ -32,17 +34,20 @@ namespace MathAnalysisAI.Server.Controllers
 
         private readonly ApplicationDbContext _db;
         private readonly IPhotoSolutionOcrProvider _ocrProvider;
+        private readonly IUserContext _userContext;
         private readonly IConfiguration _configuration;
         private readonly ILogger<PhotoSolutionsController> _logger;
 
         public PhotoSolutionsController(
             ApplicationDbContext db,
             IPhotoSolutionOcrProvider ocrProvider,
+            IUserContext userContext,
             IConfiguration configuration,
             ILogger<PhotoSolutionsController> logger)
         {
             _db = db;
             _ocrProvider = ocrProvider;
+            _userContext = userContext;
             _configuration = configuration;
             _logger = logger;
         }
@@ -58,7 +63,11 @@ namespace MathAnalysisAI.Server.Controllers
             [FromForm] IFormFile? file,
             CancellationToken cancellationToken)
         {
-            var currentUser = HttpContext.GetCurrentUser();
+            var currentUser = await _userContext.GetCurrentUserAsync(cancellationToken);
+            if (currentUser == null)
+            {
+                return this.ApiError(StatusCodes.Status401Unauthorized, "AUTH_NOT_LOGGED_IN", "Not logged in.");
+            }
 
             if (courseId <= 0)
             {
@@ -165,18 +174,12 @@ namespace MathAnalysisAI.Server.Controllers
             catch (HttpRequestException ex)
             {
                 _logger.LogWarning(ex, "Photo solution OCR provider request failed.");
-                return StatusCode(StatusCodes.Status502BadGateway, new
-                {
-                    message = "OCR provider request failed."
-                });
+                return this.ApiError(StatusCodes.Status503ServiceUnavailable, "OCR_PROVIDER_UNAVAILABLE", "OCR provider request failed.", true);
             }
-            catch (Exception ex)
+            catch (Exception ex) when (ApiExceptionClassifier.IsTransientDependencyFailure(ex))
             {
-                _logger.LogError(ex, "Photo solution OCR failed unexpectedly.");
-                return StatusCode(StatusCodes.Status500InternalServerError, new
-                {
-                    message = "Photo solution OCR failed."
-                });
+                _logger.LogWarning(ex, "Photo solution OCR failed due to dependency/database issue.");
+                return this.ApiError(StatusCodes.Status503ServiceUnavailable, "OCR_PROVIDER_UNAVAILABLE", "Photo solution OCR is temporarily unavailable.", true);
             }
         }
 
@@ -187,7 +190,11 @@ namespace MathAnalysisAI.Server.Controllers
             [FromBody] ConfirmPhotoSolutionOcrRequestDto? request,
             CancellationToken cancellationToken)
         {
-            var currentUser = HttpContext.GetCurrentUser();
+            var currentUser = await _userContext.GetCurrentUserAsync(cancellationToken);
+            if (currentUser == null)
+            {
+                return this.ApiError(StatusCodes.Status401Unauthorized, "AUTH_NOT_LOGGED_IN", "Not logged in.");
+            }
 
             if (request == null)
             {

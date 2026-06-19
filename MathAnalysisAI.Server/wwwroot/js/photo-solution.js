@@ -37,6 +37,117 @@
     }).filter(Boolean);
   }
 
+  function sanitizeErrorDetail(text) {
+    var normalized = String(text || "")
+      .replace(/\s+/g, " ")
+      .replace(/\s+at\s+.+$/i, "")
+      .trim();
+
+    if (!normalized || /^HTTP\s+\d+$/i.test(normalized)) {
+      return "";
+    }
+
+    if (normalized.length > 180) {
+      return normalized.slice(0, 177) + "...";
+    }
+
+    return normalized;
+  }
+
+  function extractErrorDetail(err) {
+    var data = err && err.data && typeof err.data === "object" ? err.data : null;
+    var candidates = [
+      err && err.serverMessage,
+      data && data.message,
+      data && data.errorMessage,
+      data && data.detail,
+      data && data.error,
+      err && err.message
+    ];
+
+    for (var i = 0; i < candidates.length; i++) {
+      var detail = sanitizeErrorDetail(candidates[i]);
+      if (detail) {
+        return detail;
+      }
+    }
+
+    return "";
+  }
+
+  function formatOcrRequestError(err) {
+    if (err && String(err.errorCode || "").toUpperCase() === "OCR_EMPTY_RESULT") {
+      return "OCR 识别失败：返回结果为空，请尝试更清晰的图片或改为手动输入。";
+    }
+
+    var status = err && Number.isFinite(Number(err.status)) ? Number(err.status) : null;
+    var detail = extractErrorDetail(err);
+    var messageText = detail || String((err && err.message) || "");
+
+    if (!status) {
+      if (/timeout|timed out|abort/i.test(messageText)) {
+        return "OCR 识别失败：请求超时，请稍后重试。";
+      }
+      if (/failed to fetch|networkerror|load failed|network request failed/i.test(messageText.toLowerCase())) {
+        return "OCR 识别失败：网络连接异常，请检查网络后重试。";
+      }
+      return detail
+        ? "OCR 识别失败：" + detail
+        : "OCR 识别失败：网络连接异常，请检查网络后重试。";
+    }
+
+    if (status === 413) {
+      return "OCR 识别失败：服务器返回 413，图片可能过大。";
+    }
+
+    if (status === 415) {
+      return "OCR 识别失败：服务器返回 415，请上传 JPG、PNG 或 WebP 图片。";
+    }
+
+    if (status === 408 || status === 504) {
+      return "OCR 识别失败：服务器返回 " + status + "，请求超时，请稍后重试。";
+    }
+
+    if (status >= 500) {
+      return detail
+        ? "OCR 识别失败：服务器返回 " + status + "，" + detail
+        : "OCR 识别失败：服务器返回 " + status + "，模型调用失败。";
+    }
+
+    if (detail) {
+      return "OCR 识别失败：服务器返回 " + status + "，" + detail;
+    }
+
+    return "OCR 识别失败：服务器返回 " + status + "。";
+  }
+
+  function buildOcrErrorHint(err) {
+    if (err && String(err.errorCode || "").toUpperCase() === "OCR_EMPTY_RESULT") {
+      return "建议重新拍摄更清晰的题目图片，或切换到手动输入模式继续分析。";
+    }
+
+    var status = err && Number.isFinite(Number(err.status)) ? Number(err.status) : null;
+    var detail = extractErrorDetail(err);
+
+    if (status === 413) {
+      return "建议压缩图片大小、裁剪无关区域后再重试。";
+    }
+
+    if (status === 415) {
+      return "请确认上传的是标准图片文件，而不是 PDF、截图压缩包或其它格式。";
+    }
+
+    if (status && status >= 500 && detail) {
+      return "详细信息：" + detail;
+    }
+
+    if (!status && detail) {
+      return "详细信息：" + detail;
+    }
+
+    return "如果连续失败，可以改为手动输入题目和解答继续使用。";
+  }
+
   function setAnalyzeButtonDisabled(disabled) {
     var analyzeBtn = UI.qs("#analyzeBtn");
     if (!analyzeBtn) return;
@@ -128,6 +239,10 @@
     UI.qs("#problemTextInput").value = (data.problemText || "").trim();
     UI.qs("#studentSolutionTextInput").value = (data.studentSolutionText || "").trim();
 
+    if (window.MathAnalysis && typeof window.MathAnalysis.refreshInputPreviews === "function") {
+      window.MathAnalysis.refreshInputPreviews();
+    }
+
     if (window.MathLiveOcr && window.MathLiveOcr.renderFormulas) {
       window.MathLiveOcr.renderFormulas(Array.isArray(data.formulas) ? data.formulas : [], data);
     }
@@ -178,7 +293,11 @@
       if (courses && courses.length) courseId = courses[0].id;
     }
     form.append("courseId", String(courseId || ""));
-    form.append("chapterId", Number.isNaN(chapterId) ? String(AppConfig.defaultChapterId) : String(chapterId));
+    if (!Number.isNaN(chapterId)) {
+      form.append("chapterId", String(chapterId));
+    } else if (AppConfig.defaultChapterId != null) {
+      form.append("chapterId", String(AppConfig.defaultChapterId));
+    }
     if (hintInput.value && hintInput.value.trim()) {
       form.append("userHint", hintInput.value.trim());
     }
@@ -190,9 +309,15 @@
 
     try {
       var data = await Api.postFormData("/api/photo-solutions/ocr", form);
+      if (!data || typeof data !== "object") {
+        var emptyError = new Error("OCR_EMPTY_RESULT");
+        emptyError.errorCode = "OCR_EMPTY_RESULT";
+        throw emptyError;
+      }
       applyRecognizedPayload(data || {});
     } catch (err) {
-      UI.showStatus(status, UI.formatApiErrorMessage(err, "ocr"), true);
+      UI.showStatus(status, formatOcrRequestError(err), true);
+      UI.setText(summary, buildOcrErrorHint(err));
       showReviewNotice(null);
       setResponseState({
         ocrRecordId: null,

@@ -60,6 +60,55 @@
     return UI.safeList(list).map(function (item) { return normalizeText(item, "").trim(); }).filter(Boolean);
   }
 
+  function renderMathTextBlock(text, emptyFallback) {
+    var content = normalizeText(text, "").trim();
+    if (!content) {
+      return emptyFallback || "";
+    }
+
+    return "<div class='math-rich-text'>" + UI.renderMixedMarkdownMath(content) + "</div>";
+  }
+
+  async function renderPreviewElement(element, text, emptyMessage) {
+    if (!element) {
+      return;
+    }
+
+    var content = normalizeText(text, "");
+    if (!content.trim()) {
+      element.className = "analysis-text-preview status";
+      element.textContent = emptyMessage;
+      element.__mathRenderKey = "";
+      return;
+    }
+
+    element.className = "analysis-text-preview math-rich-text";
+    element.innerHTML = UI.renderMixedMarkdownMath(content);
+    await UI.renderMathInElement(element);
+  }
+
+  async function refreshInputPreviews() {
+    await Promise.all([
+      renderPreviewElement(
+        UI.qs("#problemTextPreview"),
+        UI.qs("#problemTextInput") ? UI.qs("#problemTextInput").value : "",
+        "题目中的公式会在这里渲染预览。"
+      ),
+      renderPreviewElement(
+        UI.qs("#studentSolutionTextPreview"),
+        UI.qs("#studentSolutionTextInput") ? UI.qs("#studentSolutionTextInput").value : "",
+        "解答中的公式会在这里渲染预览。"
+      )
+    ]);
+  }
+
+  function scheduleInputPreviewRefresh() {
+    window.clearTimeout(refreshInputPreviews.__timerId || 0);
+    refreshInputPreviews.__timerId = window.setTimeout(function () {
+      refreshInputPreviews();
+    }, 80);
+  }
+
   function resolveStatus(isCorrect) {
     if (isCorrect === true) {
       return { text: "正确", className: "result-status-correct" };
@@ -247,7 +296,7 @@
 
       html += "<div class='solution-step-card'>" +
         "<div class='solution-step-head'>步骤 " + UI.escapeHtml(stepNo) + "：" + UI.escapeHtml(title) + "</div>" +
-        "<div class='solution-step-content'>" + UI.escapeHtml(content).replace(/\n/g, "<br>") + "</div>" +
+        "<div class='solution-step-content'>" + renderMathTextBlock(content, "<div class='status'>暂无步骤内容</div>") + "</div>" +
       "</div>";
     });
 
@@ -257,7 +306,7 @@
   function renderSuggestionList(list) {
     var arr = normalizeList(list);
     if (!arr.length) return "";
-    return UI.renderList(arr);
+    return UI.renderMathList(arr);
   }
 
   function mergeSuggestions(reviewSuggestions, studentSuggestions) {
@@ -342,10 +391,10 @@
       "</div>";
 
     if (reasons.length) {
-      html += "<div style='margin-top:8px;'><strong>可靠性原因：</strong></div>" + UI.renderList(reasons);
+      html += "<div style='margin-top:8px;'><strong>可靠性原因：</strong></div>" + UI.renderMathList(reasons);
     }
     if (warnings.length) {
-      html += "<div style='margin-top:8px;'><strong>自检提示：</strong></div>" + UI.renderList(warnings);
+      html += "<div style='margin-top:8px;'><strong>自检提示：</strong></div>" + UI.renderMathList(warnings);
     }
 
     html += "</div>";
@@ -370,16 +419,16 @@
       "<div class='result-summary-header'>" +
       "<span class='result-status-pill " + status.className + "'>" + UI.escapeHtml(status.text) + "</span>" +
       "</div>" +
-      "<div class='result-summary-main'>" + UI.escapeHtml(mainIssue || "已完成分析，请查看下方详细反馈。") + "</div>" +
+      "<div class='result-summary-main'>" + renderMathTextBlock(mainIssue || "已完成分析，请查看下方详细反馈。") + "</div>" +
       renderHeaderMeta(data) +
       "</div>";
 
     html += "<div class='result-section result-knowledge-section'><h3>关联知识点</h3>" + renderKnowledgePoints(data.knowledgePoints) + "</div>";
 
     html += "<div class='result-section'><h3>我的解答问题</h3>";
-    html += "<div><strong>主要问题：</strong>" + UI.escapeHtml(mainIssue || "暂未发现明确问题") + "</div>";
+    html += "<div><strong>主要问题：</strong>" + renderMathTextBlock(mainIssue || "暂未发现明确问题") + "</div>";
     if (logicGaps.length) {
-      html += "<div style='margin-top:8px;'><strong>逻辑漏洞：</strong></div>" + UI.renderList(logicGaps);
+      html += "<div style='margin-top:8px;'><strong>逻辑漏洞：</strong></div>" + UI.renderMathList(logicGaps);
     }
     html += "<div style='margin-top:8px;'><strong>错误标签：</strong></div>" + renderMistakeTags(mistakeTags);
     html += "</div>";
@@ -389,7 +438,7 @@
     var solutionOverview = normalizeText(data.solutionOverview, "").trim();
     if (solutionOverview) {
       html += "<div class='result-section'><h3>解题思路概览</h3><div>" +
-        UI.escapeHtml(solutionOverview).replace(/\n/g, "<br>") +
+        renderMathTextBlock(solutionOverview) +
       "</div></div>";
     }
 
@@ -410,6 +459,17 @@
         currentUserId = window.Auth.getCurrentUserId();
       }
     }
+
+    if (currentUserId == null) {
+      var resultContainer = UI.qs("#resultContainer");
+      if (resultContainer) {
+        UI.renderLoginRequired(resultContainer, "当前登录已失效，请重新登录后再继续分析。", function () {
+          window.location.href = "/login.html";
+        });
+      }
+      throw new Error("AUTH_REQUIRED");
+    }
+
     return currentUserId;
   }
 
@@ -473,12 +533,16 @@
     try {
       var data = await Api.postJson("/api/learning-analysis/analyze", payload);
       box.innerHTML = renderAnalysisReport(data || {});
+      await UI.renderMathInElement(box);
       UI.showStatus(status, "分析完成。", false);
     } catch (err) {
+      if (err && err.message === "AUTH_REQUIRED") {
+        UI.showStatus(status, "当前登录已失效，请重新登录。", true);
+        return;
+      }
       UI.showStatus(status, UI.formatApiErrorMessage(err, "analysis"), true);
     } finally {
       btn.disabled = false;
-      if (window.MathJax) MathJax.typeset();
     }
   }
 
@@ -509,7 +573,7 @@
     box.innerHTML = '<div class="streaming-container"><div class="streaming-indicator"><span class="streaming-dot"></span> 正在生成分析结果…</div><pre class="streaming-content"></pre></div>';
 
     try {
-      var response = await fetch("/api/learning-analysis/analyze/stream", {
+      var response = await Api.fetchWithAuth("/api/learning-analysis/analyze/stream", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload)
@@ -524,6 +588,10 @@
         err.status = response.status;
         err.data = errorData;
         err.isAuthRequired = response.status === 401;
+        err.serverMessage = errorData && errorData.message ? errorData.message : "";
+        if (err.isAuthRequired && window.Auth && typeof window.Auth.handleUnauthorizedResponse === "function") {
+          window.Auth.handleUnauthorizedResponse(err);
+        }
         throw err;
       }
 
@@ -569,18 +637,28 @@
         var parsed = JSON.parse(accumulatedText);
         box.innerHTML = renderAnalysisReport(parsed || {});
       } catch (_) {
-        box.innerHTML = '<div class="streaming-result-raw"><div class="result-section"><h3>流式分析结果</h3><pre class="streaming-content-raw">' + UI.escapeHtml(accumulatedText) + '</pre></div></div>';
+        box.innerHTML =
+          '<div class="streaming-result-rendered">' +
+            '<div class="result-section">' +
+              '<h3>流式分析结果</h3>' +
+              '<div class="math-rendered-content math-rich-text">' + UI.renderMixedMarkdownMath(accumulatedText) + '</div>' +
+            '</div>' +
+          '</div>';
       }
 
+      await UI.renderMathInElement(box);
       UI.showStatus(status, "分析完成。", false);
     } catch (err) {
+      if (err && err.message === "AUTH_REQUIRED") {
+        UI.showStatus(status, "当前登录已失效，请重新登录。", true);
+        return;
+      }
       UI.showStatus(status, UI.formatApiErrorMessage(err, "analysis"), true);
       if (box.querySelector(".streaming-container")) {
         box.innerHTML = '<div class="empty-state"><h3>分析失败</h3><p>' + UI.escapeHtml(err.message || "未知错误") + '</p></div>';
       }
     } finally {
       btn.disabled = false;
-      if (window.MathJax) MathJax.typeset();
     }
   }
 
@@ -592,13 +670,32 @@
      if (!courseId) {
        try {
          var courses = await window.AppConfig.fetchCourses();
+         var courseState = window.AppConfig.getCourseLoadState();
+         if (courseState.status === "degraded") {
+           chapterSelect.innerHTML = '<option value="">课程加载降级</option>';
+           UI.renderBootstrapError("#resultContainer", courseState.message, loadChapters, courseState.traceId || "");
+           return;
+         }
          if (courses && courses.length) courseId = courses[0].id;
-       } catch (_) {}
+       } catch (err) {
+         chapterSelect.innerHTML = '<option value="">课程加载失败</option>';
+         UI.renderBootstrapError("#resultContainer", UI.formatApiErrorMessage(err, "bootstrap"), loadChapters, err && err.traceId ? err.traceId : "");
+         return;
+       }
      }
-     if (!courseId) { console.warn("No course available for chapter loading."); return; }
+     if (!courseId) {
+       chapterSelect.innerHTML = '<option value="">无可用课程</option>';
+       return;
+     }
 
      try {
-       var chapters = await Api.getJson("/api/courses/" + courseId + "/chapters");
+       var result = await Api.getJsonDetailed("/api/courses/" + courseId + "/chapters");
+       var chapters = Array.isArray(result.data) ? result.data : [];
+       if (result.meta && result.meta.degraded) {
+         chapterSelect.innerHTML = '<option value="">章节加载降级</option>';
+         UI.renderBootstrapError("#resultContainer", "章节列表当前处于降级状态，请稍后重试。", loadChapters, result.meta.traceId);
+         return;
+       }
        if (!chapters || !chapters.length) {
          chapterSelect.innerHTML = '<option value="">暂无章节</option>';
          return;
@@ -617,7 +714,8 @@
          chapterSelect.value = defaultChapterId;
        }
      } catch (err) {
-       console.warn("Failed to load chapters:", err);
+       chapterSelect.innerHTML = '<option value="">章节加载失败</option>';
+       UI.renderBootstrapError("#resultContainer", UI.formatApiErrorMessage(err, "bootstrap"), loadChapters, err && err.traceId ? err.traceId : "");
      }
    }
 
@@ -626,6 +724,8 @@
     var manualBtn = UI.qs("#manualModeBtn");
     var ocrBtn = UI.qs("#ocrModeBtn");
     var analyzeBtn = UI.qs("#analyzeBtn");
+    var problemInput = UI.qs("#problemTextInput");
+    var solutionInput = UI.qs("#studentSolutionTextInput");
 
     if (manualBtn) {
       manualBtn.addEventListener("click", function () {
@@ -642,15 +742,25 @@
     if (analyzeBtn) {
       analyzeBtn.addEventListener("click", analyzeTextStream);
     }
+
+    if (problemInput) {
+      problemInput.addEventListener("input", scheduleInputPreviewRefresh);
+    }
+
+    if (solutionInput) {
+      solutionInput.addEventListener("input", scheduleInputPreviewRefresh);
+    }
   }
 
   mathAnalysis.switchAnalysisMode = applyWorkbenchMode;
   mathAnalysis.analyzeText = analyzeText;
   mathAnalysis.analyzeTextStream = analyzeTextStream;
+  mathAnalysis.refreshInputPreviews = refreshInputPreviews;
   window.MathAnalysis = mathAnalysis;
 
   document.addEventListener("DOMContentLoaded", function () {
     bindEvents();
     applyWorkbenchMode(getRequestedMode());
+    refreshInputPreviews();
   });
 })();

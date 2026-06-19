@@ -16,17 +16,25 @@
   };
 
   const standardNavLinks = [
-    { href: "/index.html", label: "首页", className: "" },
-    { href: "/analysis.html", label: "解题分析", className: "" },
-    { href: "/questions.html", label: "题库", className: "" },
-    { href: "/materials.html", label: "课程资料", className: "" },
-    { href: "/leaderboard.html", label: "排行榜", className: "" },
-    { href: "/stats.html", label: "学习统计", className: "" },
-    { href: "/dev.html", label: "开发工具", className: "nav-dev" },
-    { href: "/materials-manage.html", label: "资料管理", className: "nav-dev", roles: ["teacher", "admin"] },
-    { href: "/resources-manage.html", label: "网络资源", className: "nav-dev", roles: ["teacher", "admin"] },
-    { href: "/admin.html", label: "管理", className: "nav-admin", roles: ["admin"] }
+    { href: "/index.html", label: "首页" },
+    { href: "/analysis.html", label: "解题分析" },
+    { href: "/questions.html", label: "题库" },
+    { href: "/materials.html", label: "课程资料" },
+    { href: "/leaderboard.html", label: "排行榜" },
+    { href: "/stats.html", label: "学习统计" },
+    { href: "/dev.html", label: "开发工具", roles: ["admin", "teacher"] },
+    { href: "/materials-manage.html", label: "资料管理", roles: ["teacher", "admin"] },
+    { href: "/resources-manage.html", label: "网络资源", roles: ["teacher", "admin"] },
+    { href: "/admin.html", label: "管理", roles: ["admin"] }
   ];
+
+  function getCurrentNavLabel() {
+    var current = normalizePath(window.location.pathname);
+    var matched = standardNavLinks.find(function (item) {
+      return item.href === current;
+    });
+    return matched ? matched.label : "当前页面";
+  }
 
   function normalizePath(pathname) {
     if (!pathname || pathname === "/") return "/index.html";
@@ -34,48 +42,40 @@
   }
 
   function setActiveNav() {
-    const current = normalizePath(window.location.pathname);
-    const links = document.querySelectorAll(".top-nav-link");
-    links.forEach((link) => {
-      const href = link.getAttribute("href") || "";
-      if (href === current) {
-        link.classList.add("active");
-      } else {
-        link.classList.remove("active");
-      }
+    var current = normalizePath(window.location.pathname);
+    document.querySelectorAll(".top-nav-link").forEach(function (link) {
+      link.classList.toggle("active", (link.getAttribute("href") || "") === current);
     });
   }
 
-  function canDisplayDevLink(user) {
-    const role = user && user.role ? String(user.role).toLowerCase() : "";
-    return role === "admin" || role === "teacher";
-  }
-
   function normalizeTopNavLinks(user) {
-    const nav = document.querySelector(".top-nav");
+    var nav = document.querySelector(".top-nav");
     if (!nav) return;
+    var currentLabel = getCurrentNavLabel();
 
     nav.innerHTML =
+      "<div class='top-nav-head'>" +
       "<div class='brand'>" +
       "<a class='brand-link' href='/index.html'>数学分析智能体</a>" +
       "<span class='brand-subtitle'>MathAnalysisAI</span>" +
       "</div>" +
+      "<div class='top-nav-head-actions'>" +
+      "<span class='top-nav-current' aria-current='page'>" + currentLabel + "</span>" +
+      "<button type='button' class='mobile-nav-toggle' aria-expanded='false' aria-label='打开导航菜单'>菜单</button>" +
+      "</div>" +
+      "</div>" +
       "<div class='nav-links'></div>" +
       "<div class='top-nav-user'></div>";
 
-    const linksHost = nav.querySelector(".nav-links");
-    standardNavLinks.forEach((item) => {
-      if (item.href === "/dev.html" && !canDisplayDevLink(user)) {
+    var linksHost = nav.querySelector(".nav-links");
+    var userRole = user && user.role ? String(user.role).toLowerCase() : "";
+
+    standardNavLinks.forEach(function (item) {
+      if (item.roles && item.roles.length > 0 && !item.roles.includes(userRole)) {
         return;
       }
-      if (item.roles && item.roles.length > 0) {
-        const userRole = user && user.role ? String(user.role).toLowerCase() : "";
-        if (!item.roles.includes(userRole)) {
-          return;
-        }
-      }
-      const link = document.createElement("a");
-      link.className = "top-nav-link" + (item.className ? " " + item.className : "");
+      var link = document.createElement("a");
+      link.className = "top-nav-link";
       link.href = item.href;
       link.textContent = item.label;
       if (linksHost) {
@@ -84,8 +84,75 @@
     });
   }
 
+  function setMobileNavOpenState(nav, isOpen) {
+    if (!nav) return;
+
+    var isMobile = window.matchMedia("(max-width: 768px)").matches;
+    var toggle = nav.querySelector(".mobile-nav-toggle");
+    var linksHost = nav.querySelector(".nav-links");
+    var userArea = nav.querySelector(".top-nav-user");
+
+    nav.classList.toggle("nav-collapsed", isMobile);
+    nav.classList.toggle("nav-open", isMobile && !!isOpen);
+
+    if (toggle) {
+      toggle.hidden = !isMobile;
+      toggle.setAttribute("aria-expanded", isMobile && !!isOpen ? "true" : "false");
+      toggle.textContent = isMobile && !!isOpen ? "收起" : "菜单";
+      toggle.setAttribute("aria-label", isMobile && !!isOpen ? "收起导航菜单" : "打开导航菜单");
+    }
+
+    if (linksHost) {
+      linksHost.hidden = isMobile && !isOpen;
+    }
+
+    if (userArea) {
+      userArea.hidden = isMobile && !isOpen;
+    }
+  }
+
+  function ensureMobileNavBinding() {
+    var nav = document.querySelector(".top-nav");
+    if (!nav || nav.__mobileNavBound) {
+      setMobileNavOpenState(nav, nav && nav.classList.contains("nav-open"));
+      return;
+    }
+
+    nav.addEventListener("click", function (event) {
+      var toggle = event.target.closest(".mobile-nav-toggle");
+      if (toggle) {
+        var shouldOpen = !nav.classList.contains("nav-open");
+        setMobileNavOpenState(nav, shouldOpen);
+        return;
+      }
+
+      if (window.matchMedia("(max-width: 768px)").matches && event.target.closest(".top-nav-link, .top-nav-auth-link")) {
+        setMobileNavOpenState(nav, false);
+      }
+    });
+
+    var resizeHandler = function () {
+      if (window.matchMedia("(max-width: 768px)").matches) {
+        setMobileNavOpenState(nav, nav.classList.contains("nav-open"));
+      } else {
+        setMobileNavOpenState(nav, false);
+      }
+    };
+
+    window.addEventListener("resize", resizeHandler);
+    nav.__mobileNavBound = true;
+    nav.__mobileNavResizeHandler = resizeHandler;
+    setMobileNavOpenState(nav, false);
+  }
+
   function getUserText(user) {
-    if (!user) return "当前未登录";
+    if (!user) {
+      var authState = window.Auth && window.Auth.getLastAuthState ? window.Auth.getLastAuthState() : null;
+      if (authState && authState.type === "expired") {
+        return "当前登录已过期";
+      }
+      return "当前未登录";
+    }
     var displayName = user.realName || user.username || "未知用户";
     var role = user.role || "student";
     return "当前用户：" + displayName + "（" + role + "）";
@@ -94,16 +161,16 @@
   async function impersonateRole(role) {
     try {
       await Api.postJson("/api/auth/impersonate", { role: role || null });
-      if (window.Auth && window.Auth.loadCurrentUser) {
-        await window.Auth.loadCurrentUser(true);
+      if (window.Auth && window.Auth.setImpersonatedRole) {
+        window.Auth.setImpersonatedRole(role || "");
       }
       var newUser = window.Auth ? window.Auth.getCurrentUser() : null;
       normalizeTopNavLinks(newUser);
-      applyRoleBasedNavVisibility();
       setActiveNav();
       renderTopNavUserArea();
-    } catch (_) {
-      console.error("Impersonation failed");
+      ensureMobileNavBinding();
+    } catch (err) {
+      console.error("Impersonation failed:", err);
     }
   }
 
@@ -120,21 +187,24 @@
 
     var auth = window.Auth;
     var user = auth ? auth.getCurrentUser() : null;
+    var actualUser = auth && auth.getActualCurrentUser ? auth.getActualCurrentUser() : user;
+
+    area.innerHTML = "";
 
     var text = document.createElement("span");
     text.className = "top-nav-user-text";
     text.textContent = getUserText(user);
+    area.appendChild(text);
 
     var action = document.createElement("a");
     action.className = "top-nav-auth-link";
-
-    area.innerHTML = "";
-    area.appendChild(text);
     area.appendChild(action);
 
     if (!user) {
       action.href = "/login.html";
-      action.textContent = "登录";
+      action.textContent = (auth && auth.getLastAuthState && auth.getLastAuthState() && auth.getLastAuthState().type === "expired")
+        ? "重新登录"
+        : "登录";
       return;
     }
 
@@ -145,65 +215,40 @@
       logout();
     });
 
-    var isAdmin = String(user.role || "").toLowerCase() === "admin";
-    if (isAdmin) {
-      var switcher = document.createElement("select");
-      switcher.className = "impersonate-switch";
-      switcher.setAttribute("aria-label", "切换查看视角");
-      switcher.title = "以不同角色视角查看前端效果";
-
-      var impersonatedRole = user.impersonatedRole || "";
-      var roles = [
-        { value: "", label: "👤 管理员视角" },
-        { value: "teacher", label: "🎓 教师视角" },
-        { value: "student", label: "📚 学生视角" }
-      ];
-
-      roles.forEach(function (r) {
-        var opt = document.createElement("option");
-        opt.value = r.value;
-        opt.textContent = r.label;
-        if (impersonatedRole === r.value || (!impersonatedRole && !r.value)) {
-          opt.selected = true;
-        }
-        switcher.appendChild(opt);
-      });
-
-      switcher.addEventListener("change", function () {
-        impersonateRole(switcher.value || null);
-      });
-
-      area.appendChild(switcher);
+    var isAdmin = actualUser && String(actualUser.role || "").toLowerCase() === "admin";
+    if (!isAdmin) {
+      return;
     }
-  }
 
-  function applyRoleBasedNavVisibility() {
-    const auth = window.Auth;
-    const user = auth ? auth.getCurrentUser() : null;
-    const role = user && user.role ? String(user.role).toLowerCase() : "";
-    const materialsLinks = document.querySelectorAll('.top-nav-link[href="/materials.html"]');
-    const devLinks = document.querySelectorAll('.top-nav-link[href="/dev.html"]');
-    const materialsManageLinks = document.querySelectorAll('.top-nav-link[href="/materials-manage.html"]');
+    var switcher = document.createElement("select");
+    switcher.className = "impersonate-switch";
+    switcher.setAttribute("aria-label", "切换查看视角");
+    switcher.title = "以不同角色视角查看前端效果";
 
-    const canSeeMaterials = true;
-    const canSeeDev = role === "admin" || role === "teacher";
-    const canSeeMaterialsManage = role === "admin" || role === "teacher";
-
-    materialsLinks.forEach((link) => {
-      link.style.display = canSeeMaterials ? "" : "none";
+    var impersonatedRole = auth && auth.getImpersonatedRole ? auth.getImpersonatedRole() : "";
+    [
+      { value: "", label: "👤 管理员视角" },
+      { value: "teacher", label: "🎓 教师视角" },
+      { value: "student", label: "📚 学生视角" }
+    ].forEach(function (role) {
+      var opt = document.createElement("option");
+      opt.value = role.value;
+      opt.textContent = role.label;
+      if (impersonatedRole === role.value || (!impersonatedRole && !role.value)) {
+        opt.selected = true;
+      }
+      switcher.appendChild(opt);
     });
 
-    devLinks.forEach((link) => {
-      link.style.display = canSeeDev ? "" : "none";
+    switcher.addEventListener("change", function () {
+      impersonateRole(switcher.value || "");
     });
 
-    materialsManageLinks.forEach((link) => {
-      link.style.display = canSeeMaterialsManage ? "" : "none";
-    });
+    area.appendChild(switcher);
   }
 
   function showAccessDenied(containerId, message) {
-    const denied = document.getElementById(containerId);
+    var denied = document.getElementById(containerId);
     if (!denied) return;
     denied.innerHTML =
       "<div class='card access-denied-card'>" +
@@ -214,45 +259,13 @@
     denied.style.display = "block";
   }
 
-  function guardMaterialsPage() {
-    if (normalizePath(window.location.pathname) !== "/materials.html") return;
-    const auth = window.Auth;
-    const allowed = auth && auth.hasAnyRole && auth.hasAnyRole(["teacher", "admin"]);
-    const managerArea = document.getElementById("materialsManagerArea");
-    const listArea = document.getElementById("materialsListArea");
-    const searchArea = document.getElementById("materialsSearchArea");
-    const studentNotice = document.getElementById("materialsStudentNotice");
-
-    if (allowed) {
-      if (studentNotice) {
-        studentNotice.style.display = "none";
-      }
-      return;
-    }
-
-    if (managerArea) {
-      managerArea.remove();
-    }
-    if (listArea) {
-      listArea.remove();
-    }
-    if (searchArea) {
-      searchArea.remove();
-    }
-    if (studentNotice) {
-      studentNotice.style.display = "block";
-    }
-  }
-
   function guardDevPage() {
     if (normalizePath(window.location.pathname) !== "/dev.html") return;
-    const auth = window.Auth;
-    const allowed = auth && auth.hasRole && auth.hasRole("admin");
-    if (allowed) {
-      return;
-    }
+    var auth = window.Auth;
+    var allowed = auth && auth.hasRole && auth.hasRole("admin");
+    if (allowed) return;
 
-    const managerArea = document.getElementById("devToolsArea");
+    var managerArea = document.getElementById("devToolsArea");
     if (managerArea) {
       managerArea.remove();
     }
@@ -260,17 +273,11 @@
   }
 
   async function logout() {
-    try {
-      await Api.postJson("/api/auth/logout", {});
-    } catch (_) {
-      // Keep UX stable in development mode.
+    if (window.Auth && window.Auth.logout) {
+      await window.Auth.logout();
     }
 
-    if (window.Auth && window.Auth.loadCurrentUser) {
-      await window.Auth.loadCurrentUser(true);
-    }
-
-    const current = normalizePath(window.location.pathname);
+    var current = normalizePath(window.location.pathname);
     if (current === "/login.html") {
       renderTopNavUserArea();
       return;
@@ -279,18 +286,42 @@
     window.location.href = "/login.html";
   }
 
-
-  document.addEventListener("DOMContentLoaded", async function () {
-    if (window.Auth && window.Auth.loadCurrentUser) {
-      await window.Auth.loadCurrentUser();
+  async function bootstrapNavigation() {
+    var nav = document.querySelector(".top-nav");
+    if (nav) {
+      nav.setAttribute("aria-busy", "true");
     }
-    const auth = window.Auth;
-    const user = auth ? auth.getCurrentUser() : null;
+
+    try {
+      if (window.Auth && window.Auth.loadCurrentUser) {
+        await window.Auth.loadCurrentUser(true);
+      }
+    } catch (err) {
+      console.error("[Nav] Failed to hydrate auth state before rendering navigation.", err);
+    }
+
+    var auth = window.Auth;
+    var user = auth ? auth.getCurrentUser() : null;
     normalizeTopNavLinks(user);
-    applyRoleBasedNavVisibility();
     setActiveNav();
     renderTopNavUserArea();
-    guardMaterialsPage();
+    ensureMobileNavBinding();
     guardDevPage();
+    document.body.setAttribute("data-auth-hydrated", "true");
+    if (nav) {
+      nav.setAttribute("aria-busy", "false");
+    }
+  }
+
+  document.addEventListener("DOMContentLoaded", function () {
+    document.body.setAttribute("data-auth-hydrated", "false");
+    bootstrapNavigation().catch(function (err) {
+      console.error("[Nav] Navigation bootstrap failed.", err);
+      var nav = document.querySelector(".top-nav");
+      if (nav) {
+        nav.setAttribute("aria-busy", "false");
+      }
+      document.body.setAttribute("data-auth-hydrated", "true");
+    });
   });
 })();
