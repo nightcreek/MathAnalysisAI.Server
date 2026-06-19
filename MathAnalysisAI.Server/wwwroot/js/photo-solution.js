@@ -128,6 +128,10 @@
     UI.qs("#problemTextInput").value = (data.problemText || "").trim();
     UI.qs("#studentSolutionTextInput").value = (data.studentSolutionText || "").trim();
 
+    if (window.MathAnalysis && typeof window.MathAnalysis.refreshInputPreviews === "function") {
+      window.MathAnalysis.refreshInputPreviews();
+    }
+
     if (window.MathLiveOcr && window.MathLiveOcr.renderFormulas) {
       window.MathLiveOcr.renderFormulas(Array.isArray(data.formulas) ? data.formulas : [], data);
     }

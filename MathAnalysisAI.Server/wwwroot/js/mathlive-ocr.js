@@ -1,6 +1,7 @@
 (function () {
   var state = {
     formulas: [],
+    derivedFormulas: [],
     mathLiveReady: false
   };
 
@@ -91,7 +92,7 @@
     notice.style.display = "block";
   }
 
-  function buildMathLiveField(index, item, latexOutput) {
+  function buildMathLiveField(index, item, latexOutput, preview) {
     var field = document.createElement("math-field");
     field.className = "mathlive-ocr-field";
     field.value = item.latex || "";
@@ -101,6 +102,7 @@
       var value = String(field.value || "");
       setFormulaLatex(index, value);
       latexOutput.textContent = value;
+      updatePreviewElement(preview, "\\(" + value + "\\)");
       document.dispatchEvent(new CustomEvent("photo-solution-ocr-changed"));
     });
 
@@ -112,6 +114,52 @@
     code.className = "latex-output-code";
     code.textContent = item.latex || "[unclear]";
     return code;
+  }
+
+  function updatePreviewElement(element, text) {
+    if (!element) return;
+
+    element.innerHTML = "<div class='math-rich-text'>" + UI.renderMixedMarkdownMath(text) + "</div>";
+    UI.renderMathInElement(element);
+  }
+
+  function collectDerivedFormulas(ocrResponse) {
+    if (!ocrResponse || typeof ocrResponse !== "object" || !UI || typeof UI.extractMathSegments !== "function") {
+      return [];
+    }
+
+    var derived = [];
+    var seen = new Set();
+    var sources = [
+      { label: "题目正文", text: String(ocrResponse.problemText || "") },
+      { label: "解答正文", text: String(ocrResponse.studentSolutionText || "") }
+    ];
+
+    sources.forEach(function (source) {
+      UI.extractMathSegments(source.text).forEach(function (segment) {
+        if (!segment || segment.type !== "math") {
+          return;
+        }
+
+        var value = String(segment.value || "").trim();
+        if (!value) {
+          return;
+        }
+
+        var key = source.label + "::" + value;
+        if (seen.has(key)) {
+          return;
+        }
+
+        seen.add(key);
+        derived.push({
+          snippet: value,
+          sourceLabel: source.label
+        });
+      });
+    });
+
+    return derived;
   }
 
   function buildFormulaRow(item, index) {
@@ -130,6 +178,11 @@
       row.appendChild(inlineHint);
     }
 
+    var preview = document.createElement("div");
+    preview.className = "ocr-formula-preview";
+    row.appendChild(preview);
+    updatePreviewElement(preview, "\\(" + (item.latex || "") + "\\)");
+
     var renderBox = document.createElement("div");
     renderBox.className = "ocr-formula-render";
 
@@ -145,7 +198,7 @@
     latexOutput.textContent = item.latex || "";
 
     if (state.mathLiveReady) {
-      renderBox.appendChild(buildMathLiveField(index, item, latexOutput));
+      renderBox.appendChild(buildMathLiveField(index, item, latexOutput, preview));
     } else {
       renderBox.appendChild(buildFallbackCode(item));
     }
@@ -197,7 +250,41 @@
     return row;
   }
 
-  function renderFormulas(formulas, ocrResponse) {
+  function buildDerivedFormulaRow(item, index) {
+    var row = document.createElement("div");
+    row.className = "ocr-formula-item";
+
+    var title = document.createElement("div");
+    title.className = "ocr-formula-meta";
+    title.textContent = "正文公式片段 " + (index + 1);
+    row.appendChild(title);
+
+    var note = document.createElement("div");
+    note.className = "ocr-derived-note";
+    note.textContent = "未识别为独立公式候选，以下内容来自正文中的 LaTeX 片段，只读展示。";
+    row.appendChild(note);
+
+    var preview = document.createElement("div");
+    preview.className = "ocr-formula-preview";
+    row.appendChild(preview);
+    updatePreviewElement(preview, item.snippet || "");
+
+    if (item.sourceLabel) {
+      var source = document.createElement("div");
+      source.className = "hint";
+      source.textContent = "来源：" + item.sourceLabel;
+      row.appendChild(source);
+    }
+
+    var raw = document.createElement("code");
+    raw.className = "latex-output-code";
+    raw.textContent = item.snippet || "";
+    row.appendChild(raw);
+
+    return row;
+  }
+
+  async function renderFormulas(formulas, ocrResponse) {
     if (!hasDom()) return;
 
     state.mathLiveReady = isMathLiveReady();
@@ -206,6 +293,7 @@
       .filter(function (item) {
         return !!item.latex;
       });
+    state.derivedFormulas = state.formulas.length ? [] : collectDerivedFormulas(ocrResponse);
 
     var reviewCard = qs("#photoOcrFormulaReview");
     var list = qs("#photoOcrFormulaList");
@@ -215,7 +303,7 @@
     list.innerHTML = "";
     reviewCard.style.display = "block";
 
-    if (!state.formulas.length) {
+    if (!state.formulas.length && !state.derivedFormulas.length) {
       var empty = document.createElement("div");
       empty.className = "status";
       empty.textContent = "未识别到独立公式，可直接检查题目和解答文本。";
@@ -223,7 +311,7 @@
       return;
     }
 
-    if (!state.mathLiveReady) {
+    if (!state.mathLiveReady && state.formulas.length) {
       var hint = document.createElement("div");
       hint.className = "status warning-hint";
       hint.textContent = "MathLive 未加载，请检查 /vendor/mathlive 文件是否存在。";
@@ -233,6 +321,12 @@
     state.formulas.forEach(function (item, index) {
       list.appendChild(buildFormulaRow(item, index));
     });
+
+    state.derivedFormulas.forEach(function (item, index) {
+      list.appendChild(buildDerivedFormulaRow(item, index));
+    });
+
+    await UI.renderMathInElement(list);
   }
 
   window.MathLiveOcr = {

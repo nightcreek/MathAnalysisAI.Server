@@ -1,3 +1,137 @@
+function isEscapedMathDelimiter(text, index) {
+  var slashCount = 0;
+  for (var i = index - 1; i >= 0 && text.charAt(i) === "\\"; i--) {
+    slashCount += 1;
+  }
+  return slashCount % 2 === 1;
+}
+
+function findClosingMathDelimiter(text, startIndex, openDelimiter, closeDelimiter, options) {
+  var cursor = startIndex + openDelimiter.length;
+  var opts = options || {};
+
+  while (cursor < text.length) {
+    var endIndex = text.indexOf(closeDelimiter, cursor);
+    if (endIndex < 0) {
+      return -1;
+    }
+
+    if (isEscapedMathDelimiter(text, endIndex)) {
+      cursor = endIndex + closeDelimiter.length;
+      continue;
+    }
+
+    var innerText = text.slice(startIndex + openDelimiter.length, endIndex);
+    if (opts.singleLine && /[\r\n]/.test(innerText)) {
+      cursor = endIndex + closeDelimiter.length;
+      continue;
+    }
+
+    if (opts.requireContent && !innerText.trim()) {
+      cursor = endIndex + closeDelimiter.length;
+      continue;
+    }
+
+    return endIndex;
+  }
+
+  return -1;
+}
+
+function findNextMathToken(text, startIndex) {
+  var delimiters = [
+    { open: "$$", close: "$$", display: true, singleLine: false },
+    { open: "\\[", close: "\\]", display: true, singleLine: false },
+    { open: "\\(", close: "\\)", display: false, singleLine: false },
+    { open: "$", close: "$", display: false, singleLine: true }
+  ];
+
+  var candidates = [];
+
+  delimiters.forEach(function (delimiter) {
+    var searchFrom = startIndex;
+    while (searchFrom < text.length) {
+      var openIndex = text.indexOf(delimiter.open, searchFrom);
+      if (openIndex < 0) {
+        return;
+      }
+
+      if (delimiter.open === "$" && text.charAt(openIndex + 1) === "$") {
+        searchFrom = openIndex + 2;
+        continue;
+      }
+
+      if (isEscapedMathDelimiter(text, openIndex)) {
+        searchFrom = openIndex + delimiter.open.length;
+        continue;
+      }
+
+      var closeIndex = findClosingMathDelimiter(text, openIndex, delimiter.open, delimiter.close, {
+        requireContent: true,
+        singleLine: delimiter.singleLine
+      });
+
+      if (closeIndex < 0) {
+        searchFrom = openIndex + delimiter.open.length;
+        continue;
+      }
+
+      candidates.push({
+        type: "math",
+        display: delimiter.display,
+        start: openIndex,
+        end: closeIndex + delimiter.close.length,
+        value: text.slice(openIndex, closeIndex + delimiter.close.length)
+      });
+      return;
+    }
+  });
+
+  if (!candidates.length) {
+    return null;
+  }
+
+  candidates.sort(function (a, b) {
+    if (a.start !== b.start) {
+      return a.start - b.start;
+    }
+    return (b.end - b.start) - (a.end - a.start);
+  });
+
+  return candidates[0];
+}
+
+function extractMathTokens(text) {
+  var source = String(text || "");
+  if (!source) {
+    return [];
+  }
+
+  var tokens = [];
+  var cursor = 0;
+
+  while (cursor < source.length) {
+    var token = findNextMathToken(source, cursor);
+    if (!token) {
+      tokens.push({ type: "text", value: source.slice(cursor) });
+      break;
+    }
+
+    if (token.start > cursor) {
+      tokens.push({ type: "text", value: source.slice(cursor, token.start) });
+    }
+
+    tokens.push(token);
+    cursor = token.end;
+  }
+
+  return tokens;
+}
+
+function renderPlainTextWithBreaks(text) {
+  return window.UI.escapeHtml(String(text || "").replace(/\r\n?/g, "\n")).replace(/\n/g, "<br>");
+}
+
 window.UI = {
   qs(selector) { return document.querySelector(selector); },
   qsa(selector) { return Array.from(document.querySelectorAll(selector)); },
@@ -23,6 +157,54 @@ window.UI = {
     const arr = this.safeList(items);
     if (!arr.length) return "<div class='status'>暂无</div>";
     return "<ul class='list'>" + arr.map(x => "<li>" + this.escapeHtml(x) + "</li>").join("") + "</ul>";
+  },
+  extractMathSegments(text) {
+    return extractMathTokens(text);
+  },
+  containsMathSyntax(text) {
+    return extractMathTokens(text).some(function (token) { return token.type === "math"; });
+  },
+  renderMixedMarkdownMath(text) {
+    var tokens = extractMathTokens(text);
+    if (!tokens.length) {
+      return "";
+    }
+
+    return tokens.map(function (token) {
+      if (token.type !== "math") {
+        return renderPlainTextWithBreaks(token.value);
+      }
+
+      var className = token.display ? "math-block-fragment" : "math-inline-fragment";
+      return "<span class='" + className + "'>" + window.UI.escapeHtml(token.value) + "</span>";
+    }).join("");
+  },
+  renderMathList(items) {
+    const arr = this.safeList(items).map(x => String(x || "").trim()).filter(Boolean);
+    if (!arr.length) return "<div class='status'>暂无</div>";
+    return "<ul class='list math-list'>" + arr.map(x =>
+      "<li><div class='math-rich-text'>" + this.renderMixedMarkdownMath(x) + "</div></li>"
+    ).join("") + "</ul>";
+  },
+  async renderMathInElement(element) {
+    if (!element || !window.MathJax || typeof window.MathJax.typesetPromise !== "function") {
+      return;
+    }
+
+    var renderKey = element.innerHTML;
+    if (element.__mathRenderKey === renderKey) {
+      return;
+    }
+
+    try {
+      if (typeof window.MathJax.typesetClear === "function") {
+        window.MathJax.typesetClear([element]);
+      }
+      await window.MathJax.typesetPromise([element]);
+      element.__mathRenderKey = renderKey;
+    } catch (error) {
+      console.warn("MathJax render failed", error);
+    }
   },
   renderErrorPanel(target, options) {
     var el = typeof target === "string" ? document.querySelector(target) : target;

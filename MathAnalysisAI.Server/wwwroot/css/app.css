@@ -1376,6 +1376,82 @@ button.btn-secondary {
     gap: var(--sp-3);
 }
 
+.ocr-formula-item {
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-3);
+    padding: var(--sp-3);
+    border-radius: var(--radius-sm);
+    background: rgba(20, 26, 44, 0.65);
+    border: 1px solid var(--border);
+}
+
+.ocr-formula-meta {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-fade);
+}
+
+.ocr-formula-edit-hint,
+.ocr-derived-note {
+    color: var(--text-fade);
+    font-size: 12px;
+}
+
+.ocr-formula-render,
+.ocr-formula-preview {
+    padding: var(--sp-3);
+    border-radius: var(--radius-sm);
+    background: rgba(10, 15, 28, 0.78);
+    border: 1px solid rgba(145, 166, 255, 0.14);
+    overflow-x: auto;
+}
+
+.ocr-formula-preview {
+    min-height: 62px;
+}
+
+.analysis-text-preview-card {
+    margin-top: var(--sp-3);
+    padding: var(--sp-3);
+    border-radius: var(--radius-sm);
+    background: rgba(10, 15, 28, 0.45);
+    border: 1px solid rgba(145, 166, 255, 0.12);
+}
+
+.analysis-text-preview {
+    min-height: 54px;
+    margin-top: var(--sp-2);
+}
+
+.math-rich-text {
+    line-height: 1.8;
+    white-space: normal;
+    word-break: break-word;
+}
+
+.math-rich-text .MathJax,
+.math-rich-text mjx-container,
+.ocr-formula-preview .MathJax,
+.ocr-formula-preview mjx-container,
+.streaming-result-rendered .MathJax,
+.streaming-result-rendered mjx-container {
+    max-width: 100%;
+    overflow-x: auto;
+    overflow-y: hidden;
+}
+
+.math-inline-fragment {
+    display: inline;
+}
+
+.math-block-fragment {
+    display: block;
+    margin: var(--sp-2) 0;
+}
+
 .ocr-formula-card {
     padding: var(--sp-3);
     border-radius: var(--radius-sm);
@@ -1816,6 +1892,14 @@ canvas { display: block; max-width: 100%; }
     background: rgba(10, 15, 28, 0.5);
     border: 1px dashed var(--border);
     margin-top: var(--sp-3);
+}
+
+.streaming-result-rendered {
+    margin-top: var(--sp-3);
+}
+
+.math-rendered-content {
+    line-height: 1.85;
 }
 
 .streaming-content-raw {
