@@ -30,8 +30,11 @@
 - 而是尝试搭建一个包含前端、后端、数据库、AI 网关、OCR、用户系统和部署运维的完整原型。
 
 本项目计划作为一个持续运营和迭代的个人 / 小组项目，预计维护至 **2027 年 5 月**，用于积累真实的 AI 教育应用经验和工程实践经验。
+
 这里可以体验项目[数学分析智能体](http://mathanalysisai.cn/index.html)（需要登入使用）
+
 项目开发[Night Creek](https://github.com/nightcreek),[Zhou Koyomi](https://github.com/Zhou-Koyomi)
+
 开发过程中使用了AI工具。
 
 ## 核心功能
