@@ -1,14 +1,14 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
-using MathAnalysisAI.Server.DTOs.Analysis;
-using MathAnalysisAI.Server.DTOs.Visualization;
+using MathAnalysisAI.Server.SharedKernel.Analysis;
+using MathAnalysisAI.Server.Services.Analysis.UAO;
 
 namespace MathAnalysisAI.Server.Services.Analysis.Fallback
 {
     public sealed class AnalysisFallbackService : IAnalysisFallbackService
     {
         public void ApplyFallbacks(
-            AnalysisResponseDto parsed,
+            AnalysisUao parsed,
             string analysisMode,
             string problemText,
             string? studentSolutionText,
@@ -35,7 +35,7 @@ namespace MathAnalysisAI.Server.Services.Analysis.Fallback
             ApplyKnowledgePointsFallback(parsed, problemText, chapterName);
         }
 
-        private static void MergeParsed(AnalysisResponseDto target, AnalysisResponseDto source)
+        private static void MergeParsed(AnalysisUao target, AnalysisUao source)
         {
             target.Course = source.Course;
             target.Chapter = source.Chapter;
@@ -50,7 +50,7 @@ namespace MathAnalysisAI.Server.Services.Analysis.Fallback
             target.Visualization = source.Visualization;
         }
 
-        private static AnalysisResponseDto? TryMapLegacyResponse(string input)
+        private static AnalysisUao? TryMapLegacyResponse(string input)
         {
             JsonNode? root;
             try
@@ -108,7 +108,7 @@ namespace MathAnalysisAI.Server.Services.Analysis.Fallback
                 isCorrect = score.Value >= 0.8d;
             }
 
-            return new AnalysisResponseDto
+            return new AnalysisUao
             {
                 Course = string.Empty,
                 Chapter = null,
@@ -116,8 +116,8 @@ namespace MathAnalysisAI.Server.Services.Analysis.Fallback
                 Difficulty = "unknown",
                 KnowledgePoints = new List<string>(),
                 SolutionOverview = obj["overallAssessment"]?.GetValue<string>() ?? string.Empty,
-                StandardSolution = new List<StandardSolutionStepDto>(),
-                StudentSolutionReview = new StudentSolutionReviewDto
+                StandardSolution = new List<StandardSolutionStep>(),
+                StudentSolutionReview = new StudentSolutionReview
                 {
                     IsCorrect = isCorrect,
                     MainIssue = obj["misconceptionAnalysis"]?.GetValue<string>(),
@@ -126,7 +126,7 @@ namespace MathAnalysisAI.Server.Services.Analysis.Fallback
                 },
                 MistakeTags = new List<string>(),
                 ReviewSuggestions = reviewSuggestions,
-                Visualization = new VisualizationDto
+                Visualization = new VisualizationSpec
                 {
                     ShouldUse = false,
                     Engine = "none",
@@ -136,7 +136,7 @@ namespace MathAnalysisAI.Server.Services.Analysis.Fallback
             };
         }
 
-        private static bool IsLikelyLegacyFormat(AnalysisResponseDto parsed)
+        private static bool IsLikelyLegacyFormat(AnalysisUao parsed)
         {
             var noStandardData =
                 string.IsNullOrWhiteSpace(parsed.ProblemType) &&
@@ -149,7 +149,7 @@ namespace MathAnalysisAI.Server.Services.Analysis.Fallback
         }
 
         private static void ApplyReviewSolutionFallbacks(
-            AnalysisResponseDto parsed,
+            AnalysisUao parsed,
             string analysisMode,
             string problemText,
             string? studentSolutionText,
@@ -161,7 +161,7 @@ namespace MathAnalysisAI.Server.Services.Analysis.Fallback
                 return;
             }
 
-            parsed.StudentSolutionReview ??= new StudentSolutionReviewDto
+            parsed.StudentSolutionReview ??= new StudentSolutionReview
             {
                 IsCorrect = null,
                 MainIssue = null,
@@ -304,7 +304,7 @@ namespace MathAnalysisAI.Server.Services.Analysis.Fallback
                 || text.Contains("∫1^∞", StringComparison.Ordinal);
         }
 
-        private static void ApplyKnowledgePointsFallback(AnalysisResponseDto parsed, string problemText, string? chapterName)
+        private static void ApplyKnowledgePointsFallback(AnalysisUao parsed, string problemText, string? chapterName)
         {
             if (parsed.KnowledgePoints != null && parsed.KnowledgePoints.Count > 0)
             {

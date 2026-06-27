@@ -3,6 +3,7 @@ using MathAnalysisAI.Server.DTOs.Auth;
 using MathAnalysisAI.Server.Models;
 using MathAnalysisAI.Server.Options;
 using MathAnalysisAI.Server.Services.Auth;
+using MathAnalysisAI.Server.Services.ExceptionHandling;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Mvc;
@@ -28,8 +29,8 @@ public class AuthControllerTests
 
         var objectResult = Assert.IsType<ObjectResult>(result.Result);
         Assert.Equal(StatusCodes.Status503ServiceUnavailable, objectResult.StatusCode);
-        var payload = Assert.IsAssignableFrom<object>(objectResult.Value);
-        Assert.Contains("auth_mode_disabled", payload.ToString(), StringComparison.OrdinalIgnoreCase);
+        var payload = Assert.IsType<ApiErrorResponse>(objectResult.Value);
+        Assert.Equal("AUTH_MODE_DISABLED", payload.ErrorCode);
     }
 
     [Fact]
@@ -45,9 +46,10 @@ public class AuthControllerTests
 
         var result = await controller.Login(new LoginRequestDto { Username = user.Username }, CancellationToken.None);
 
-        var badRequest = Assert.IsType<BadRequestObjectResult>(result.Result);
+        var badRequest = Assert.IsType<ObjectResult>(result.Result);
         Assert.Equal(StatusCodes.Status400BadRequest, badRequest.StatusCode);
-        Assert.Contains("auth_password_required", badRequest.Value?.ToString(), StringComparison.OrdinalIgnoreCase);
+        var payload = Assert.IsType<ApiErrorResponse>(badRequest.Value);
+        Assert.Equal("AUTH_PASSWORD_REQUIRED", payload.ErrorCode);
     }
 
     [Fact]
@@ -70,10 +72,10 @@ public class AuthControllerTests
         var result = await controller.Login(new LoginRequestDto { Username = user.Username, Password = password }, CancellationToken.None);
 
         var ok = Assert.IsType<OkObjectResult>(result.Result);
-        var dto = Assert.IsType<CurrentUserDto>(ok.Value);
-        Assert.Equal(user.Id, dto.UserId);
-        Assert.Equal(user.Username, dto.Username);
-        Assert.Equal(user.Id, httpContext.Session.GetInt32("auth_user_id"));
+        var dto = Assert.IsType<AuthTokenResponseDto>(ok.Value);
+        Assert.False(string.IsNullOrWhiteSpace(dto.AccessToken));
+        Assert.Equal(user.Id, dto.User.UserId);
+        Assert.Equal(user.Username, dto.User.Username);
     }
 
     [Fact]
@@ -90,9 +92,10 @@ public class AuthControllerTests
 
         var result = await controller.Login(new LoginRequestDto { Username = user.Username, Password = "wrong_password" }, CancellationToken.None);
 
-        var unauth = Assert.IsType<UnauthorizedObjectResult>(result.Result);
+        var unauth = Assert.IsType<ObjectResult>(result.Result);
         Assert.Equal(StatusCodes.Status401Unauthorized, unauth.StatusCode);
-        Assert.Contains("auth_invalid_credentials", unauth.Value?.ToString(), StringComparison.OrdinalIgnoreCase);
+        var payload = Assert.IsType<ApiErrorResponse>(unauth.Value);
+        Assert.Equal("AUTH_INVALID_CREDENTIALS", payload.ErrorCode);
     }
 
     [Fact]
@@ -113,9 +116,9 @@ public class AuthControllerTests
         var result = await controller.Login(new LoginRequestDto { Username = user.Username }, CancellationToken.None);
 
         var ok = Assert.IsType<OkObjectResult>(result.Result);
-        var dto = Assert.IsType<CurrentUserDto>(ok.Value);
-        Assert.Equal(user.Id, dto.UserId);
-        Assert.Equal(user.Username, dto.Username);
-        Assert.Equal(user.Id, httpContext.Session.GetInt32("auth_user_id"));
+        var dto = Assert.IsType<AuthTokenResponseDto>(ok.Value);
+        Assert.False(string.IsNullOrWhiteSpace(dto.AccessToken));
+        Assert.Equal(user.Id, dto.User.UserId);
+        Assert.Equal(user.Username, dto.User.Username);
     }
 }

@@ -6,6 +6,7 @@ using MathAnalysisAI.Server.DTOs.LLM;
 using MathAnalysisAI.Server.DTOs.PhotoSolutions;
 using MathAnalysisAI.Server.DTOs.Visualization;
 using MathAnalysisAI.Server.Models;
+using MathAnalysisAI.Server.SharedKernel.Analysis;
 using MathAnalysisAI.Server.Controllers;
 using MathAnalysisAI.Server.Services.Analysis.Context;
 using MathAnalysisAI.Server.Services.Analysis.Fallback;
@@ -14,9 +15,12 @@ using MathAnalysisAI.Server.Services.Analysis.Mistakes;
 using MathAnalysisAI.Server.Services.Analysis.Persistence;
 using MathAnalysisAI.Server.Services.Analysis.Stats;
 using MathAnalysisAI.Server.Services.Analysis.Structuring;
+using MathAnalysisAI.Server.Services.Analysis.UAO;
 using MathAnalysisAI.Server.Services.Analysis.Verification;
 using MathAnalysisAI.Server.Services.Auth;
 using MathAnalysisAI.Server.Services.LLM;
+using MathAnalysisAI.Server.Services.Orchestration;
+using MathAnalysisAI.Server.Services.Orchestration.Steps;
 using MathAnalysisAI.Server.Services.OCR;
 using MathAnalysisAI.Server.Services.Visualization;
 using MathAnalysisAI.Server.Options;
@@ -60,6 +64,14 @@ internal sealed class FakeUserContext : IUserContext
     public Task<bool> IsAuthenticatedAsync(CancellationToken cancellationToken = default) => Task.FromResult(CurrentUser != null);
     public string? GetImpersonatedRole() => null;
     public void SetImpersonatedRole(string? role) { }
+}
+
+internal sealed class FakeLocalJwtTokenService : ILocalJwtTokenService
+{
+    public LocalJwtTokenResult IssueToken(AppUser user)
+    {
+        return new LocalJwtTokenResult("test-token", DateTime.UtcNow.AddHours(1));
+    }
 }
 
 internal sealed class FakeSession : ISession
@@ -157,7 +169,7 @@ internal sealed class FakeAnalysisContextBuilder : IAnalysisContextBuilder
 internal sealed class FakeLlmRequestFactory : ILlmRequestFactory
 {
     public Task<LLMChatRequestDto> BuildAsync(
-        AnalysisRequestDto request,
+        UAOInputModel request,
         Course course,
         Chapter? chapter,
         Problem problem,
@@ -221,7 +233,7 @@ internal sealed class FakeUserStatsUpdateService : IUserStatsUpdateService
 internal sealed class FakeFallbackService : IAnalysisFallbackService
 {
     public void ApplyFallbacks(
-        AnalysisResponseDto parsed,
+        AnalysisUao parsed,
         string analysisMode,
         string problemText,
         string? studentSolutionText,
@@ -270,26 +282,52 @@ internal static class TestServiceFactory
             ["DeepSeek:BaseUrl"] = "http://127.0.0.1/fake",
             ["DeepSeek:ApiKey"] = "test-key"
         }).Build();
-        var llmGateway = new LLMGateway(
+        var persistenceService = new AnalysisPersistenceService(db);
+        ILLMModule llmGateway = new LLMGateway(
             new FakeHttpClientFactory(),
             config,
             db,
             Microsoft.Extensions.Options.Options.Create(new LLMOptions()));
-        var visualizationService = new VisualizationService(db, new FakeGeoGebraCommandValidator());
-
-        return new AnalysisService(
-            db,
-            llmGateway,
-            visualizationService,
+        var llmService = new LLMService(new FakeLlmRequestFactory(), llmGateway);
+        IVisualizationService visualizationService = new VisualizationService(persistenceService, new FakeGeoGebraCommandValidator());
+        var problemStructuringService = new ProblemStructuringService(db);
+        var analysisContextBuilder = new FakeAnalysisContextBuilder();
+        var fallbackService = new FakeFallbackService();
+        var mistakeRecordService = new FakeMistakeRecordService();
+        var userStatsUpdateService = new FakeUserStatsUpdateService();
+        var verificationService = new AnalysisVerificationService(persistenceService);
+        var ocrStep = new OCRStep(
+            persistenceService,
+            problemStructuringService,
+            NullLogger<OCRStep>.Instance);
+        var llmStep = new LLMStep(
+            persistenceService,
+            llmService,
+            analysisContextBuilder,
+            NullLogger<LLMStep>.Instance);
+        var evaluationStep = new EvaluationStep(
             parser ?? new FakeLlmResponseParser(),
-            new FakeFallbackService(),
-            new AnalysisPersistenceService(db),
-            new FakeMistakeRecordService(),
-            new FakeUserStatsUpdateService(),
-            new AnalysisVerificationService(db),
-            new FakeAnalysisContextBuilder(),
-            new FakeLlmRequestFactory(),
-            NullLogger<AnalysisService>.Instance);
+            fallbackService,
+            persistenceService);
+        var persistenceStep = new PersistenceStep(
+            persistenceService,
+            mistakeRecordService,
+            userStatsUpdateService,
+            visualizationService,
+            verificationService);
+        var pipelineDefinition = new AnalysisPipelineDefinition();
+        var analysisPipeline = new AnalysisPipeline(
+            pipelineDefinition,
+            persistenceService,
+            analysisContextBuilder,
+            llmService,
+            new UAOBuilderStep(),
+            ocrStep,
+            llmStep,
+            evaluationStep,
+            persistenceStep);
+
+        return new AnalysisService(analysisPipeline);
     }
 
     public static PhotoSolutionsController CreatePhotoSolutionsController(
@@ -309,9 +347,12 @@ internal static class TestServiceFactory
             ["DeepSeek:BaseUrl"] = "http://127.0.0.1/fake",
             ["DeepSeek:ApiKey"] = "test-key"
         }).Build();
+        var ocrService = new OCRService(provider, NullLogger<OCRService>.Instance);
+        var persistenceService = new AnalysisPersistenceService(db);
         var controller = new PhotoSolutionsController(
-            db,
-            provider,
+            persistenceService,
+            ocrService,
+            new FakeUserContext { CurrentUser = user },
             config,
             NullLogger<PhotoSolutionsController>.Instance);
         SetupControllerContext(controller, user);
@@ -366,11 +407,17 @@ internal static class TestServiceFactory
             }
         }
 
-        return new AuthController(
-            db,
-            new FakeWebHostEnvironment { EnvironmentName = environmentName },
+        var environment = new FakeWebHostEnvironment { EnvironmentName = environmentName };
+        var authService = new AuthService(
+            new AuthPersistenceService(db, NullLogger<AuthPersistenceService>.Instance),
+            environment,
             Microsoft.Extensions.Options.Options.Create(options),
-            userContext);
+            Microsoft.Extensions.Options.Options.Create(new OidcOptions()),
+            userContext,
+            new FakeLocalJwtTokenService());
+
+        return new AuthController(
+            authService);
     }
 
     public static LearningAnalysisController CreateLearningAnalysisController(
@@ -385,11 +432,42 @@ internal static class TestServiceFactory
         AppUser? user,
         MathAnalysisAI.Server.Services.Analysis.Parsing.ILlmResponseParser? parser = null)
     {
+        var userContext = new FakeUserContext { CurrentUser = user };
+        var analysisService = CreateAnalysisService(db, parser);
+        var persistenceService = new AnalysisPersistenceService(db);
+        var problemStructuringService = new ProblemStructuringService(db);
+        var ocrStep = new OCRStep(
+            persistenceService,
+            problemStructuringService,
+            NullLogger<OCRStep>.Instance);
+        var llmStep = new LLMStep(
+            persistenceService,
+            new LLMService(
+                new FakeLlmRequestFactory(),
+                new LLMGateway(
+                    new FakeHttpClientFactory(),
+                    new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+                    {
+                        ["DeepSeek:BaseUrl"] = "http://127.0.0.1/fake",
+                        ["DeepSeek:ApiKey"] = "test-key"
+                    }).Build(),
+                    db,
+                    Microsoft.Extensions.Options.Options.Create(new LLMOptions()))),
+            new FakeAnalysisContextBuilder(),
+            NullLogger<LLMStep>.Instance);
+        var evaluationStep = new EvaluationStep(
+            parser ?? new FakeLlmResponseParser(),
+            new FakeFallbackService(),
+            persistenceService);
+        var persistenceStep = new PersistenceStep(
+            persistenceService,
+            new FakeMistakeRecordService(),
+            new FakeUserStatsUpdateService(),
+            new VisualizationService(persistenceService, new FakeGeoGebraCommandValidator()),
+            new AnalysisVerificationService(persistenceService));
         var controller = new LearningAnalysisController(
-            CreateAnalysisService(db, parser),
-            new ProblemStructuringService(db),
-            db,
-            NullLogger<LearningAnalysisController>.Instance);
+            analysisService,
+            userContext);
         SetupControllerContext(controller, user);
         return controller;
     }
@@ -505,7 +583,7 @@ internal sealed class FakeSuccessfulLlmResponseParser : MathAnalysisAI.Server.Se
     public MathAnalysisAI.Server.Services.Analysis.Parsing.LlmParseResult Parse(string? rawContent)
     {
         var standardSolution = IncludeStandardSolution
-            ? new List<StandardSolutionStepDto>
+            ? new List<StandardSolutionStep>
             {
                 new()
                 {
@@ -513,12 +591,12 @@ internal sealed class FakeSuccessfulLlmResponseParser : MathAnalysisAI.Server.Se
                     Content = "检查定义域并代入。"
                 }
             }
-            : new List<StandardSolutionStepDto>();
+            : new List<StandardSolutionStep>();
 
         return new MathAnalysisAI.Server.Services.Analysis.Parsing.LlmParseResult
         {
             Success = true,
-            Parsed = new AnalysisResponseDto
+            Parsed = new AnalysisUao
             {
                 Course = "Math Analysis",
                 Chapter = "Limits",
@@ -527,7 +605,7 @@ internal sealed class FakeSuccessfulLlmResponseParser : MathAnalysisAI.Server.Se
                 KnowledgePoints = new List<string> { "极限" },
                 SolutionOverview = "先判断定义域，再直接代入。",
                 StandardSolution = standardSolution,
-                StudentSolutionReview = new StudentSolutionReviewDto
+                StudentSolutionReview = new StudentSolutionReview
                 {
                     IsCorrect = IsCorrect,
                     MainIssue = "无",
@@ -536,7 +614,7 @@ internal sealed class FakeSuccessfulLlmResponseParser : MathAnalysisAI.Server.Se
                 },
                 MistakeTags = new List<string>(),
                 ReviewSuggestions = new List<string>(),
-                Visualization = new VisualizationDto
+                Visualization = new VisualizationSpec
                 {
                     ShouldUse = false,
                     Engine = "none",

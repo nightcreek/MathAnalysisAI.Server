@@ -1,17 +1,16 @@
-using MathAnalysisAI.Server.Data;
 using MathAnalysisAI.Server.DTOs.Analysis;
 using MathAnalysisAI.Server.Models;
-using Microsoft.EntityFrameworkCore;
+using MathAnalysisAI.Server.Services.Analysis.Persistence;
 
 namespace MathAnalysisAI.Server.Services.Knowledge;
 
-public class QuestionService
+public class QuestionService : IQuestionModule
 {
-    private readonly ApplicationDbContext _db;
+    private readonly IPersistenceService _persistenceService;
 
-    public QuestionService(ApplicationDbContext db)
+    public QuestionService(IPersistenceService persistenceService)
     {
-        _db = db;
+        _persistenceService = persistenceService;
     }
 
     public async Task<QuestionListResponseDto> ListAsync(
@@ -26,52 +25,23 @@ public class QuestionService
         int pageSize,
         CancellationToken cancellationToken = default)
     {
-        var query = _db.Questions.AsNoTracking().AsQueryable();
-
-        if (courseId.HasValue)
-            query = query.Where(q => q.CourseId == courseId.Value);
-        if (chapterId.HasValue)
-            query = query.Where(q => q.ChapterId == chapterId.Value);
-        if (knowledgePointId.HasValue)
-            query = query.Where(q => q.PrimaryKnowledgePointId == knowledgePointId.Value);
-        if (!string.IsNullOrWhiteSpace(difficulty))
-            query = query.Where(q => q.Difficulty == difficulty);
-        if (!string.IsNullOrWhiteSpace(questionType))
-            query = query.Where(q => q.QuestionType == questionType);
-        if (!string.IsNullOrWhiteSpace(search))
-            query = query.Where(q => q.Title.Contains(search) || q.Content.Contains(search));
-        if (publishedOnly)
-            query = query.Where(q => q.IsPublished);
-
-        var total = await query.CountAsync(cancellationToken);
-
-        var items = await query
-            .OrderByDescending(q => q.CreatedAt)
-            .Skip((page - 1) * pageSize)
-            .Take(pageSize)
-            .Select(q => new QuestionDto
-            {
-                Id = q.Id,
-                Title = q.Title,
-                Content = q.Content,
-                StandardAnswer = q.StandardAnswer,
-                SolutionHint = q.SolutionHint,
-                Difficulty = q.Difficulty,
-                QuestionType = q.QuestionType,
-                CourseId = q.CourseId,
-                ChapterId = q.ChapterId,
-                ChapterName = q.Chapter != null ? q.Chapter.Name : null,
-                PrimaryKnowledgePointId = q.PrimaryKnowledgePointId,
-                PrimaryKnowledgePointName = q.KnowledgePoint != null ? q.KnowledgePoint.Name : null,
-                IsPublished = q.IsPublished,
-                CreatedAt = q.CreatedAt
-            })
-            .ToListAsync(cancellationToken);
+        var result = await _persistenceService.ListQuestionsAsync(
+            new QuestionListQuery(
+                courseId,
+                chapterId,
+                knowledgePointId,
+                difficulty,
+                questionType,
+                search,
+                publishedOnly,
+                page,
+                pageSize),
+            cancellationToken);
 
         return new QuestionListResponseDto
         {
-            Items = items,
-            TotalCount = total,
+            Items = result.Items.Select(MapQuestionDto).ToList(),
+            TotalCount = result.TotalCount,
             Page = page,
             PageSize = pageSize
         };
@@ -79,27 +49,8 @@ public class QuestionService
 
     public async Task<QuestionDto?> GetByIdAsync(int id, CancellationToken cancellationToken = default)
     {
-        return await _db.Questions
-            .AsNoTracking()
-            .Where(q => q.Id == id)
-            .Select(q => new QuestionDto
-            {
-                Id = q.Id,
-                Title = q.Title,
-                Content = q.Content,
-                StandardAnswer = q.StandardAnswer,
-                SolutionHint = q.SolutionHint,
-                Difficulty = q.Difficulty,
-                QuestionType = q.QuestionType,
-                CourseId = q.CourseId,
-                ChapterId = q.ChapterId,
-                ChapterName = q.Chapter != null ? q.Chapter.Name : null,
-                PrimaryKnowledgePointId = q.PrimaryKnowledgePointId,
-                PrimaryKnowledgePointName = q.KnowledgePoint != null ? q.KnowledgePoint.Name : null,
-                IsPublished = q.IsPublished,
-                CreatedAt = q.CreatedAt
-            })
-            .FirstOrDefaultAsync(cancellationToken);
+        var question = await _persistenceService.GetQuestionAsync(new QuestionByIdQuery(id), cancellationToken);
+        return question == null ? null : MapQuestionDto(question);
     }
 
     public async Task<QuestionDto> CreateAsync(CreateQuestionRequestDto request, int? userId, CancellationToken cancellationToken = default)
@@ -120,8 +71,7 @@ public class QuestionService
             CreatedAt = DateTime.UtcNow
         };
 
-        _db.Questions.Add(question);
-        await _db.SaveChangesAsync(cancellationToken);
+        await _persistenceService.CreateQuestionAsync(new CreateQuestionCommand(question), cancellationToken);
 
         return await GetByIdAsync(question.Id, cancellationToken)
             ?? throw new InvalidOperationException("Created question could not be retrieved.");
@@ -129,36 +79,30 @@ public class QuestionService
 
     public async Task<QuestionDto?> UpdateAsync(int id, CreateQuestionRequestDto request, CancellationToken cancellationToken = default)
     {
-        var question = await _db.Questions.FindAsync(new object[] { id }, cancellationToken);
+        var question = await _persistenceService.UpdateQuestionAsync(
+            new UpdateQuestionCommand(
+                id,
+                request.Title.Trim(),
+                request.Content.Trim(),
+                request.StandardAnswer?.Trim(),
+                request.SolutionHint?.Trim(),
+                string.IsNullOrWhiteSpace(request.Difficulty) ? "medium" : request.Difficulty,
+                string.IsNullOrWhiteSpace(request.QuestionType) ? "calculation" : request.QuestionType,
+                request.CourseId,
+                request.ChapterId,
+                request.PrimaryKnowledgePointId,
+                request.IsPublished,
+                DateTime.UtcNow),
+            cancellationToken);
         if (question == null)
             return null;
-
-        question.Title = request.Title.Trim();
-        question.Content = request.Content.Trim();
-        question.StandardAnswer = request.StandardAnswer?.Trim();
-        question.SolutionHint = request.SolutionHint?.Trim();
-        question.Difficulty = string.IsNullOrWhiteSpace(request.Difficulty) ? "medium" : request.Difficulty;
-        question.QuestionType = string.IsNullOrWhiteSpace(request.QuestionType) ? "calculation" : request.QuestionType;
-        question.CourseId = request.CourseId;
-        question.ChapterId = request.ChapterId;
-        question.PrimaryKnowledgePointId = request.PrimaryKnowledgePointId;
-        question.IsPublished = request.IsPublished;
-        question.UpdatedAt = DateTime.UtcNow;
-
-        await _db.SaveChangesAsync(cancellationToken);
 
         return await GetByIdAsync(id, cancellationToken);
     }
 
     public async Task<bool> DeleteAsync(int id, CancellationToken cancellationToken = default)
     {
-        var question = await _db.Questions.FindAsync(new object[] { id }, cancellationToken);
-        if (question == null)
-            return false;
-
-        _db.Questions.Remove(question);
-        await _db.SaveChangesAsync(cancellationToken);
-        return true;
+        return await _persistenceService.DeleteQuestionAsync(new DeleteQuestionCommand(id), cancellationToken);
     }
 
     public async Task<List<QuestionDto>> GetByKnowledgePointIdsAsync(
@@ -166,29 +110,30 @@ public class QuestionService
         int maxCount,
         CancellationToken cancellationToken = default)
     {
-        return await _db.Questions
-            .AsNoTracking()
-            .Where(q => q.PrimaryKnowledgePointId != null && knowledgePointIds.Contains(q.PrimaryKnowledgePointId.Value))
-            .Where(q => q.IsPublished)
-            .OrderBy(q => q.Difficulty == "easy" ? 0 : q.Difficulty == "medium" ? 1 : 2)
-            .Take(maxCount)
-            .Select(q => new QuestionDto
-            {
-                Id = q.Id,
-                Title = q.Title,
-                Content = q.Content,
-                StandardAnswer = q.StandardAnswer,
-                SolutionHint = q.SolutionHint,
-                Difficulty = q.Difficulty,
-                QuestionType = q.QuestionType,
-                CourseId = q.CourseId,
-                ChapterId = q.ChapterId,
-                ChapterName = q.Chapter != null ? q.Chapter.Name : null,
-                PrimaryKnowledgePointId = q.PrimaryKnowledgePointId,
-                PrimaryKnowledgePointName = q.KnowledgePoint != null ? q.KnowledgePoint.Name : null,
-                IsPublished = q.IsPublished,
-                CreatedAt = q.CreatedAt
-            })
-            .ToListAsync(cancellationToken);
+        var questions = await _persistenceService.GetPublishedQuestionsByKnowledgePointIdsAsync(
+            new PublishedQuestionsByKnowledgePointsQuery(knowledgePointIds, maxCount),
+            cancellationToken);
+        return questions.Select(MapQuestionDto).ToList();
+    }
+
+    private static QuestionDto MapQuestionDto(Question q)
+    {
+        return new QuestionDto
+        {
+            Id = q.Id,
+            Title = q.Title,
+            Content = q.Content,
+            StandardAnswer = q.StandardAnswer,
+            SolutionHint = q.SolutionHint,
+            Difficulty = q.Difficulty,
+            QuestionType = q.QuestionType,
+            CourseId = q.CourseId,
+            ChapterId = q.ChapterId,
+            ChapterName = q.Chapter?.Name,
+            PrimaryKnowledgePointId = q.PrimaryKnowledgePointId,
+            PrimaryKnowledgePointName = q.KnowledgePoint?.Name,
+            IsPublished = q.IsPublished,
+            CreatedAt = q.CreatedAt
+        };
     }
 }

@@ -1,13 +1,8 @@
 using MathAnalysisAI.Server.DTOs.Analysis;
-using MathAnalysisAI.Server.DTOs.PhotoSolutions;
-using MathAnalysisAI.Server.Data;
 using MathAnalysisAI.Server.Filters;
-using MathAnalysisAI.Server.Models;
 using MathAnalysisAI.Server.Services.Analysis;
-using MathAnalysisAI.Server.Services.Analysis.Structuring;
 using MathAnalysisAI.Server.Services.Auth;
 using MathAnalysisAI.Server.Services.ExceptionHandling;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 
@@ -18,24 +13,15 @@ namespace MathAnalysisAI.Server.Controllers;
 [RequireAuth]
 public class LearningAnalysisController : ControllerBase
 {
-    private readonly AnalysisService _analysisService;
-    private readonly IProblemStructuringService _problemStructuringService;
+    private readonly IAnalysisService _analysisService;
     private readonly IUserContext _userContext;
-    private readonly ApplicationDbContext _db;
-    private readonly ILogger<LearningAnalysisController> _logger;
 
     public LearningAnalysisController(
-        AnalysisService analysisService,
-        IProblemStructuringService problemStructuringService,
-        IUserContext userContext,
-        ApplicationDbContext db,
-        ILogger<LearningAnalysisController> logger)
+        IAnalysisService analysisService,
+        IUserContext userContext)
     {
         _analysisService = analysisService;
-        _problemStructuringService = problemStructuringService;
         _userContext = userContext;
-        _db = db;
-        _logger = logger;
     }
 
     [HttpPost("analyze")]
@@ -55,123 +41,19 @@ public class LearningAnalysisController : ControllerBase
             return this.ApiError(StatusCodes.Status401Unauthorized, "AUTH_NOT_LOGGED_IN", "Not logged in.");
         }
 
-        var originalRequestUserId = request.UserId;
-        if (originalRequestUserId.HasValue && originalRequestUserId.Value != currentUser.Id)
-        {
-            _logger.LogWarning(
-                "Analyze blocked due to userId mismatch. RequestUserId={RequestUserId}, EffectiveUserId={EffectiveUserId}, Role={Role}",
-                originalRequestUserId.Value,
-                currentUser.Id,
-                currentUser.Role);
-
-            return StatusCode(StatusCodes.Status403Forbidden, new { message = "Forbidden userId mismatch." });
-            
-        }
-
-        request.UserId = currentUser.Id;
-
-        if (request.OcrRecordId.HasValue)
-        {
-            var ocrRecord = await _db.PhotoSolutionOcrRecords
-                .AsNoTracking()
-                .FirstOrDefaultAsync(x => x.Id == request.OcrRecordId.Value, cancellationToken);
-
-            if (ocrRecord == null)
-            {
-                return NotFound(new { message = "OCR record not found." });
-            }
-
-            if (ocrRecord.UserId != currentUser.Id)
-            {
-                _logger.LogWarning(
-                    "Analyze blocked due to OCR record ownership mismatch. OcrRecordId={OcrRecordId}, RecordUserId={RecordUserId}, CurrentUserId={CurrentUserId}, Role={Role}",
-                    ocrRecord.Id,
-                    ocrRecord.UserId,
-                    currentUser.Id,
-                    currentUser.Role);
-
-                return StatusCode(StatusCodes.Status403Forbidden, new { message = "Forbidden OCR record access." });
-            }
-
-            if (!string.Equals(ocrRecord.Status, PhotoSolutionOcrRecordStatus.Confirmed, StringComparison.OrdinalIgnoreCase))
-            {
-                return Conflict(new
-                {
-                    message = "OCR record is not confirmed yet.",
-                    ocrRecordId = ocrRecord.Id,
-                    status = ocrRecord.Status
-                });
-            }
-
-            if (string.IsNullOrWhiteSpace(ocrRecord.ConfirmedProblemText))
-            {
-                return Conflict(new
-                {
-                    message = "OCR confirmation snapshot is incomplete.",
-                    ocrRecordId = ocrRecord.Id
-                });
-            }
-
-            if (string.IsNullOrWhiteSpace(ocrRecord.ConfirmedFormulasJson))
-            {
-                return Conflict(new
-                {
-                    message = "OCR confirmation snapshot is missing formulas.",
-                    ocrRecordId = ocrRecord.Id
-                });
-            }
-
-            request.CourseId = ocrRecord.CourseId;
-            request.ChapterId = ocrRecord.ChapterId;
-            request.ProblemText = ocrRecord.ConfirmedProblemText;
-            request.StudentSolutionText = ocrRecord.ConfirmedStudentSolutionText;
-
-            var structuredProblem = await _problemStructuringService.CreateFromConfirmedOcrAsync(
-                ocrRecord,
-                request,
-                currentUser.Id,
-                cancellationToken);
-
-            request.StructuredProblemId = structuredProblem.Id;
-            request.ProblemText = structuredProblem.NormalizedProblemText;
-            request.StudentSolutionText = structuredProblem.StudentSolutionText;
-            request.Formulas = ParseFormulas(structuredProblem.FormulasJson);
-        }
-        else
-        {
-            var structuredProblem = await _problemStructuringService.CreateFromManualInputAsync(
-                request,
-                currentUser.Id,
-                cancellationToken);
-
-            request.StructuredProblemId = structuredProblem.Id;
-            request.ProblemText = structuredProblem.NormalizedProblemText;
-            request.StudentSolutionText = structuredProblem.StudentSolutionText;
-            request.Formulas = ParseFormulas(structuredProblem.FormulasJson);
-        }
-
         try
         {
-            var result = await _analysisService.AnalyzeAsync(request, cancellationToken);
-            return Ok(result);
+            var pipelineResult = await _analysisService.AnalyzeAsync(request, currentUser, cancellationToken);
+            if (!pipelineResult.Success)
+            {
+                return BuildPipelineFailure(pipelineResult.StatusCode, pipelineResult.Message, pipelineResult.OcrRecordId, pipelineResult.OcrStatus);
+            }
+
+            return Ok(pipelineResult.Response);
         }
         catch (ArgumentException ex)
         {
             return this.ApiError(StatusCodes.Status400BadRequest, "ANALYSIS_INVALID_REQUEST", ex.Message);
-        }
-    }
-
-    private static List<FormulaCandidateDto> ParseFormulas(string? json)
-    {
-        try
-        {
-            return string.IsNullOrWhiteSpace(json)
-                ? new List<FormulaCandidateDto>()
-                : System.Text.Json.JsonSerializer.Deserialize<List<FormulaCandidateDto>>(json) ?? new List<FormulaCandidateDto>();
-        }
-        catch
-        {
-            return new List<FormulaCandidateDto>();
         }
     }
 
@@ -194,15 +76,19 @@ public class LearningAnalysisController : ControllerBase
             return;
         }
 
-        var context = await _analysisService.BuildAnalysisContextAsync(request, cancellationToken);
-        var llmRequest = await _analysisService.BuildAnalysisLlmRequestAsync(request, context, cancellationToken);
+        var streamPreparation = await _analysisService.PrepareStreamAsync(request, currentUser, cancellationToken);
+        if (!streamPreparation.Success)
+        {
+            HttpContext.Response.StatusCode = streamPreparation.StatusCode;
+            return;
+        }
 
         HttpContext.Response.StatusCode = StatusCodes.Status200OK;
         HttpContext.Response.ContentType = "text/event-stream";
         HttpContext.Response.Headers.CacheControl = "no-cache";
         HttpContext.Response.Headers.Connection = "keep-alive";
 
-        await foreach (var chunk in _analysisService.StreamAnalysisAsync(llmRequest, cancellationToken))
+        await foreach (var chunk in streamPreparation.Stream!.WithCancellation(cancellationToken))
         {
             var encoded = System.Text.Json.JsonSerializer.Serialize(chunk);
             await HttpContext.Response.WriteAsync($"data: {encoded}\n\n", cancellationToken);
@@ -211,5 +97,34 @@ public class LearningAnalysisController : ControllerBase
 
         await HttpContext.Response.WriteAsync("data: [DONE]\n\n", cancellationToken);
         await HttpContext.Response.Body.FlushAsync(cancellationToken);
+    }
+
+    private ActionResult<AnalysisResponseDto> BuildPipelineFailure(
+        int statusCode,
+        string? message,
+        int? ocrRecordId,
+        string? ocrStatus)
+    {
+        if (statusCode == StatusCodes.Status404NotFound)
+        {
+            return NotFound(new { message });
+        }
+
+        if (statusCode == StatusCodes.Status403Forbidden)
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, new { message });
+        }
+
+        if (statusCode == StatusCodes.Status409Conflict)
+        {
+            return Conflict(new
+            {
+                message,
+                ocrRecordId,
+                status = ocrStatus
+            });
+        }
+
+        return StatusCode(statusCode, new { message });
     }
 }

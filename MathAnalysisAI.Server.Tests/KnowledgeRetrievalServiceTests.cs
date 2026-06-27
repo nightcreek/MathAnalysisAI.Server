@@ -1,6 +1,7 @@
 using MathAnalysisAI.Server.Data;
 using MathAnalysisAI.Server.Data.Seed;
 using MathAnalysisAI.Server.Models;
+using MathAnalysisAI.Server.Services.Analysis.Persistence;
 using MathAnalysisAI.Server.Services.Knowledge;
 using Xunit;
 
@@ -27,7 +28,7 @@ public class KnowledgeRetrievalServiceTests
                 "ma.multiple_integral.change_of_variables"
             });
 
-        var service = new KnowledgeRetrievalService(db);
+        var service = new KnowledgeRetrievalService(new AnalysisPersistenceService(db));
         var result = await service.RetrieveAsync(new()
         {
             CourseId = PlatformSeedData.CourseMathAnalysisId,
@@ -58,7 +59,7 @@ public class KnowledgeRetrievalServiceTests
                 "ma.line_integral.path_independence"
             });
 
-        var service = new KnowledgeRetrievalService(db);
+        var service = new KnowledgeRetrievalService(new AnalysisPersistenceService(db));
         var result = await service.RetrieveAsync(new()
         {
             CourseId = PlatformSeedData.CourseMathAnalysisId,
@@ -90,7 +91,7 @@ public class KnowledgeRetrievalServiceTests
                 "ma.surface_integral.stokes_formula"
             });
 
-        var service = new KnowledgeRetrievalService(db);
+        var service = new KnowledgeRetrievalService(new AnalysisPersistenceService(db));
         var result = await service.RetrieveAsync(new()
         {
             CourseId = PlatformSeedData.CourseMathAnalysisId,
@@ -137,7 +138,7 @@ public class KnowledgeRetrievalServiceTests
                 "ma.power_series.taylor_remainder"
             });
 
-        var service = new KnowledgeRetrievalService(db);
+        var service = new KnowledgeRetrievalService(new AnalysisPersistenceService(db));
         var result = await service.RetrieveAsync(new()
         {
             CourseId = PlatformSeedData.CourseMathAnalysisId,
@@ -172,7 +173,7 @@ public class KnowledgeRetrievalServiceTests
                 "ma.improper_integral.singularity_split"
             });
 
-        var service = new KnowledgeRetrievalService(db);
+        var service = new KnowledgeRetrievalService(new AnalysisPersistenceService(db));
         var result = await service.RetrieveAsync(new()
         {
             CourseId = PlatformSeedData.CourseMathAnalysisId,

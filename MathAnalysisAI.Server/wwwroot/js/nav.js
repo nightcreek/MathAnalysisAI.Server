@@ -272,6 +272,34 @@
     showAccessDenied("devAccessDenied", "无权访问开发工具");
   }
 
+  function injectGlobalFooter() {
+    if (document.querySelector(".app-footer")) return;
+
+    var footer = document.createElement("footer");
+    footer.className = "app-footer";
+
+    var inner = document.createElement("div");
+    inner.className = "footer-content";
+
+    var icp = document.createElement("span");
+    icp.className = "footer-icp";
+    icp.textContent = "ICP备案号：待添加";
+
+    var divider = document.createElement("span");
+    divider.className = "footer-divider";
+    divider.textContent = "|";
+
+    var police = document.createElement("span");
+    police.className = "footer-police";
+    police.textContent = "公安联网备案号：待添加";
+
+    inner.appendChild(icp);
+    inner.appendChild(divider);
+    inner.appendChild(police);
+    footer.appendChild(inner);
+    document.body.appendChild(footer);
+  }
+
   async function logout() {
     if (window.Auth && window.Auth.logout) {
       await window.Auth.logout();
@@ -307,6 +335,7 @@
     renderTopNavUserArea();
     ensureMobileNavBinding();
     guardDevPage();
+    injectGlobalFooter();
     document.body.setAttribute("data-auth-hydrated", "true");
     if (nav) {
       nav.setAttribute("aria-busy", "false");

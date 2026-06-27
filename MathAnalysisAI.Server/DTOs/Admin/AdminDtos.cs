@@ -37,3 +37,21 @@ public class DailyStatDto
     public int AnalysisCount { get; set; }
     public int LlmCallCount { get; set; }
 }
+
+public class TeacherListItemDto
+{
+    public int Id { get; set; }
+    public string Username { get; set; } = string.Empty;
+    public string? RealName { get; set; }
+    public string Role { get; set; } = string.Empty;
+    public int StudentCount { get; set; }
+}
+
+public class TeacherStudentListItemDto
+{
+    public int Id { get; set; }
+    public string Username { get; set; } = string.Empty;
+    public string? RealName { get; set; }
+    public string? StudentNumber { get; set; }
+    public string? ClassName { get; set; }
+}

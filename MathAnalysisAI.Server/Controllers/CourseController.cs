@@ -1,7 +1,6 @@
-using MathAnalysisAI.Server.Data;
+using MathAnalysisAI.Server.Services.Courses;
 using MathAnalysisAI.Server.Services.ExceptionHandling;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 
 namespace MathAnalysisAI.Server.Controllers;
 
@@ -9,12 +8,12 @@ namespace MathAnalysisAI.Server.Controllers;
 [Route("api/courses")]
 public class CourseController : ControllerBase
 {
-    private readonly ApplicationDbContext _db;
+    private readonly CourseService _courseService;
     private readonly ILogger<CourseController> _logger;
 
-    public CourseController(ApplicationDbContext db, ILogger<CourseController> logger)
+    public CourseController(CourseService courseService, ILogger<CourseController> logger)
     {
-        _db = db;
+        _courseService = courseService;
         _logger = logger;
     }
 
@@ -23,19 +22,7 @@ public class CourseController : ControllerBase
     {
         try
         {
-            var courses = await _db.Courses
-                .AsNoTracking()
-                .OrderBy(c => c.Id)
-                .Select(c => new
-                {
-                    c.Id,
-                    c.Name,
-                    c.Code,
-                    c.SubjectId,
-                    chapterCount = c.Chapters.Count
-                })
-                .ToListAsync(cancellationToken);
-
+            var courses = await _courseService.GetAllAsync(cancellationToken);
             return Ok(courses);
         }
         catch (Exception ex) when (ApiExceptionClassifier.IsDatabaseFailure(ex))
@@ -50,28 +37,11 @@ public class CourseController : ControllerBase
     {
         try
         {
-            var courseExists = await _db.Courses
-                .AsNoTracking()
-                .AnyAsync(c => c.Id == courseId, cancellationToken);
-
-            if (!courseExists)
+            var chapters = await _courseService.GetChaptersAsync(courseId, cancellationToken);
+            if (chapters == null)
             {
                 return this.ApiError(StatusCodes.Status404NotFound, "COURSE_NOT_FOUND", "Course not found.");
             }
-
-            var chapters = await _db.Chapters
-                .AsNoTracking()
-                .Where(c => c.CourseId == courseId)
-                .OrderBy(c => c.OrderIndex)
-                .ThenBy(c => c.Id)
-                .Select(c => new
-                {
-                    c.Id,
-                    c.Name,
-                    c.Code,
-                    c.OrderIndex
-                })
-                .ToListAsync(cancellationToken);
 
             return Ok(chapters);
         }

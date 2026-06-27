@@ -1,9 +1,7 @@
 using System.Security.Claims;
 using System.IdentityModel.Tokens.Jwt;
-using MathAnalysisAI.Server.Data;
 using MathAnalysisAI.Server.Models;
 using MathAnalysisAI.Server.Options;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 
 namespace MathAnalysisAI.Server.Services.Auth;
@@ -13,20 +11,20 @@ public class CurrentUserService : IUserContext
     private const string CurrentUserItemKey = "CurrentUser";
     private const string ImpersonatedRoleItemKey = "impersonated_role";
 
-    private readonly ApplicationDbContext _db;
+    private readonly ICurrentUserPersistenceService _currentUserPersistenceService;
     private readonly IHttpContextAccessor _httpContextAccessor;
     private readonly AuthOptions _authOptions;
     private readonly OidcOptions _oidcOptions;
     private readonly ILogger<CurrentUserService> _logger;
 
     public CurrentUserService(
-        ApplicationDbContext db,
+        ICurrentUserPersistenceService currentUserPersistenceService,
         IHttpContextAccessor httpContextAccessor,
         IOptions<AuthOptions> authOptions,
         IOptions<OidcOptions> oidcOptions,
         ILogger<CurrentUserService> logger)
     {
-        _db = db;
+        _currentUserPersistenceService = currentUserPersistenceService;
         _httpContextAccessor = httpContextAccessor;
         _authOptions = authOptions.Value ?? new AuthOptions();
         _oidcOptions = oidcOptions.Value ?? new OidcOptions();
@@ -36,9 +34,14 @@ public class CurrentUserService : IUserContext
     public async Task<AppUser?> GetCurrentUserAsync(CancellationToken cancellationToken = default)
     {
         var httpContext = _httpContextAccessor.HttpContext;
-        if (httpContext == null || httpContext.User.Identity?.IsAuthenticated != true)
+        if (httpContext == null)
         {
             return null;
+        }
+
+        if (httpContext.User.Identity?.IsAuthenticated != true)
+        {
+            return await ResolveDevelopmentFallbackUserAsync(cancellationToken);
         }
 
         if (httpContext.Items.TryGetValue(CurrentUserItemKey, out var cached)
@@ -142,9 +145,7 @@ public class CurrentUserService : IUserContext
         var appUserIdClaim = principal.FindFirstValue("app_user_id");
         if (int.TryParse(appUserIdClaim, out var appUserId) && appUserId > 0)
         {
-            return await _db.AppUsers
-                .AsNoTracking()
-                .FirstOrDefaultAsync(x => x.Id == appUserId, cancellationToken);
+            return await _currentUserPersistenceService.FindUserByIdAsync(appUserId, cancellationToken);
         }
 
         var username = ResolveUsername(principal);
@@ -153,56 +154,30 @@ public class CurrentUserService : IUserContext
             return null;
         }
 
-        var user = await _db.AppUsers
-            .AsNoTracking()
-            .FirstOrDefaultAsync(x => x.Username == username, cancellationToken);
+        var user = await _currentUserPersistenceService.FindUserByUsernameAsync(username, cancellationToken);
 
         if (user != null || !_authOptions.IsOidcMode())
         {
             return user;
         }
 
-        return await ProvisionOidcUserAsync(principal, username, cancellationToken);
+        return await _currentUserPersistenceService.ProvisionOidcUserAsync(principal, username, cancellationToken);
     }
 
-    private async Task<AppUser?> ProvisionOidcUserAsync(
-        ClaimsPrincipal principal,
-        string username,
-        CancellationToken cancellationToken)
+    private async Task<AppUser?> ResolveDevelopmentFallbackUserAsync(CancellationToken cancellationToken)
     {
-        var normalizedUsername = Truncate(username.Trim(), 64);
-        if (string.IsNullOrWhiteSpace(normalizedUsername))
+        if (!_authOptions.EnableDevelopmentFallback || !_authOptions.IsDevelopmentUsernameMode())
         {
             return null;
         }
 
-        var realName = ResolveRealName(principal);
-        var user = new AppUser
+        var fallbackUsername = _authOptions.DevelopmentFallbackUser?.Trim();
+        if (string.IsNullOrWhiteSpace(fallbackUsername))
         {
-            Username = normalizedUsername,
-            RealName = Truncate(realName, 64),
-            Role = AppUserRole.Student,
-            CreatedAt = DateTime.UtcNow
-        };
-
-        try
-        {
-            _db.AppUsers.Add(user);
-            await _db.SaveChangesAsync(cancellationToken);
-
-            _logger.LogInformation(
-                "Provisioned new OIDC user. Username={Username}, Role={Role}",
-                user.Username,
-                user.Role);
-        }
-        catch (DbUpdateException ex)
-        {
-            _logger.LogWarning(ex, "OIDC user provisioning raced or failed for username {Username}. Reloading existing user.", normalizedUsername);
+            return null;
         }
 
-        return await _db.AppUsers
-            .AsNoTracking()
-            .FirstOrDefaultAsync(x => x.Username == normalizedUsername, cancellationToken);
+        return await _currentUserPersistenceService.FindUserByUsernameAsync(fallbackUsername, cancellationToken);
     }
 
     private string? ResolveUsername(ClaimsPrincipal principal)
@@ -232,27 +207,6 @@ public class CurrentUserService : IUserContext
         return principal.Identity?.Name?.Trim();
     }
 
-    private static string? ResolveRealName(ClaimsPrincipal principal)
-    {
-        var candidates = new[]
-        {
-            "name",
-            ClaimTypes.GivenName,
-            ClaimTypes.Name
-        };
-
-        foreach (var claimType in candidates)
-        {
-            var value = principal.FindFirstValue(claimType);
-            if (!string.IsNullOrWhiteSpace(value))
-            {
-                return value.Trim();
-            }
-        }
-
-        return null;
-    }
-
     private static AppUser CloneWithRole(AppUser user, string role)
     {
         return new AppUser
@@ -271,13 +225,4 @@ public class CurrentUserService : IUserContext
         };
     }
 
-    private static string? Truncate(string? value, int maxLength)
-    {
-        if (string.IsNullOrWhiteSpace(value))
-        {
-            return null;
-        }
-
-        return value.Length <= maxLength ? value : value[..maxLength];
-    }
 }

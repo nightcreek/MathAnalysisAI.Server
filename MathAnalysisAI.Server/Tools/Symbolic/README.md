@@ -1,14 +1,22 @@
 # Symbolic Worker Prototype
 
-`symbolic_worker.py` 是一个基于 SymPy 的 stdin/stdout JSON worker 原型。
+This directory contains a local SymPy worker prototype for isolated symbolic operations.
 
-## 用法
+For full project architecture and development rules, use the root [`README.md`](../../README.md).
+
+## Purpose
+
+- provide a stdin/stdout JSON worker prototype
+- keep symbolic processing isolated from the main server flow
+- support plain string input only
+
+## Run
 
 ```bash
 echo '{"operation":"limit","expression":"sin(x)/x","variable":"x","point":"0"}' | python3 Tools/Symbolic/symbolic_worker.py
 ```
 
-## 支持 operation
+## Supported Operations
 
 - simplify
 - expand
@@ -19,9 +27,9 @@ echo '{"operation":"limit","expression":"sin(x)/x","variable":"x","point":"0"}' 
 - solve
 - series
 
-## 注意
+## Caveats
 
-- 仅支持 `plain/sympy` 输入字符串。
-- `latex` 输入当前阶段不支持。
-- stdout 仅输出 JSON。
-- 不使用 eval。
+- input format is `plain/sympy` only
+- LaTeX input is not supported
+- output is JSON on stdout only
+- the worker does not use `eval`

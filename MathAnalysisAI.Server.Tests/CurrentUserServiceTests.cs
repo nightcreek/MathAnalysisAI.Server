@@ -4,6 +4,7 @@ using MathAnalysisAI.Server.Services.Auth;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Xunit;
 
@@ -20,15 +21,16 @@ public class CurrentUserServiceTests
         httpContext.Features.Set<ISessionFeature>(new FakeSessionFeature());
 
         var service = new CurrentUserService(
-            db,
+            new AuthPersistenceService(db, NullLogger<AuthPersistenceService>.Instance),
             new HttpContextAccessor { HttpContext = httpContext },
-            new FakeWebHostEnvironment { EnvironmentName = Environments.Development },
             Microsoft.Extensions.Options.Options.Create(new AuthOptions
             {
                 Mode = AuthOptions.ModeDisabled,
                 EnableDevelopmentFallback = true,
                 DevelopmentFallbackUser = user.Username
-            }));
+            }),
+            Microsoft.Extensions.Options.Options.Create(new OidcOptions()),
+            NullLogger<CurrentUserService>.Instance);
 
         var currentUser = await service.GetCurrentUserAsync(CancellationToken.None);
 
@@ -44,15 +46,16 @@ public class CurrentUserServiceTests
         httpContext.Features.Set<ISessionFeature>(new FakeSessionFeature());
 
         var service = new CurrentUserService(
-            db,
+            new AuthPersistenceService(db, NullLogger<AuthPersistenceService>.Instance),
             new HttpContextAccessor { HttpContext = httpContext },
-            new FakeWebHostEnvironment { EnvironmentName = Environments.Development },
             Microsoft.Extensions.Options.Options.Create(new AuthOptions
             {
                 Mode = AuthOptions.ModeDevelopmentUsername,
                 EnableDevelopmentFallback = true,
                 DevelopmentFallbackUser = user.Username
-            }));
+            }),
+            Microsoft.Extensions.Options.Options.Create(new OidcOptions()),
+            NullLogger<CurrentUserService>.Instance);
 
         var currentUser = await service.GetCurrentUserAsync(CancellationToken.None);
 

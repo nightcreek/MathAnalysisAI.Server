@@ -1,31 +1,22 @@
-using MathAnalysisAI.Server.Data;
 using MathAnalysisAI.Server.DTOs.Stats;
-using Microsoft.EntityFrameworkCore;
+using MathAnalysisAI.Server.Services.Analysis.Persistence;
 
 namespace MathAnalysisAI.Server.Services.Stats;
 
 public class PersonalStatsService
 {
-    private readonly ApplicationDbContext _db;
+    private readonly IPersistenceService _persistenceService;
 
-    public PersonalStatsService(ApplicationDbContext db)
+    public PersonalStatsService(IPersistenceService persistenceService)
     {
-        _db = db;
+        _persistenceService = persistenceService;
     }
 
     public async Task<PersonalStatsDto> GetPersonalStatsAsync(int userId, int? courseId = null, CancellationToken cancellationToken = default)
     {
-        var courseQuery = _db.UserCourseStats
-            .AsNoTracking()
-            .Where(x => x.UserId == userId);
-
-        if (courseId.HasValue)
-        {
-            courseQuery = courseQuery.Where(x => x.CourseId == courseId.Value);
-        }
-
-        var courseStats = await courseQuery
-            .OrderByDescending(x => x.AttemptCount)
+        var courseStats = (await _persistenceService.GetPersonalUserCourseStatsAsync(
+                new PersonalUserCourseStatsQuery(userId, courseId),
+                cancellationToken))
             .Select(x => new CourseProgressDto
             {
                 CourseId = x.CourseId,
@@ -36,20 +27,11 @@ public class PersonalStatsService
                 AccuracyRate = x.AccuracyRate,
                 RankingScore = x.RankingScore
             })
-            .ToListAsync(cancellationToken);
+            .ToList();
 
-        var kpQuery = _db.UserKnowledgeStates
-            .AsNoTracking()
-            .Where(x => x.UserId == userId);
-
-        if (courseId.HasValue)
-        {
-            kpQuery = kpQuery.Where(x => x.KnowledgePoint.CourseId == courseId.Value);
-        }
-
-        var knowledgeStates = await kpQuery
-            .OrderByDescending(x => x.MasteryLevel)
-            .ThenByDescending(x => x.PracticeCount)
+        var knowledgeStates = (await _persistenceService.GetPersonalUserKnowledgeStatesAsync(
+                new PersonalUserKnowledgeStatesQuery(userId, courseId),
+                cancellationToken))
             .Select(x => new KnowledgeMasteryDto
             {
                 KnowledgePointId = x.KnowledgePointId,
@@ -59,7 +41,7 @@ public class PersonalStatsService
                 PracticeCount = x.PracticeCount,
                 CorrectCount = x.CorrectCount
             })
-            .ToListAsync(cancellationToken);
+            .ToList();
 
         var totalAttempts = courseStats.Sum(x => x.AttemptCount);
         var totalCorrect = courseStats.Sum(x => x.CorrectCount);

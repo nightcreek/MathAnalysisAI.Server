@@ -1,4 +1,4 @@
-using MathAnalysisAI.Server.DTOs.Analysis;
+using MathAnalysisAI.Server.Services.Analysis.UAO;
 
 namespace MathAnalysisAI.Server.Services.Analysis.Parsing
 {
@@ -10,7 +10,7 @@ namespace MathAnalysisAI.Server.Services.Analysis.Parsing
     public sealed class LlmParseResult
     {
         public bool Success { get; init; }
-        public AnalysisResponseDto? Parsed { get; init; }
+        public AnalysisUao? Parsed { get; init; }
         public string? ErrorMessage { get; init; }
         public string? NormalizedJson { get; init; }
     }

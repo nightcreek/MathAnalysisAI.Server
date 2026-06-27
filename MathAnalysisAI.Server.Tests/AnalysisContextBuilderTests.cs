@@ -3,6 +3,7 @@ using MathAnalysisAI.Server.DTOs.AnalysisContext;
 using MathAnalysisAI.Server.DTOs.Knowledge;
 using MathAnalysisAI.Server.Options;
 using MathAnalysisAI.Server.Services.Analysis.Context;
+using MathAnalysisAI.Server.Services.Analysis.UAO;
 using MathAnalysisAI.Server.Services.Knowledge;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
@@ -92,7 +93,7 @@ public class AnalysisContextBuilderTests
     {
         return new AnalysisContextBuildRequest
         {
-            Request = new AnalysisRequestDto
+            Request = new UAOInputModel
             {
                 CourseId = 200,
                 ProblemText = problemText,

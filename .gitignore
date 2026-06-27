@@ -200,3 +200,4 @@ build/
 
 # Local override
 *.local
+.reasonix/

@@ -1,5 +1,7 @@
 using MathAnalysisAI.Server.Models;
+using MathAnalysisAI.Server.Services.Analysis.Persistence;
 using MathAnalysisAI.Server.Services.Knowledge;
+using MathAnalysisAI.Server.Data.Knowledge;
 using Xunit;
 
 namespace MathAnalysisAI.Server.Tests;
@@ -12,8 +14,8 @@ public class LearningPathServiceTests
         await using var db = TestDb.Create(nameof(BuildLearningPathAsync_ReturnsEmptyItems_ForNewUser));
         var course = TestServiceFactory.SeedCourse(db);
         var user = TestServiceFactory.SeedUser(db, 1, "student1");
-        var questionSvc = new QuestionService(db);
-        var svc = new LearningPathService(db, questionSvc);
+        IQuestionModule questionSvc = new QuestionService(new AnalysisPersistenceService(db));
+        var svc = new LearningPathService(new LearningPathPersistenceService(db), questionSvc);
 
         var result = await svc.BuildLearningPathAsync(course.Id, user.Id);
 
@@ -54,8 +56,8 @@ public class LearningPathServiceTests
         db.KnowledgePoints.Add(kp);
         await db.SaveChangesAsync();
 
-        var questionSvc = new QuestionService(db);
-        var svc = new LearningPathService(db, questionSvc);
+        IQuestionModule questionSvc = new QuestionService(new AnalysisPersistenceService(db));
+        var svc = new LearningPathService(new LearningPathPersistenceService(db), questionSvc);
 
         var result = await svc.BuildLearningPathAsync(course.Id, user.Id);
 
@@ -91,8 +93,8 @@ public class LearningPathServiceTests
         db.UserKnowledgeStates.Add(state);
         await db.SaveChangesAsync();
 
-        var questionSvc = new QuestionService(db);
-        var svc = new LearningPathService(db, questionSvc);
+        IQuestionModule questionSvc = new QuestionService(new AnalysisPersistenceService(db));
+        var svc = new LearningPathService(new LearningPathPersistenceService(db), questionSvc);
 
         var result = await svc.BuildLearningPathAsync(course.Id, user.Id);
 
@@ -169,8 +171,8 @@ public class LearningPathServiceTests
         db.UserKnowledgeStates.Add(state);
         await db.SaveChangesAsync();
 
-        var questionSvc = new QuestionService(db);
-        var svc = new LearningPathService(db, questionSvc);
+        IQuestionModule questionSvc = new QuestionService(new AnalysisPersistenceService(db));
+        var svc = new LearningPathService(new LearningPathPersistenceService(db), questionSvc);
 
         var result = await svc.BuildLearningPathAsync(course.Id, user.Id);
 
@@ -205,8 +207,8 @@ public class LearningPathServiceTests
         });
         await db.SaveChangesAsync();
 
-        var questionSvc = new QuestionService(db);
-        var svc = new LearningPathService(db, questionSvc);
+        IQuestionModule questionSvc = new QuestionService(new AnalysisPersistenceService(db));
+        var svc = new LearningPathService(new LearningPathPersistenceService(db), questionSvc);
 
         var result = await svc.BuildLearningPathAsync(course.Id, user.Id);
 

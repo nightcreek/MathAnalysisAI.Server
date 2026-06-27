@@ -1,11 +1,10 @@
-using MathAnalysisAI.Server.Data;
 using MathAnalysisAI.Server.DTOs.Resources;
 using MathAnalysisAI.Server.Models;
+using MathAnalysisAI.Server.Services.Analysis.Persistence;
 using MathAnalysisAI.Server.Services.Auth;
 using MathAnalysisAI.Server.Services.ExceptionHandling;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 
 namespace MathAnalysisAI.Server.Controllers;
 
@@ -13,16 +12,16 @@ namespace MathAnalysisAI.Server.Controllers;
 [Route("api/resources")]
 public class ResourcesController : ControllerBase
 {
-    private readonly ApplicationDbContext _db;
+    private readonly IPersistenceService _persistenceService;
     private readonly IUserContext _userContext;
     private readonly ILogger<ResourcesController> _logger;
 
     public ResourcesController(
-        ApplicationDbContext db,
+        IPersistenceService persistenceService,
         IUserContext userContext,
         ILogger<ResourcesController> logger)
     {
-        _db = db;
+        _persistenceService = persistenceService;
         _userContext = userContext;
         _logger = logger;
     }
@@ -34,31 +33,10 @@ public class ResourcesController : ControllerBase
     {
         try
         {
-            var query = _db.NetworkResources.AsNoTracking().Where(x => x.IsEnabled);
-
-            if (courseId.HasValue && courseId.Value > 0)
-            {
-                query = query.Where(x => x.CourseId == courseId.Value);
-            }
-
-            var items = await query
-                .OrderBy(x => x.Category)
-                .ThenBy(x => x.SortOrder)
-                .ThenBy(x => x.Title)
-                .Select(x => new NetworkResourceListItemDto
-                {
-                    Id = x.Id,
-                    CourseId = x.CourseId,
-                    Category = x.Category,
-                    Title = x.Title,
-                    Description = x.Description,
-                    Link = x.Link,
-                    SortOrder = x.SortOrder,
-                    IsEnabled = x.IsEnabled,
-                    CreatedAt = x.CreatedAt,
-                    UpdatedAt = x.UpdatedAt
-                })
-                .ToListAsync(cancellationToken);
+            var entities = await _persistenceService.ListNetworkResourcesAsync(
+                new NetworkResourcesListQuery(courseId, true),
+                cancellationToken);
+            var items = entities.Select(MapToDto).ToList();
 
             return Ok(items);
         }
@@ -90,7 +68,9 @@ public class ResourcesController : ControllerBase
             return this.ApiError(StatusCodes.Status400BadRequest, "RESOURCE_TITLE_REQUIRED", "title is required.");
         }
 
-        var courseExists = await _db.Courses.AnyAsync(x => x.Id == dto.CourseId, cancellationToken);
+        var courseExists = await _persistenceService.CourseExistsAsync(
+            new CourseByIdQuery(dto.CourseId),
+            cancellationToken);
         if (!courseExists)
         {
             return this.ApiError(StatusCodes.Status400BadRequest, "RESOURCE_COURSE_NOT_FOUND", "Course not found.");
@@ -110,8 +90,9 @@ public class ResourcesController : ControllerBase
             UpdatedAt = now
         };
 
-        _db.NetworkResources.Add(entity);
-        await _db.SaveChangesAsync(cancellationToken);
+        await _persistenceService.CreateNetworkResourceAsync(
+            new CreateNetworkResourceCommand(entity),
+            cancellationToken);
 
         return CreatedAtAction(nameof(GetById), new { id = entity.Id }, MapToDto(entity));
     }
@@ -121,9 +102,9 @@ public class ResourcesController : ControllerBase
         int id,
         CancellationToken cancellationToken)
     {
-        var entity = await _db.NetworkResources
-            .AsNoTracking()
-            .FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
+        var entity = await _persistenceService.GetNetworkResourceByIdAsync(
+            new NetworkResourceByIdQuery(id),
+            cancellationToken);
 
         if (entity == null)
         {
@@ -145,21 +126,22 @@ public class ResourcesController : ControllerBase
         [FromBody] NetworkResourceUpdateDto dto,
         CancellationToken cancellationToken)
     {
-        var entity = await _db.NetworkResources.FindAsync(new object[] { id }, cancellationToken);
+        var entity = await _persistenceService.UpdateNetworkResourceAsync(
+            new UpdateNetworkResourceCommand(
+                id,
+                dto.Category,
+                dto.Title,
+                dto.Description,
+                dto.Link,
+                dto.SortOrder,
+                dto.IsEnabled,
+                DateTime.UtcNow),
+            cancellationToken);
+
         if (entity == null)
         {
             return this.ApiError(StatusCodes.Status404NotFound, "RESOURCE_NOT_FOUND", "Resource not found.");
         }
-
-        if (dto.Category != null) entity.Category = dto.Category.Trim();
-        if (dto.Title != null) entity.Title = dto.Title.Trim();
-        if (dto.Description != null) entity.Description = dto.Description.Trim();
-        if (dto.Link != null) entity.Link = dto.Link.Trim();
-        if (dto.SortOrder.HasValue) entity.SortOrder = dto.SortOrder.Value;
-        if (dto.IsEnabled.HasValue) entity.IsEnabled = dto.IsEnabled.Value;
-        entity.UpdatedAt = DateTime.UtcNow;
-
-        await _db.SaveChangesAsync(cancellationToken);
         return Ok(MapToDto(entity));
     }
 
@@ -169,14 +151,13 @@ public class ResourcesController : ControllerBase
         int id,
         CancellationToken cancellationToken)
     {
-        var entity = await _db.NetworkResources.FindAsync(new object[] { id }, cancellationToken);
-        if (entity == null)
+        var deleted = await _persistenceService.DeleteNetworkResourceAsync(
+            new DeleteNetworkResourceCommand(id),
+            cancellationToken);
+        if (!deleted)
         {
             return this.ApiError(StatusCodes.Status404NotFound, "RESOURCE_NOT_FOUND", "Resource not found.");
         }
-
-        _db.NetworkResources.Remove(entity);
-        await _db.SaveChangesAsync(cancellationToken);
 
         return NoContent();
     }

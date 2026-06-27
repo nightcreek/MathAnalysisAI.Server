@@ -3,6 +3,7 @@ using MathAnalysisAI.Server.DTOs.Analysis;
 using MathAnalysisAI.Server.DTOs.AnalysisContext;
 using MathAnalysisAI.Server.Models;
 using MathAnalysisAI.Server.Services.Analysis.LLM;
+using MathAnalysisAI.Server.Services.Analysis.UAO;
 using Xunit;
 
 namespace MathAnalysisAI.Server.Tests;
@@ -36,7 +37,7 @@ public class PromptProfileSeederTests
 
         var factory = new LlmRequestFactory(db);
         var request = await factory.BuildAsync(
-            new AnalysisRequestDto
+            new UAOInputModel
             {
                 CourseId = PlatformSeedData.CourseMathAnalysisId,
                 AnalysisMode = "review_solution",

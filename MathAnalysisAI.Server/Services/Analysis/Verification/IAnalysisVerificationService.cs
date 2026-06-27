@@ -1,5 +1,5 @@
-using MathAnalysisAI.Server.DTOs.Analysis;
 using MathAnalysisAI.Server.Models;
+using MathAnalysisAI.Server.Services.Analysis.Domain;
 
 namespace MathAnalysisAI.Server.Services.Analysis.Verification
 {
@@ -9,7 +9,7 @@ namespace MathAnalysisAI.Server.Services.Analysis.Verification
             StructuredProblem? structuredProblem,
             PhotoSolutionOcrRecord? ocrRecord,
             AnalysisResult analysisResult,
-            AnalysisResponseDto? parsed,
+            AnalysisResultModel? parsed,
             string? fallbackProblemText = null,
             string? fallbackStudentSolutionText = null,
             CancellationToken cancellationToken = default);

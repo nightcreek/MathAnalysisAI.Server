@@ -1870,7 +1870,7 @@ button.btn-secondary {
 
 .app-footer {
     margin-top: var(--sp-7);
-    padding: var(--sp-5) 0;
+    padding: var(--sp-5) 0 var(--sp-4) 0;
     text-align: center;
     font-family: var(--font-mono);
     font-size: 11px;
@@ -1878,6 +1878,39 @@ button.btn-secondary {
     text-transform: uppercase;
     color: var(--text-fade);
     border-top: 1px solid var(--border);
+    position: relative;
+    z-index: 1;
+}
+
+.footer-content {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--sp-3);
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+.footer-icp,
+.footer-police {
+    color: var(--text-fade);
+    transition: color 160ms ease;
+}
+
+.footer-icp a,
+.footer-police a {
+    color: var(--text-dim);
+    text-decoration: none;
+    transition: color 160ms ease;
+}
+
+.footer-icp a:hover,
+.footer-police a:hover {
+    color: var(--accent);
+}
+
+.footer-divider {
+    color: var(--border);
+    user-select: none;
 }
 
 /* MathLive override to match theme */

@@ -1,0 +1,254 @@
+{
+  "modules": [
+    {
+      "moduleName": "AuthModule",
+      "description": "Owns authentication, current-user resolution, login/register flows, and auth policy helpers.",
+      "publicInterfaces": [
+        "IUserContext",
+        "ILocalJwtTokenService",
+        "AuthService (current application-facing concrete service)"
+      ],
+      "allowedDependencies": [
+        "PersistenceModule",
+        "SharedKernel"
+      ],
+      "forbiddenDependencies": [
+        "AnalysisModule internals",
+        "OCRModule",
+        "LLMModule",
+        "ApplicationDbContext outside persistence boundary"
+      ],
+      "allowedLayers": [
+        "Services/Auth"
+      ],
+      "notes": [
+        "AuthController should remain thin and depend on public auth services only.",
+        "Current-user resolution should not depend on Analysis pipeline internals."
+      ]
+    },
+    {
+      "moduleName": "AnalysisModule",
+      "description": "Owns the analysis facade, analysis pipeline, ordered steps, UAO processing, and AnalysisResult production.",
+      "publicInterfaces": [
+        "IAnalysisService",
+        "IAnalysisPipeline"
+      ],
+      "allowedDependencies": [
+        "SharedKernel",
+        "LLMModule",
+        "OCRModule",
+        "PersistenceModule",
+        "KnowledgeModule",
+        "VisualizationModule"
+      ],
+      "forbiddenDependencies": [
+        "ApplicationDbContext",
+        "Microsoft.EntityFrameworkCore",
+        "Controllers",
+        "LLMGateway concrete implementation",
+        "LiteLLMPhotoSolutionOcrProvider concrete implementation"
+      ],
+      "allowedLayers": [
+        "Services/Analysis",
+        "Services/Orchestration"
+      ],
+      "notes": [
+        "Controllers may use IAnalysisService only.",
+        "IAnalysisPipeline is an application boundary and should not leak pipeline step internals.",
+        "Steps must remain internal and AnalysisExecutionContext is the only shared step state object."
+      ]
+    },
+    {
+      "moduleName": "CourseModule",
+      "description": "Owns course retrieval, course administration helpers, and course material orchestration entry points.",
+      "publicInterfaces": [
+        "CourseService (current concrete service)"
+      ],
+      "allowedDependencies": [
+        "PersistenceModule",
+        "SharedKernel",
+        "AuthModule"
+      ],
+      "forbiddenDependencies": [
+        "Analysis pipeline internals",
+        "LLM concrete provider",
+        "OCR concrete provider",
+        "Frontend rendering concerns"
+      ],
+      "allowedLayers": [
+        "Services/Courses",
+        "Services/Materials"
+      ],
+      "notes": [
+        "If dedicated interfaces are added later, controller dependencies should switch to those interfaces."
+      ]
+    },
+    {
+      "moduleName": "OCRModule",
+      "description": "Owns OCR service contracts, OCR request models, and provider adapters.",
+      "publicInterfaces": [
+        "IOCRService"
+      ],
+      "allowedDependencies": [
+        "SharedKernel"
+      ],
+      "forbiddenDependencies": [
+        "AnalysisService internals",
+        "Controller direct provider usage",
+        "Persistence direct access except through accepted service boundaries"
+      ],
+      "allowedLayers": [
+        "Services/OCR"
+      ],
+      "notes": [
+        "Controllers and analysis code should use IOCRService, not concrete OCR providers."
+      ]
+    },
+    {
+      "moduleName": "LLMModule",
+      "description": "Owns LLM public service contracts, gateway integration, and request execution plumbing.",
+      "publicInterfaces": [
+        "ILLMModule",
+        "ILLMService"
+      ],
+      "allowedDependencies": [
+        "SharedKernel"
+      ],
+      "forbiddenDependencies": [
+        "ApplicationDbContext outside accepted gateway logging boundary",
+        "Controllers",
+        "OCR provider implementation",
+        "Direct domain persistence outside module contracts"
+      ],
+      "allowedLayers": [
+        "Services/LLM",
+        "Services/Analysis/LLM"
+      ],
+      "notes": [
+        "Analysis code should depend on ILLMService or ILLMModule, not LLMGateway directly."
+      ]
+    },
+    {
+      "moduleName": "KnowledgeModule",
+      "description": "Owns knowledge retrieval, normalization helpers, and learning path support.",
+      "publicInterfaces": [
+        "IKnowledgeRetrievalService"
+      ],
+      "allowedDependencies": [
+        "PersistenceModule",
+        "SharedKernel"
+      ],
+      "forbiddenDependencies": [
+        "Controllers",
+        "LLM concrete provider",
+        "OCR concrete provider",
+        "Analysis pipeline step internals"
+      ],
+      "allowedLayers": [
+        "Services/Knowledge"
+      ],
+      "notes": [
+        "Knowledge normalization should remain reusable without depending on pipeline step implementations."
+      ]
+    },
+    {
+      "moduleName": "QuestionModule",
+      "description": "Owns question management and question lookup boundaries.",
+      "publicInterfaces": [
+        "IQuestionModule"
+      ],
+      "allowedDependencies": [
+        "PersistenceModule",
+        "SharedKernel",
+        "AuthModule"
+      ],
+      "forbiddenDependencies": [
+        "Analysis pipeline internals",
+        "LLM concrete provider",
+        "OCR concrete provider",
+        "ApplicationDbContext outside persistence boundary"
+      ],
+      "allowedLayers": [
+        "Services/Knowledge"
+      ],
+      "notes": [
+        "QuestionService currently lives under Services/Knowledge but is treated as its own conceptual module boundary."
+      ]
+    },
+    {
+      "moduleName": "VisualizationModule",
+      "description": "Owns visualization projection helpers and visualization persistence boundary adapters.",
+      "publicInterfaces": [
+        "IVisualizationService",
+        "IGeoGebraCommandValidator"
+      ],
+      "allowedDependencies": [
+        "SharedKernel",
+        "PersistenceModule"
+      ],
+      "forbiddenDependencies": [
+        "ApplicationDbContext",
+        "Controllers",
+        "LLM concrete providers",
+        "OCR concrete providers",
+        "Analysis pipeline step internals"
+      ],
+      "allowedLayers": [
+        "Services/Visualization"
+      ],
+      "notes": [
+        "Visualization services may persist through IPersistenceService but should not import EF Core directly."
+      ]
+    },
+    {
+      "moduleName": "PersistenceModule",
+      "description": "Owns EF Core, ApplicationDbContext access, persistence queries/commands, entity loading, and migrations.",
+      "publicInterfaces": [
+        "IPersistenceService"
+      ],
+      "allowedDependencies": [
+        "ApplicationDbContext",
+        "Microsoft.EntityFrameworkCore",
+        "Entity models",
+        "Migrations"
+      ],
+      "forbiddenDependencies": [
+        "Controllers",
+        "Frontend rendering code",
+        "OCR concrete provider",
+        "LLM concrete provider",
+        "Analysis pipeline step internals"
+      ],
+      "allowedLayers": [
+        "Services/Analysis/Persistence",
+        "Data",
+        "Migrations"
+      ],
+      "notes": [
+        "This is the only module allowed to touch EF Core and ApplicationDbContext directly."
+      ]
+    },
+    {
+      "moduleName": "SharedKernel",
+      "description": "Owns semantic cross-module data structures shared without infrastructure coupling.",
+      "publicInterfaces": [
+        "Shared semantic types"
+      ],
+      "allowedDependencies": [],
+      "forbiddenDependencies": [
+        "Controllers",
+        "ApplicationDbContext",
+        "Microsoft.EntityFrameworkCore",
+        "Provider clients",
+        "Business services",
+        "Infrastructure code"
+      ],
+      "allowedLayers": [
+        "SharedKernel"
+      ],
+      "notes": [
+        "SharedKernel should stay free of ASP.NET, EF Core, and provider implementation details."
+      ]
+    }
+  ]
+}

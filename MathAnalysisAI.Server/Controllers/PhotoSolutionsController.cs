@@ -2,16 +2,15 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.Net;
-using MathAnalysisAI.Server.Data;
 using MathAnalysisAI.Server.DTOs.PhotoSolutions;
 using MathAnalysisAI.Server.Filters;
 using MathAnalysisAI.Server.Models;
+using MathAnalysisAI.Server.Services.Analysis.Persistence;
 using MathAnalysisAI.Server.Services.Auth;
 using MathAnalysisAI.Server.Services.OCR;
 using MathAnalysisAI.Server.Services.ExceptionHandling;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
-using Microsoft.EntityFrameworkCore;
 
 namespace MathAnalysisAI.Server.Controllers
 {
@@ -32,21 +31,21 @@ namespace MathAnalysisAI.Server.Controllers
             "image/jpeg", "image/png", "image/webp"
         };
 
-        private readonly ApplicationDbContext _db;
-        private readonly IPhotoSolutionOcrProvider _ocrProvider;
+        private readonly IPersistenceService _persistenceService;
+        private readonly IOCRService _ocrService;
         private readonly IUserContext _userContext;
         private readonly IConfiguration _configuration;
         private readonly ILogger<PhotoSolutionsController> _logger;
 
         public PhotoSolutionsController(
-            ApplicationDbContext db,
-            IPhotoSolutionOcrProvider ocrProvider,
+            IPersistenceService persistenceService,
+            IOCRService ocrService,
             IUserContext userContext,
             IConfiguration configuration,
             ILogger<PhotoSolutionsController> logger)
         {
-            _db = db;
-            _ocrProvider = ocrProvider;
+            _persistenceService = persistenceService;
+            _ocrService = ocrService;
             _userContext = userContext;
             _configuration = configuration;
             _logger = logger;
@@ -115,18 +114,9 @@ namespace MathAnalysisAI.Server.Controllers
 
             try
             {
-                var recognized = await _ocrProvider.RecognizeAsync(request, cancellationToken);
+                var recognized = await _ocrService.RecognizeAsync(request, cancellationToken);
                 if (!recognized.IsSuccess)
                 {
-                    _logger.LogWarning(
-                        "Photo OCR provider returned failure. Provider={Provider} Model={Model} Attempt={Attempt} ErrorCode={ErrorCode} StatusCode={StatusCode} Message={Message}",
-                        recognized.RawProvider ?? "litellm",
-                        recognized.ModelName ?? string.Empty,
-                        recognized.AttemptCount,
-                        recognized.ErrorCode ?? "ocr_provider_failure",
-                        recognized.StatusCode,
-                        recognized.ErrorMessage);
-
                     return StatusCode(recognized.StatusCode ?? StatusCodes.Status502BadGateway, new
                     {
                         message = recognized.ErrorMessage ?? "OCR provider failed.",
@@ -162,8 +152,9 @@ namespace MathAnalysisAI.Server.Controllers
                         : PhotoSolutionOcrRecordStatus.PendingReview
                 };
 
-                _db.PhotoSolutionOcrRecords.Add(record);
-                await _db.SaveChangesAsync(cancellationToken);
+                record = await _persistenceService.CreatePhotoSolutionOcrRecordAsync(
+                    new CreatePhotoSolutionOcrRecordCommand(record),
+                    cancellationToken);
 
                 return Ok(BuildResponse(record, recognized, assessment, canAnalyze: false));
             }
@@ -201,8 +192,9 @@ namespace MathAnalysisAI.Server.Controllers
                 return BadRequest(new { message = "Request body is required." });
             }
 
-            var record = await _db.PhotoSolutionOcrRecords
-                .FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
+            var record = await _persistenceService.GetPhotoSolutionOcrRecordAsync(
+                new PhotoSolutionOcrRecordByIdQuery(id),
+                cancellationToken);
 
             if (record == null)
             {
@@ -230,14 +222,16 @@ namespace MathAnalysisAI.Server.Controllers
             var confirmedStudentSolutionText = NormalizeNullableText(request.StudentSolutionText);
             var confirmedFormulas = NormalizeFormulas(request.Formulas);
 
-            record.ConfirmedProblemText = confirmedProblemText;
-            record.ConfirmedStudentSolutionText = confirmedStudentSolutionText;
-            record.ConfirmedFormulasJson = JsonSerializer.Serialize(confirmedFormulas);
-            record.Status = PhotoSolutionOcrRecordStatus.Confirmed;
-            record.ConfirmedAt = DateTime.UtcNow;
-            record.ConfirmedByUserId = currentUser.Id;
-
-            await _db.SaveChangesAsync(cancellationToken);
+            record = await _persistenceService.ConfirmPhotoSolutionOcrRecordAsync(
+                new ConfirmPhotoSolutionOcrRecordCommand(
+                    id,
+                    confirmedProblemText,
+                    confirmedStudentSolutionText,
+                    JsonSerializer.Serialize(confirmedFormulas),
+                    PhotoSolutionOcrRecordStatus.Confirmed,
+                    DateTime.UtcNow,
+                    currentUser.Id),
+                cancellationToken) ?? record;
 
             var recognized = BuildRecognizedDto(record);
             var assessment = AssessReviewState(recognized);

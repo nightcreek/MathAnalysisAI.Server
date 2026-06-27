@@ -1,19 +1,18 @@
-using MathAnalysisAI.Server.Data;
 using MathAnalysisAI.Server.Models;
-using Microsoft.EntityFrameworkCore;
+using MathAnalysisAI.Server.Services.Analysis.Persistence;
 
 namespace MathAnalysisAI.Server.Services.Analysis.Stats
 {
     public sealed class UserStatsUpdateService : IUserStatsUpdateService
     {
-        private readonly ApplicationDbContext _db;
+        private readonly IPersistenceService _persistenceService;
         private readonly ILogger<UserStatsUpdateService> _logger;
 
         public UserStatsUpdateService(
-            ApplicationDbContext db,
+            IPersistenceService persistenceService,
             ILogger<UserStatsUpdateService> logger)
         {
-            _db = db;
+            _persistenceService = persistenceService;
             _logger = logger;
         }
 
@@ -75,8 +74,9 @@ namespace MathAnalysisAI.Server.Services.Analysis.Stats
                 return;
             }
 
-            var stats = await _db.UserCourseStats
-                .FirstOrDefaultAsync(x => x.UserId == userId.Value && x.CourseId == courseId, cancellationToken);
+            var stats = await _persistenceService.GetUserCourseStatsAsync(
+                new UserCourseStatsByKeyQuery(userId.Value, courseId),
+                cancellationToken);
 
             if (stats == null)
             {
@@ -92,7 +92,6 @@ namespace MathAnalysisAI.Server.Services.Analysis.Stats
                     LastUpdatedAt = DateTime.UtcNow
                 };
 
-                _db.UserCourseStats.Add(stats);
             }
 
             stats.AttemptCount += 1;
@@ -115,7 +114,9 @@ namespace MathAnalysisAI.Server.Services.Analysis.Stats
             stats.RankingScore = decimal.Round((decimal)ranking, 4, MidpointRounding.AwayFromZero);
             stats.LastUpdatedAt = DateTime.UtcNow;
 
-            await _db.SaveChangesAsync(cancellationToken);
+            await _persistenceService.SaveUserCourseStatsAsync(
+                new SaveUserCourseStatsCommand(stats),
+                cancellationToken);
         }
 
         private async Task UpdateUserKnowledgeStateAsync(
@@ -173,11 +174,11 @@ namespace MathAnalysisAI.Server.Services.Analysis.Stats
                     analysisResult.Id,
                     string.Join(",", normalizedCodes));
 
-                var knowledgePointIds = await _db.KnowledgePoints
-                    .AsNoTracking()
-                    .Where(x => x.CourseId == courseId && x.Code != null && normalizedCodes.Contains(x.Code))
+                var knowledgePointIds = (await _persistenceService.GetKnowledgePointsByCodesAsync(
+                        new KnowledgePointsByCodesQuery(courseId, normalizedCodes),
+                        cancellationToken))
                     .Select(x => x.Id)
-                    .ToListAsync(cancellationToken);
+                    .ToList();
 
                 foreach (var id in knowledgePointIds)
                 {
@@ -213,9 +214,9 @@ namespace MathAnalysisAI.Server.Services.Analysis.Stats
             }
 
             var targetIds = targetKnowledgePointIds.ToList();
-            var existingStates = await _db.UserKnowledgeStates
-                .Where(x => x.UserId == userId.Value && targetIds.Contains(x.KnowledgePointId))
-                .ToListAsync(cancellationToken);
+            var existingStates = await _persistenceService.GetUserKnowledgeStatesAsync(
+                new UserKnowledgeStatesQuery(userId.Value, targetIds),
+                cancellationToken);
 
             var stateMap = existingStates.ToDictionary(x => x.KnowledgePointId, x => x);
             var now = DateTime.UtcNow;
@@ -234,7 +235,6 @@ namespace MathAnalysisAI.Server.Services.Analysis.Stats
                         LastUpdatedAt = now
                     };
 
-                    _db.UserKnowledgeStates.Add(state);
                     stateMap[knowledgePointId] = state;
                 }
 
@@ -256,7 +256,9 @@ namespace MathAnalysisAI.Server.Services.Analysis.Stats
                     state.MasteryLevel);
             }
 
-            await _db.SaveChangesAsync(cancellationToken);
+            await _persistenceService.SaveUserKnowledgeStatesAsync(
+                new SaveUserKnowledgeStatesCommand(stateMap.Values.ToList()),
+                cancellationToken);
         }
 
         private static int CalculateMasteryLevel(int correctCount, int practiceCount)

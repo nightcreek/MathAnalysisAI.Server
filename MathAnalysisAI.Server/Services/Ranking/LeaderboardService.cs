@@ -1,18 +1,17 @@
-using MathAnalysisAI.Server.Data;
 using MathAnalysisAI.Server.DTOs.Leaderboard;
+using MathAnalysisAI.Server.Services.Analysis.Persistence;
 using MathAnalysisAI.Server.Services.Security;
-using Microsoft.EntityFrameworkCore;
 
 namespace MathAnalysisAI.Server.Services.Ranking
 {
     public class LeaderboardService
     {
-        private readonly ApplicationDbContext _db;
+        private readonly IPersistenceService _persistenceService;
         private readonly PermissionService _permissionService;
 
-        public LeaderboardService(ApplicationDbContext db, PermissionService permissionService)
+        public LeaderboardService(IPersistenceService persistenceService, PermissionService permissionService)
         {
-            _db = db;
+            _persistenceService = persistenceService;
             _permissionService = permissionService;
         }
 
@@ -28,34 +27,17 @@ namespace MathAnalysisAI.Server.Services.Ranking
 
             limit = NormalizeLimit(limit);
 
-            var rows = await _db.UserCourseStats
-                .AsNoTracking()
-                .Where(x => x.CourseId == courseId)
-                .OrderByDescending(x => x.RankingScore)
-                .ThenByDescending(x => x.AccuracyRate)
-                .ThenByDescending(x => x.AttemptCount)
-                .Take(limit)
-                .Select(x => new
-                {
-                    x.UserId,
-                    Username = x.User != null ? x.User.Username : string.Empty,
-                    x.CourseId,
-                    CourseName = x.Course != null ? x.Course.Name : string.Empty,
-                    x.AttemptCount,
-                    x.CorrectCount,
-                    x.WrongCount,
-                    x.AccuracyRate,
-                    x.RankingScore
-                })
-                .ToListAsync(cancellationToken);
+            var rows = await _persistenceService.GetLeaderboardUserCourseStatsAsync(
+                new LeaderboardQuery(courseId, limit),
+                cancellationToken);
 
             return rows.Select((x, index) => new LeaderboardEntryDto
             {
                 Rank = index + 1,
                 UserId = x.UserId,
-                Username = x.Username,
+                Username = x.User?.Username ?? string.Empty,
                 CourseId = x.CourseId,
-                CourseName = x.CourseName,
+                CourseName = x.Course?.Name ?? string.Empty,
                 AttemptCount = x.AttemptCount,
                 CorrectCount = x.CorrectCount,
                 WrongCount = x.WrongCount,
@@ -80,45 +62,25 @@ namespace MathAnalysisAI.Server.Services.Ranking
             var canViewRealNames = await _permissionService
                 .CanViewCourseLeaderboardWithRealNamesAsync(viewerUserId, courseId, cancellationToken);
 
-            var rows = await _db.UserCourseStats
-                .AsNoTracking()
-                .Where(x => x.CourseId == courseId)
-                .OrderByDescending(x => x.RankingScore)
-                .ThenByDescending(x => x.AccuracyRate)
-                .ThenByDescending(x => x.AttemptCount)
-                .Take(limit)
-                .Select(x => new
-                {
-                    x.UserId,
-                    Username = x.User != null ? x.User.Username : string.Empty,
-                    RealName = x.User != null ? x.User.RealName : null,
-                    StudentNumber = x.User != null ? x.User.StudentNumber : null,
-                    ClassName = x.User != null ? x.User.ClassName : null,
-                    x.CourseId,
-                    CourseName = x.Course != null ? x.Course.Name : string.Empty,
-                    x.AttemptCount,
-                    x.CorrectCount,
-                    x.WrongCount,
-                    x.AccuracyRate,
-                    x.RankingScore
-                })
-                .ToListAsync(cancellationToken);
+            var rows = await _persistenceService.GetLeaderboardUserCourseStatsAsync(
+                new LeaderboardQuery(courseId, limit),
+                cancellationToken);
 
             return rows.Select((x, index) => new TeacherLeaderboardEntryDto
             {
                 Rank = index + 1,
                 UserId = x.UserId,
-                Username = x.Username,
+                Username = x.User?.Username ?? string.Empty,
                 CourseId = x.CourseId,
-                CourseName = x.CourseName,
+                CourseName = x.Course?.Name ?? string.Empty,
                 AttemptCount = x.AttemptCount,
                 CorrectCount = x.CorrectCount,
                 WrongCount = x.WrongCount,
                 AccuracyRate = x.AccuracyRate,
                 RankingScore = x.RankingScore,
-                RealName = canViewRealNames ? x.RealName : null,
-                StudentNumber = canViewRealNames ? x.StudentNumber : null,
-                ClassName = canViewRealNames ? x.ClassName : null
+                RealName = canViewRealNames ? x.User?.RealName : null,
+                StudentNumber = canViewRealNames ? x.User?.StudentNumber : null,
+                ClassName = canViewRealNames ? x.User?.ClassName : null
             }).ToList();
         }
 

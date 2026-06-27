@@ -1,25 +1,25 @@
 using System.Text.Json;
-using MathAnalysisAI.Server.Data;
-using MathAnalysisAI.Server.DTOs.Analysis;
 using MathAnalysisAI.Server.Models;
-using Microsoft.EntityFrameworkCore;
+using MathAnalysisAI.Server.Services.Analysis.Domain;
+using MathAnalysisAI.Server.Services.Analysis.Persistence;
+using MathAnalysisAI.Server.SharedKernel.Analysis;
 
 namespace MathAnalysisAI.Server.Services.Analysis.Verification
 {
     public sealed class AnalysisVerificationService : IAnalysisVerificationService
     {
-        private readonly ApplicationDbContext _db;
+        private readonly IPersistenceService _persistenceService;
 
-        public AnalysisVerificationService(ApplicationDbContext db)
+        public AnalysisVerificationService(IPersistenceService persistenceService)
         {
-            _db = db;
+            _persistenceService = persistenceService;
         }
 
         public async Task<AnalysisVerificationResult> VerifyAsync(
             StructuredProblem? structuredProblem,
             PhotoSolutionOcrRecord? ocrRecord,
             AnalysisResult analysisResult,
-            AnalysisResponseDto? parsed,
+            AnalysisResultModel? parsed,
             string? fallbackProblemText = null,
             string? fallbackStudentSolutionText = null,
             CancellationToken cancellationToken = default)
@@ -66,23 +66,20 @@ namespace MathAnalysisAI.Server.Services.Analysis.Verification
 
             ApplyTopicChecks(problemText, standardSolutionText, result);
 
-            analysisResult.AnswerReliability = result.AnswerReliability;
-            analysisResult.NeedsReview = result.AnswerReliability != AnswerReliability.Reliable;
-            analysisResult.ReliabilityReasonsJson = JsonSerializer.Serialize(result.ReliabilityReasons);
-            analysisResult.VerifierWarningsJson = JsonSerializer.Serialize(result.VerifierWarnings);
-            analysisResult.VerifiedAt = DateTime.UtcNow;
+            var reliabilityReasonsJson = JsonSerializer.Serialize(result.ReliabilityReasons);
+            var verifierWarningsJson = JsonSerializer.Serialize(result.VerifierWarnings);
+            var verifiedAt = DateTime.UtcNow;
 
-            if (structuredProblem != null && analysisResult.StructuredProblemId == null)
-            {
-                analysisResult.StructuredProblemId = structuredProblem.Id;
-            }
-
-            if (ocrRecord != null && analysisResult.PhotoSolutionOcrRecordId == null)
-            {
-                analysisResult.PhotoSolutionOcrRecordId = ocrRecord.Id;
-            }
-
-            await _db.SaveChangesAsync(cancellationToken);
+            analysisResult = await _persistenceService.SaveVerificationAsync(
+                analysisResult,
+                structuredProblem,
+                ocrRecord,
+                result.AnswerReliability,
+                result.AnswerReliability != AnswerReliability.Reliable,
+                reliabilityReasonsJson,
+                verifierWarningsJson,
+                verifiedAt,
+                cancellationToken);
 
             return new AnalysisVerificationResult
             {
@@ -147,7 +144,7 @@ namespace MathAnalysisAI.Server.Services.Analysis.Verification
                 || text.Contains("response_parse_failed");
         }
 
-        private static string GetStandardSolutionText(AnalysisResponseDto? parsed, AnalysisResult analysisResult)
+        private static string GetStandardSolutionText(AnalysisResultModel? parsed, AnalysisResult analysisResult)
         {
             if (parsed?.StandardSolution is { Count: > 0 })
             {
@@ -157,8 +154,8 @@ namespace MathAnalysisAI.Server.Services.Analysis.Verification
             try
             {
                 var steps = string.IsNullOrWhiteSpace(analysisResult.StandardSolution)
-                    ? new List<StandardSolutionStepDto>()
-                    : JsonSerializer.Deserialize<List<StandardSolutionStepDto>>(analysisResult.StandardSolution) ?? new List<StandardSolutionStepDto>();
+                    ? new List<StandardSolutionStep>()
+                    : JsonSerializer.Deserialize<List<StandardSolutionStep>>(analysisResult.StandardSolution) ?? new List<StandardSolutionStep>();
 
                 return string.Join(" ", steps.Select(x => $"{x.Title} {x.Content}"));
             }
@@ -223,8 +220,7 @@ namespace MathAnalysisAI.Server.Services.Analysis.Verification
                 return null;
             }
 
-            return await _db.StructuredProblems.AsNoTracking()
-                .FirstOrDefaultAsync(x => x.Id == structuredProblemId.Value, cancellationToken);
+            return await _persistenceService.GetStructuredProblemAsync(new StructuredProblemByIdQuery(structuredProblemId.Value), cancellationToken);
         }
 
         private async Task<PhotoSolutionOcrRecord?> LoadOcrRecordAsync(int? ocrRecordId, CancellationToken cancellationToken)
@@ -234,14 +230,12 @@ namespace MathAnalysisAI.Server.Services.Analysis.Verification
                 return null;
             }
 
-            return await _db.PhotoSolutionOcrRecords.AsNoTracking()
-                .FirstOrDefaultAsync(x => x.Id == ocrRecordId.Value, cancellationToken);
+            return await _persistenceService.GetPhotoSolutionOcrRecordAsync(new PhotoSolutionOcrRecordByIdQuery(ocrRecordId.Value), cancellationToken);
         }
 
         private async Task<Problem?> LoadProblemAsync(int problemId, CancellationToken cancellationToken)
         {
-            return await _db.Problems.AsNoTracking()
-                .FirstOrDefaultAsync(x => x.Id == problemId, cancellationToken);
+            return await _persistenceService.GetProblemAsync(new ProblemByIdQuery(problemId), cancellationToken);
         }
 
         private sealed class VerificationAccumulator

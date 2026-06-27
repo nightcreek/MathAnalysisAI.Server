@@ -1,4 +1,5 @@
 using MathAnalysisAI.Server.Models;
+using MathAnalysisAI.Server.Services.Analysis.Persistence;
 using MathAnalysisAI.Server.Services.Knowledge;
 using Xunit;
 
@@ -12,7 +13,7 @@ public class QuestionServiceTests
         await using var db = TestDb.Create(nameof(CreateAsync_PersistsQuestion_AndReturnsDto));
         var course = TestServiceFactory.SeedCourse(db);
 
-        var svc = new QuestionService(db);
+        var svc = new QuestionService(new AnalysisPersistenceService(db));
         var request = new MathAnalysisAI.Server.DTOs.Analysis.CreateQuestionRequestDto
         {
             Title = "求极限",
@@ -36,7 +37,7 @@ public class QuestionServiceTests
     public async Task GetByIdAsync_ReturnsNull_WhenNotFound()
     {
         await using var db = TestDb.Create(nameof(GetByIdAsync_ReturnsNull_WhenNotFound));
-        var svc = new QuestionService(db);
+        var svc = new QuestionService(new AnalysisPersistenceService(db));
 
         var result = await svc.GetByIdAsync(99999);
         Assert.Null(result);
@@ -47,7 +48,7 @@ public class QuestionServiceTests
     {
         await using var db = TestDb.Create(nameof(GetByIdAsync_ReturnsDto_WhenFound));
         var course = TestServiceFactory.SeedCourse(db);
-        var svc = new QuestionService(db);
+        var svc = new QuestionService(new AnalysisPersistenceService(db));
 
         var created = await svc.CreateAsync(new MathAnalysisAI.Server.DTOs.Analysis.CreateQuestionRequestDto
         {
@@ -66,7 +67,7 @@ public class QuestionServiceTests
     {
         await using var db = TestDb.Create(nameof(UpdateAsync_ModifiesQuestion_AndReturnsUpdatedDto));
         var course = TestServiceFactory.SeedCourse(db);
-        var svc = new QuestionService(db);
+        var svc = new QuestionService(new AnalysisPersistenceService(db));
 
         var created = await svc.CreateAsync(new MathAnalysisAI.Server.DTOs.Analysis.CreateQuestionRequestDto
         {
@@ -94,7 +95,7 @@ public class QuestionServiceTests
     {
         await using var db = TestDb.Create(nameof(UpdateAsync_ReturnsNull_WhenNotFound));
         var course = TestServiceFactory.SeedCourse(db);
-        var svc = new QuestionService(db);
+        var svc = new QuestionService(new AnalysisPersistenceService(db));
 
         var result = await svc.UpdateAsync(99999, new MathAnalysisAI.Server.DTOs.Analysis.CreateQuestionRequestDto
         {
@@ -111,7 +112,7 @@ public class QuestionServiceTests
     {
         await using var db = TestDb.Create(nameof(DeleteAsync_RemovesQuestion_AndReturnsTrue));
         var course = TestServiceFactory.SeedCourse(db);
-        var svc = new QuestionService(db);
+        var svc = new QuestionService(new AnalysisPersistenceService(db));
 
         var created = await svc.CreateAsync(new MathAnalysisAI.Server.DTOs.Analysis.CreateQuestionRequestDto
         {
@@ -131,7 +132,7 @@ public class QuestionServiceTests
     public async Task DeleteAsync_ReturnsFalse_WhenNotFound()
     {
         await using var db = TestDb.Create(nameof(DeleteAsync_ReturnsFalse_WhenNotFound));
-        var svc = new QuestionService(db);
+        var svc = new QuestionService(new AnalysisPersistenceService(db));
 
         var result = await svc.DeleteAsync(99999);
         Assert.False(result);
@@ -142,7 +143,7 @@ public class QuestionServiceTests
     {
         await using var db = TestDb.Create(nameof(ListAsync_AppliesFilters));
         var course = TestServiceFactory.SeedCourse(db);
-        var svc = new QuestionService(db);
+        var svc = new QuestionService(new AnalysisPersistenceService(db));
 
         await svc.CreateAsync(new MathAnalysisAI.Server.DTOs.Analysis.CreateQuestionRequestDto
         {

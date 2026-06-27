@@ -1,4 +1,3 @@
-using MathAnalysisAI.Server.Data;
 using MathAnalysisAI.Server.DTOs.Admin;
 using MathAnalysisAI.Server.Models;
 using MathAnalysisAI.Server.Options;
@@ -7,7 +6,6 @@ using MathAnalysisAI.Server.Services.Auth;
 using MathAnalysisAI.Server.Services.ExceptionHandling;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 
 namespace MathAnalysisAI.Server.Controllers;
@@ -18,18 +16,15 @@ namespace MathAnalysisAI.Server.Controllers;
 public class AdminController : ControllerBase
 {
     private readonly AdminService _adminService;
-    private readonly ApplicationDbContext _db;
     private readonly AuthOptions _authOptions;
     private readonly IUserContext _userContext;
 
     public AdminController(
         AdminService adminService,
-        ApplicationDbContext db,
         IOptions<AuthOptions> authOptions,
         IUserContext userContext)
     {
         _adminService = adminService;
-        _db = db;
         _authOptions = authOptions.Value ?? new AuthOptions();
         _userContext = userContext;
     }
@@ -149,21 +144,7 @@ public class AdminController : ControllerBase
     [Authorize(Policy = AuthPolicies.AdminOnly)]
     public async Task<ActionResult> ListTeachers(CancellationToken cancellationToken)
     {
-        var teachers = await _db.AppUsers
-            .AsNoTracking()
-            .Where(x => x.Role == AppUserRole.Teacher || x.Role == AppUserRole.Admin)
-            .OrderBy(x => x.Role == AppUserRole.Admin ? 0 : 1)
-            .ThenBy(x => x.RealName)
-            .Select(x => new
-            {
-                x.Id,
-                x.Username,
-                x.RealName,
-                x.Role,
-                StudentCount = x.Students.Count
-            })
-            .ToListAsync(cancellationToken);
-
+        var teachers = await _adminService.ListTeachersAsync(cancellationToken);
         return Ok(teachers);
     }
 
@@ -185,20 +166,7 @@ public class AdminController : ControllerBase
             return this.ApiError(StatusCodes.Status403Forbidden, "ADMIN_TEACHER_SCOPE_FORBIDDEN", "Teachers can only view their own students.");
         }
 
-        var students = await _db.AppUsers
-            .AsNoTracking()
-            .Where(x => x.TeacherId == teacherId)
-            .OrderBy(x => x.StudentNumber ?? x.RealName ?? x.Username)
-            .Select(x => new
-            {
-                x.Id,
-                x.Username,
-                x.RealName,
-                x.StudentNumber,
-                x.ClassName
-            })
-            .ToListAsync(cancellationToken);
-
+        var students = await _adminService.ListTeacherStudentsAsync(teacherId, cancellationToken);
         return Ok(students);
     }
 }

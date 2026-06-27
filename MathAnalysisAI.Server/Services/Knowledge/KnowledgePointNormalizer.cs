@@ -1,6 +1,3 @@
-using MathAnalysisAI.Server.Data;
-using Microsoft.EntityFrameworkCore;
-
 namespace MathAnalysisAI.Server.Services.Knowledge
 {
     public static class KnowledgePointNormalizer
@@ -73,23 +70,14 @@ namespace MathAnalysisAI.Server.Services.Knowledge
             ["interchangeoflimitandintegral"] = new[] { "ma.function_series.limit_exchange_conditions" }
         };
 
-        public static async Task<List<string>> NormalizeAsync(
-            ApplicationDbContext db,
+        public static Task<List<string>> NormalizeAsync(
             IEnumerable<string>? rawKnowledgePoints,
-            int courseId,
-            int? chapterId,
+            KnowledgePointNormalizationSnapshot snapshot,
             string problemText,
             string? studentSolutionText,
             CancellationToken cancellationToken = default)
         {
-            var existingCodes = await db.KnowledgePoints
-                .AsNoTracking()
-                .Where(x => x.CourseId == courseId && x.Code != null && x.Code != "")
-                .Select(x => x.Code!)
-                .Distinct()
-                .ToListAsync(cancellationToken);
-
-            var existingSet = new HashSet<string>(existingCodes, StringComparer.OrdinalIgnoreCase);
+            var existingSet = new HashSet<string>(snapshot.ExistingCodes, StringComparer.OrdinalIgnoreCase);
             var output = new List<string>();
             var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
@@ -123,7 +111,7 @@ namespace MathAnalysisAI.Server.Services.Knowledge
                 }
             }
 
-            if (output.Count == 0 && await IsImproperIntegralContextAsync(db, chapterId, problemText, studentSolutionText, cancellationToken))
+            if (output.Count == 0 && IsImproperIntegralContext(snapshot.ChapterName, problemText, studentSolutionText))
             {
                 foreach (var fallback in ResolveImproperIntegralFallbackCodes(existingSet))
                 {
@@ -131,7 +119,7 @@ namespace MathAnalysisAI.Server.Services.Knowledge
                 }
             }
 
-            return output;
+            return Task.FromResult(output);
         }
 
         private static IEnumerable<string> ResolveImproperIntegralFallbackCodes(HashSet<string> existingSet)
@@ -154,26 +142,15 @@ namespace MathAnalysisAI.Server.Services.Knowledge
             }
         }
 
-        private static async Task<bool> IsImproperIntegralContextAsync(
-            ApplicationDbContext db,
-            int? chapterId,
+        private static bool IsImproperIntegralContext(
+            string? chapterName,
             string problemText,
-            string? studentSolutionText,
-            CancellationToken cancellationToken)
+            string? studentSolutionText)
         {
-            if (chapterId.HasValue)
+            if (!string.IsNullOrWhiteSpace(chapterName)
+                && chapterName.Contains("反常积分", StringComparison.OrdinalIgnoreCase))
             {
-                var chapterName = await db.Chapters
-                    .AsNoTracking()
-                    .Where(x => x.Id == chapterId.Value)
-                    .Select(x => x.Name)
-                    .FirstOrDefaultAsync(cancellationToken);
-
-                if (!string.IsNullOrWhiteSpace(chapterName)
-                    && chapterName.Contains("反常积分", StringComparison.OrdinalIgnoreCase))
-                {
-                    return true;
-                }
+                return true;
             }
 
             var combined = $"{problemText} {studentSolutionText}".ToLowerInvariant();
@@ -209,5 +186,11 @@ namespace MathAnalysisAI.Server.Services.Knowledge
                 output.Add(code);
             }
         }
+    }
+
+    public sealed class KnowledgePointNormalizationSnapshot
+    {
+        public IReadOnlyCollection<string> ExistingCodes { get; init; } = Array.Empty<string>();
+        public string? ChapterName { get; init; }
     }
 }

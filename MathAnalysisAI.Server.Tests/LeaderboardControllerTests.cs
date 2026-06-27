@@ -1,6 +1,8 @@
 using MathAnalysisAI.Server.Controllers;
+using MathAnalysisAI.Server.Services.Analysis.Persistence;
 using MathAnalysisAI.Server.Services.Ranking;
 using MathAnalysisAI.Server.Services.Security;
+using Microsoft.Extensions.Logging.Abstractions;
 using Xunit;
 
 namespace MathAnalysisAI.Server.Tests;
@@ -11,9 +13,9 @@ public class LeaderboardControllerTests
     public async Task GetPublicLeaderboard_ReturnsEmptyList_WhenNoData()
     {
         await using var db = TestDb.Create(nameof(GetPublicLeaderboard_ReturnsEmptyList_WhenNoData));
-        var permissionService = new PermissionService(db);
-        var leaderboardService = new LeaderboardService(db, permissionService);
-        var controller = new LeaderboardController(leaderboardService);
+        var permissionService = new PermissionService(new AuthPersistenceService(db, NullLogger<AuthPersistenceService>.Instance));
+        var leaderboardService = new LeaderboardService(new AnalysisPersistenceService(db), permissionService);
+        var controller = new LeaderboardController(leaderboardService, NullLogger<LeaderboardController>.Instance);
 
         var result = await controller.GetPublicLeaderboard(200, 10);
 
@@ -40,9 +42,9 @@ public class LeaderboardControllerTests
         db.UserCourseStats.Add(stats);
         await db.SaveChangesAsync();
 
-        var permissionService = new PermissionService(db);
-        var leaderboardService = new LeaderboardService(db, permissionService);
-        var controller = new LeaderboardController(leaderboardService);
+        var permissionService = new PermissionService(new AuthPersistenceService(db, NullLogger<AuthPersistenceService>.Instance));
+        var leaderboardService = new LeaderboardService(new AnalysisPersistenceService(db), permissionService);
+        var controller = new LeaderboardController(leaderboardService, NullLogger<LeaderboardController>.Instance);
 
         var result = await controller.GetPublicLeaderboard(course.Id, 10);
 

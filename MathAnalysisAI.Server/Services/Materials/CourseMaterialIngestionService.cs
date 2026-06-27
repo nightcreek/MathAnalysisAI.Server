@@ -1,8 +1,6 @@
-using MathAnalysisAI.Server.Data;
 using MathAnalysisAI.Server.DTOs.CourseMaterials;
 using MathAnalysisAI.Server.Models;
 using Microsoft.AspNetCore.Http;
-using Microsoft.EntityFrameworkCore;
 
 namespace MathAnalysisAI.Server.Services.Materials
 {
@@ -11,20 +9,20 @@ namespace MathAnalysisAI.Server.Services.Materials
         private const long MaxFileSizeBytes = 100L * 1024L * 1024L;
         private const int MinExtractedTextLength = 100;
 
-        private readonly ApplicationDbContext _db;
+        private readonly ICourseMaterialIngestionPersistenceService _persistenceService;
         private readonly CourseMaterialStorageService _storageService;
         private readonly PdfTextExtractionService _pdfTextExtractionService;
         private readonly MaterialChunkingService _materialChunkingService;
         private readonly ILogger<CourseMaterialIngestionService> _logger;
 
         public CourseMaterialIngestionService(
-            ApplicationDbContext db,
+            ICourseMaterialIngestionPersistenceService persistenceService,
             CourseMaterialStorageService storageService,
             PdfTextExtractionService pdfTextExtractionService,
             MaterialChunkingService materialChunkingService,
             ILogger<CourseMaterialIngestionService> logger)
         {
-            _db = db;
+            _persistenceService = persistenceService;
             _storageService = storageService;
             _pdfTextExtractionService = pdfTextExtractionService;
             _materialChunkingService = materialChunkingService;
@@ -62,9 +60,7 @@ namespace MathAnalysisAI.Server.Services.Materials
                 throw new ArgumentException("当前阶段仅支持 PDF 上传。");
             }
 
-            var courseExists = await _db.Courses
-                .AsNoTracking()
-                .AnyAsync(x => x.Id == courseId, cancellationToken);
+            var courseExists = await _persistenceService.CourseExistsAsync(courseId, cancellationToken);
             if (!courseExists)
             {
                 throw new ArgumentException("courseId not found.");
@@ -72,9 +68,10 @@ namespace MathAnalysisAI.Server.Services.Materials
 
             if (chapterId.HasValue)
             {
-                var chapterExists = await _db.Chapters
-                    .AsNoTracking()
-                    .AnyAsync(x => x.Id == chapterId.Value && x.CourseId == courseId, cancellationToken);
+                var chapterExists = await _persistenceService.ChapterExistsInCourseAsync(
+                    chapterId.Value,
+                    courseId,
+                    cancellationToken);
                 if (!chapterExists)
                 {
                     throw new ArgumentException("chapterId not found in this course.");
@@ -83,22 +80,18 @@ namespace MathAnalysisAI.Server.Services.Materials
 
             var stored = await _storageService.SavePdfAsync(file, cancellationToken);
 
-            var duplicate = await _db.CourseMaterials
-                .AsNoTracking()
-                .FirstOrDefaultAsync(
-                    x => x.CourseId == courseId && x.FileHash != null && x.FileHash == stored.FileHash,
-                    cancellationToken);
+            var duplicate = await _persistenceService.FindDuplicateMaterialAsync(courseId, stored.FileHash, cancellationToken);
 
             if (duplicate != null)
             {
                 return new CourseMaterialUploadResponseDto
                 {
-                    MaterialId = duplicate.Id,
+                    MaterialId = duplicate.MaterialId,
                     Title = duplicate.Title,
                     OriginalFileName = duplicate.OriginalFileName,
                     ParseStatus = duplicate.ParseStatus,
                     ParseMessage = "duplicate file detected",
-                    ChunkCount = await _db.MaterialChunks.CountAsync(x => x.CourseMaterialId == duplicate.Id, cancellationToken)
+                    ChunkCount = duplicate.ChunkCount
                 };
             }
 
@@ -126,16 +119,15 @@ namespace MathAnalysisAI.Server.Services.Materials
                 ParsedAt = null
             };
 
-            _db.CourseMaterials.Add(material);
-            await _db.SaveChangesAsync(cancellationToken);
+            var createdMaterial = await _persistenceService.CreateCourseMaterialAsync(material, cancellationToken);
 
             var response = new CourseMaterialUploadResponseDto
             {
-                MaterialId = material.Id,
-                Title = material.Title,
-                OriginalFileName = material.OriginalFileName,
-                ParseStatus = material.ParseStatus,
-                ParseMessage = material.ParseMessage,
+                MaterialId = createdMaterial.MaterialId,
+                Title = createdMaterial.Title,
+                OriginalFileName = createdMaterial.OriginalFileName,
+                ParseStatus = createdMaterial.ParseStatus,
+                ParseMessage = createdMaterial.ParseMessage,
                 ChunkCount = 0
             };
 
@@ -144,47 +136,54 @@ namespace MathAnalysisAI.Server.Services.Materials
                 var extraction = await _pdfTextExtractionService.ExtractAsync(stored.AbsolutePath, cancellationToken);
                 if (extraction.TotalTextLength < MinExtractedTextLength)
                 {
-                    material.ParseStatus = "ocr_pending";
-                    material.ParseMessage = "PDF text extraction returned too little text. OCR is required but not implemented in this stage.";
-                    material.ParsedAt = DateTime.UtcNow;
-                    await _db.SaveChangesAsync(cancellationToken);
+                    var parseMessage = "PDF text extraction returned too little text. OCR is required but not implemented in this stage.";
+                    await _persistenceService.SaveParsedMaterialAsync(
+                        response.MaterialId,
+                        "ocr_pending",
+                        parseMessage,
+                        DateTime.UtcNow,
+                        Array.Empty<MaterialChunk>(),
+                        cancellationToken);
 
-                    response.ParseStatus = material.ParseStatus;
-                    response.ParseMessage = material.ParseMessage;
+                    response.ParseStatus = "ocr_pending";
+                    response.ParseMessage = parseMessage;
                     return response;
                 }
 
                 var chunks = _materialChunkingService.BuildChunks(
-                    material.Id,
+                    response.MaterialId,
                     courseId,
                     chapterId,
                     extraction.Pages);
 
-                if (chunks.Count > 0)
-                {
-                    _db.MaterialChunks.AddRange(chunks);
-                }
+                var successMessage = chunks.Count == 0 ? "No chunks generated from extracted text." : null;
+                await _persistenceService.SaveParsedMaterialAsync(
+                    response.MaterialId,
+                    "success",
+                    successMessage,
+                    DateTime.UtcNow,
+                    chunks,
+                    cancellationToken);
 
-                material.ParseStatus = "success";
-                material.ParseMessage = chunks.Count == 0 ? "No chunks generated from extracted text." : null;
-                material.ParsedAt = DateTime.UtcNow;
-                await _db.SaveChangesAsync(cancellationToken);
-
-                response.ParseStatus = material.ParseStatus;
-                response.ParseMessage = material.ParseMessage;
+                response.ParseStatus = "success";
+                response.ParseMessage = successMessage;
                 response.ChunkCount = chunks.Count;
                 return response;
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Course material PDF ingestion failed. MaterialId={MaterialId}", material.Id);
-                material.ParseStatus = "failed";
-                material.ParseMessage = BuildShortError(ex.Message);
-                material.ParsedAt = DateTime.UtcNow;
-                await _db.SaveChangesAsync(cancellationToken);
+                _logger.LogWarning(ex, "Course material PDF ingestion failed. MaterialId={MaterialId}", response.MaterialId);
+                var errorMessage = BuildShortError(ex.Message);
+                await _persistenceService.SaveParsedMaterialAsync(
+                    response.MaterialId,
+                    "failed",
+                    errorMessage,
+                    DateTime.UtcNow,
+                    Array.Empty<MaterialChunk>(),
+                    cancellationToken);
 
-                response.ParseStatus = material.ParseStatus;
-                response.ParseMessage = material.ParseMessage;
+                response.ParseStatus = "failed";
+                response.ParseMessage = errorMessage;
                 return response;
             }
         }

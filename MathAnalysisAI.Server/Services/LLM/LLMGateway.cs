@@ -12,7 +12,7 @@ using Microsoft.Extensions.Options;
 
 namespace MathAnalysisAI.Server.Services.LLM
 {
-    public class LLMGateway
+    public class LLMGateway : ILLMModule
     {
         private const string GatewayModeDirect = "direct";
         private const string GatewayModeLiteLlm = "litellm";

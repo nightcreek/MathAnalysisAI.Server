@@ -1,291 +1,201 @@
-# 数学分析智能体 MathAnalysisAI
+# MathAnalysisAI.Server
 
-## 项目简介
+## Project Positioning
 
-**数学分析智能体**是一个面向数学分析课程学习场景的 AI 辅助分析工具。
+`MathAnalysisAI.Server` is the backend server for the Math Analysis AI project.
 
-本项目起源于数学分析课堂上的一次开放提问：
+It provides API services for frontend clients, owns the analysis workflow, and serves the project's static frontend assets.
 
-> 如何利用 AI 教数学分析？
-> 如何利用 AI 学数学分析？
+It is not:
 
-我们希望通过一个可以真实部署、真实访问、真实使用的 Web 原型，探索 AI 在数学分析学习中的实际价值。项目支持学生输入或上传题目与解答，并由 AI 辅助完成题目识别、解答分析、错因定位、知识点归纳和复习建议生成。
+- a frontend rendering engine
+- a CAS engine
+- an AST-based symbolic computation system
 
-本项目不是为了替代教师，也不是为了直接给出标准答案，而是希望帮助学生更清楚地看到：
+## Current Architecture Summary
 
-- 自己的解答哪里存在问题；
-- 哪些步骤逻辑不严密；
-- 哪些概念或定理使用不当；
-- 后续应该复习哪些知识点；
-- 如何把一次错误转化为可复盘的学习材料。
+The server is a modular monolith with interface-first and contract-first boundaries.
 
-## 项目来源
+Current architectural baseline:
 
-在课堂讨论中，老师提出了“如何利用 AI 教数学分析？如何利用 AI 学数学分析”的问题。这个问题本身并不只是技术问题，也涉及教学方法、学习反馈、数学表达、错因诊断和学生自主学习能力。
+- controllers stay thin
+- application services own business decisions
+- persistence access is isolated behind narrow interfaces
+- EF Core stays inside `Data/` and persistence adapters
+- the analysis stack runs through a fixed pipeline
+- module boundaries are checked by the ModuleContracts validator
 
-因此，我们尝试将这个问题推进为一个可运行的项目：
+## Canonical Request Flow
 
-- 不是只停留在想法层面；
-- 不是只做静态展示页面；
-- 而是尝试搭建一个包含前端、后端、数据库、AI 网关、OCR、用户系统和部署运维的完整原型。
+The canonical backend request flow is:
 
-本项目计划作为一个持续运营和迭代的个人 / 小组项目，预计维护至 **2027 年 5 月**，用于积累真实的 AI 教育应用经验和工程实践经验。
+`Controller -> Application Service -> Module Interface -> Persistence Seam -> EF-backed Adapter -> Response DTO`
 
-这里可以体验项目[数学分析智能体](http://mathanalysisai.cn/index.html)（需要登入使用）
+For analysis requests, the internal flow is:
 
-项目开发[Night Creek](https://github.com/nightcreek),[Zhou Koyomi](https://github.com/Zhou-Koyomi)
+`Controller -> IAnalysisService -> IAnalysisPipeline -> Ordered Analysis Steps -> Persistence / Response Mapping`
 
-开发过程中使用了AI工具。
+Frontend rendering uses response DTOs and MAMP-facing fields where applicable. Backend semantic reasoning does not depend on frontend rendering code.
 
-## 核心功能
+## Analysis Pipeline
 
-### 1. 题目与解答输入
+The analysis module is stabilized around these core types:
 
-用户可以手动输入数学分析题目和自己的解答过程。
+- `IAnalysisService`
+- `IAnalysisPipeline`
+- `AnalysisExecutionContext`
 
-系统支持：
+`AnalysisExecutionContext` is split conceptually into:
 
-- 题目文本输入；
-- 学生解答输入；
-- 数学公式展示；
-- 解答内容提交给 AI 进行分析。
+- `Input`
+- `Runtime`
+- `Output`
 
-### 2. 图片 OCR 识别
+The fixed pipeline steps are:
 
-用户可以上传题目或解答图片，由系统尝试识别其中的文字与公式内容。
+- `UAOBuilderStep`
+- `OCRStep`
+- `LLMStep`
+- `EvaluationStep`
+- `PersistenceStep`
 
-OCR 结果可用于：
+Pipeline rules:
 
-- 自动填充题目文本；
-- 自动填充学生解答；
-- 提取可能存在的公式片段；
-- 辅助后续 AI 分析。
+- only the pipeline orchestrates steps
+- steps do not call each other
+- shared step state flows only through `AnalysisExecutionContext`
+- controllers must not reference pipeline steps directly
 
-### 3. AI 解答分析
+## Core Contracts
 
-系统会根据题目、学生解答和上下文信息，调用大语言模型进行分析。
+### DTO contract
 
-分析目标包括：
+DTOs are HTTP transport contracts only.
 
-- 判断学生解答是否完整；
-- 定位可能存在的错误步骤；
-- 解释错误原因；
-- 给出正确思路或参考推导；
-- 总结相关知识点；
-- 提供复习建议。
+### UAO semantic contract
 
-### 4. 流式输出
+UAO types are semantic analysis inputs and must stay independent from HTTP, EF Core, and frontend concerns.
 
-分析结果支持流式返回，用户可以在 AI 生成过程中逐步看到内容，而不是等待完整响应结束。
+### AnalysisResult domain contract
 
-这对于较长的数学分析题目尤其重要，可以改善等待体验。
+`AnalysisResult` and related domain models are backend semantic/domain outputs and must not be coupled to frontend rendering shapes.
 
-### 5. 用户与权限
+### MAMP contract
 
-项目支持基础用户系统：
+MAMP is a frontend rendering protocol only. It does not define backend reasoning semantics.
 
-- 管理员账号；
-- 学生账号；
-- 本地密码登录；
-- 关闭公开注册；
-- 管理员视角切换。
+### Mapping direction
 
-当前部署环境已关闭开发测试登录模式，正式使用 `LocalPassword` 登录模式。
+Allowed mapping direction:
 
-### 6. 管理后台
+- `AnalysisRequestDto -> UAO`
+- `UAO -> AnalysisResult`
+- `AnalysisResult -> AnalysisResponseDto`
 
-管理员可以查看和管理系统数据，例如：
+Forbidden direction:
 
-- 用户；
-- 题目；
-- 课程资料；
-- 网络资源；
-- OCR 记录；
-- AI 请求记录；
-- 学习统计数据。
+- DTOs as internal semantic models across the service layer
+- frontend rendering concerns flowing back into domain reasoning
 
-## 技术栈
+## Module Boundaries
 
-### 前端
+Current conceptual modules:
 
-- HTML
-- CSS
-- JavaScript
-- MathJax / MathLive 相关数学公式显示能力
-- 响应式页面适配
+- Auth
+- Analysis
+- Course
+- Admin
+- Materials
+- Knowledge
+- Learning
+- LLM
+- OCR
+- Persistence
+- SharedKernel
 
-### 后端
+Boundary rule:
 
-- ASP.NET Core
-- Entity Framework Core
-- JWT 认证
-- Server-Sent Events，用于流式分析输出
+- modules communicate through public interfaces and narrow seams
+- modules must not depend on other modules' internal implementations
 
-### 数据库
+## Persistence Boundary
 
-- SQL Server
+Persistence rules are strict:
 
-### AI 与模型网关
+- `ApplicationDbContext` and EF Core must remain inside `Data/` and persistence adapters
+- application services must use narrow persistence-facing interfaces
+- controllers must never use `DbContext` directly
+- `IQueryable`, `DbSet<T>`, and EF tracking behavior must not leak upward
 
-- LiteLLM
-- 可对接 DeepSeek 等大语言模型服务
-- 后端通过统一 LLM Gateway 调用模型
+## Architecture Guard
 
-### 部署
+The repository includes a lightweight ModuleContracts validator under `Architecture/ModuleContracts`.
 
-- Docker / Docker Compose
-- Nginx 反向代理
-- Linux 服务器部署
-- 生产环境环境变量配置
+Modes:
 
-## 当前状态
+- default mode: observation, non-blocking
+- strict mode: blocks only high-confidence violations
 
-项目目前已经完成了基础可用版本，包括：
+Current expected result:
 
-- Web 页面访问；
-- 用户登录；
-- 管理员账号；
-- 题目输入；
-- 图片上传与 OCR 调用；
-- AI 流式分析；
-- 公式显示；
-- SQL Server 数据持久化；
-- Docker 部署；
-- Nginx 反向代理；
-- 生产模式登录配置。
+- `blocking = 0`
+- `observation = 0`
+- `acceptedLegacy = 0`
 
-当前仍属于原型阶段，功能和 UI 都会持续改进。
+CI behavior:
 
-## 已完成的关键部署修复
+- always generates the module contract report artifact
+- runs strict mode as a blocking regression check
 
-在部署过程中，项目经历并解决了多个真实工程问题，包括：
+## Build and Test Commands
 
-- Docker 容器端口绑定问题；
-- SQL Server 连接与迁移问题；
-- 前端静态资源版本缓存问题；
-- Nginx 静态资源与后端 API 混版问题；
-- SSE 流式输出被 gzip / buffer 影响的问题；
-- LiteLLM BaseUrl 配置错误问题；
-- 开发登录模式误用于公网环境的问题；
-- 手机端导航与分析页响应式布局问题。
+Main commands:
 
-这些问题本身也是本项目的重要工程经验组成部分。
-
-## 项目目标
-
-本项目的目标不是立即构建一个完整的“AI 数学教师”，而是通过一个真实可运行的系统，逐步探索以下问题：
-
-1. AI 能否有效发现学生数学分析解答中的错误？
-2. AI 给出的解释是否足够清晰、可信、可复习？
-3. OCR 与数学公式识别在真实学习场景中是否可用？
-4. 学生是否愿意使用这种工具进行作业复盘？
-5. AI 教学工具应该如何设计 UI，才能避免只输出一大段泛泛而谈的文字？
-6. 如何在小型项目中完成从想法、开发、部署到运营的完整闭环？
-
-## 后续计划
-
-### 短期计划
-
-- 优化移动端页面布局；
-- 改进分析页 UI；
-- 优化 OCR 错误提示；
-- 提升公式渲染稳定性；
-- 优化分析结果结构；
-- 清理测试数据和测试账号；
-- 完善管理员后台。
-
-### 中期计划
-
-- 增加历史分析记录；
-- 增加错因分类；
-- 增加知识点标签；
-- 增加典型题目案例；
-- 优化课程资料和网络资源管理；
-- 收集真实使用反馈。
-
-### 长期计划
-
-- 整理项目报告；
-- 形成可展示的项目案例；
-- 总结 AI 辅助数学分析学习的有效方式；
-- 评估是否继续扩展到更多数学课程。
-
-## 使用场景
-
-本项目适合用于：
-
-- 数学分析作业复盘；
-- 学生自查解答过程；
-- 课堂演示 AI 辅助学习；
-- 教师讨论 AI 教学应用；
-- 小组项目展示；
-- AI 教育产品原型研究。
-
-## 项目边界
-
-本项目目前不承诺：
-
-- 完全替代教师批改；
-- 保证所有数学分析结论完全正确；
-- 自动完成所有题目；
-- 作为正式考试或评分依据；
-- 处理所有复杂手写数学公式。
-
-AI 分析结果应作为学习参考，重要结论仍需结合教材、课堂讲解和教师意见进行确认。
-
-## 运行与部署说明
-
-项目使用 Docker Compose 进行生产部署。部署时需要配置环境变量，包括：
-
-- 数据库连接；
-- JWT 签名密钥；
-- 管理员账号；
-- 管理员密码；
-- LiteLLM 地址；
-- LiteLLM API Key；
-- 认证模式；
-- ASP.NET Core 环境。
-
-生产环境应避免使用开发模式：
-
-```env
-ASPNETCORE_ENVIRONMENT=Production
-Auth__Mode=LocalPassword
-Auth__AllowRegistration=false
+```bash
+dotnet build MathAnalysisAI.Server/MathAnalysisAI.Server.csproj --configuration Release --no-restore
+dotnet build Architecture/ModuleContracts/Architecture.ModuleContracts.csproj
+dotnet test MathAnalysisAI.Server/MathAnalysisAI.Server.sln --no-build
+dotnet run --project Architecture/ModuleContracts/Architecture.ModuleContracts.csproj
+dotnet run --project Architecture/ModuleContracts/Architecture.ModuleContracts.csproj -- --strict
 ```
 
-不要在公网环境使用：
+## Development Rules for Humans and AI Agents
 
-```env
-Auth__Mode=DevelopmentUsername
-ASPNETCORE_ENVIRONMENT=Development
-```
+- do not add features during architecture cleanup
+- do not bypass module interfaces
+- do not inject `DbContext` into controllers or application services
+- do not let UAO depend on DTOs
+- do not let domain types depend on ASP.NET or DTO namespaces
+- do not reference analysis steps outside the pipeline
+- do not introduce generic repository abstractions unless explicitly approved
+- preserve API behavior unless a task explicitly allows changing it
 
-## 安全说明
+## Deployment
 
-生产环境应注意：
+Server deployment is documented in:
 
-- 使用强管理员密码；
-- 使用随机生成的 JWT TokenSigningKey；
-- 不公开 `.env` / `server.env`；
-- 不在聊天记录、Issue 或日志中暴露 token、API Key、数据库密码；
-- 关闭公开注册；
-- 后续建议配置 HTTPS；
-- 定期清理测试账号和测试数据。
+- [`MathAnalysisAI.Server/DockerDeployment.md`](MathAnalysisAI.Server/DockerDeployment.md)
 
-## 项目意义
+That guide covers Docker, environment variables, health checks, rebuild flow, and production safety notes.
 
-这个项目的意义不只在于实现一个 AI 工具，而在于把一个课堂上的开放问题转化为一个真实可运行、可维护、可迭代的工程系统。
+## Current Stable Baseline
 
-它同时包含：
+The architecture cleanup line through Phase 7B is complete.
 
-- 数学分析学习场景；
-- AI 应用设计；
-- 前后端开发；
-- 数据库设计；
-- 生产部署；
-- 运维排查；
-- UI 迭代；
-- 教学产品思考。
+Current stable baseline:
 
-从这个角度看，它既是一个 AI 教育工具原型，也是一次完整的实践活动。
+- strict mode is green
+- accepted legacy count is zero
+- server build is green
+- full tests are green
+- runtime behavior has been preserved through the architecture cleanup line
+
+## Tool-local Documentation
+
+The following tool-local docs may remain because they explain local tooling rather than project-wide architecture:
+
+- `Architecture/ModuleContracts/README.md`
+- `MathAnalysisAI.Server/infra/litellm/README.md`
+- `MathAnalysisAI.Server/Tools/Symbolic/README.md`
+
+This root `README.md` is the only authoritative full project document.

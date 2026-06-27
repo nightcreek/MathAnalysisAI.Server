@@ -1,23 +1,22 @@
-using MathAnalysisAI.Server.Data;
-using MathAnalysisAI.Server.DTOs.Analysis;
 using MathAnalysisAI.Server.DTOs.AnalysisContext;
 using MathAnalysisAI.Server.DTOs.LLM;
 using MathAnalysisAI.Server.Models;
-using Microsoft.EntityFrameworkCore;
+using MathAnalysisAI.Server.Services.Analysis.Persistence;
+using MathAnalysisAI.Server.Services.Analysis.UAO;
 
 namespace MathAnalysisAI.Server.Services.Analysis.LLM
 {
     public sealed class LlmRequestFactory : ILlmRequestFactory
     {
-        private readonly ApplicationDbContext _db;
+        private readonly IPromptProfileReader _promptProfileReader;
 
-        public LlmRequestFactory(ApplicationDbContext db)
+        public LlmRequestFactory(IPromptProfileReader promptProfileReader)
         {
-            _db = db;
+            _promptProfileReader = promptProfileReader;
         }
 
         public async Task<LLMChatRequestDto> BuildAsync(
-            AnalysisRequestDto request,
+            UAOInputModel request,
             Course course,
             Chapter? chapter,
             Problem problem,
@@ -76,14 +75,11 @@ namespace MathAnalysisAI.Server.Services.Analysis.LLM
             };
         }
 
-        private async Task<PromptProfile?> ResolvePromptProfileAsync(int courseId, string mode, CancellationToken cancellationToken)
+        private async Task<PromptProfileTemplateContext?> ResolvePromptProfileAsync(int courseId, string mode, CancellationToken cancellationToken)
         {
-            return await _db.PromptProfiles
-                .AsNoTracking()
-                .Where(x => x.CourseId == courseId && x.Mode == mode && x.IsActive)
-                .OrderByDescending(x => x.CreatedAt)
-                .ThenByDescending(x => x.Version)
-                .FirstOrDefaultAsync(cancellationToken);
+            return await _promptProfileReader.GetActivePromptProfileTemplateContextAsync(
+                new ActivePromptProfileQuery(courseId, mode),
+                cancellationToken);
         }
 
         private static string EscapeForTemplate(string input)

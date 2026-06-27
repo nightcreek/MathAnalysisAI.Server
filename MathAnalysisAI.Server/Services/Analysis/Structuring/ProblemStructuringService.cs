@@ -1,8 +1,8 @@
 using System.Text.Json;
 using MathAnalysisAI.Server.Data;
-using MathAnalysisAI.Server.DTOs.Analysis;
-using MathAnalysisAI.Server.DTOs.PhotoSolutions;
 using MathAnalysisAI.Server.Models;
+using MathAnalysisAI.Server.SharedKernel.Analysis;
+using MathAnalysisAI.Server.Services.Analysis.UAO;
 
 namespace MathAnalysisAI.Server.Services.Analysis.Structuring
 {
@@ -21,7 +21,7 @@ namespace MathAnalysisAI.Server.Services.Analysis.Structuring
         }
 
         public async Task<StructuredProblem> CreateFromManualInputAsync(
-            AnalysisRequestDto request,
+            UAOInputModel request,
             int userId,
             CancellationToken cancellationToken = default)
         {
@@ -58,7 +58,7 @@ namespace MathAnalysisAI.Server.Services.Analysis.Structuring
 
         public async Task<StructuredProblem> CreateFromConfirmedOcrAsync(
             PhotoSolutionOcrRecord ocrRecord,
-            AnalysisRequestDto request,
+            UAOInputModel request,
             int userId,
             CancellationToken cancellationToken = default)
         {
@@ -126,11 +126,11 @@ namespace MathAnalysisAI.Server.Services.Analysis.Structuring
             return string.Join(" ", text.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries));
         }
 
-        private static List<FormulaCandidateDto> NormalizeFormulas(IEnumerable<FormulaCandidateDto>? formulas)
+        private static List<FormulaCandidate> NormalizeFormulas(IEnumerable<FormulaCandidate>? formulas)
         {
-            return (formulas ?? Enumerable.Empty<FormulaCandidateDto>())
+            return (formulas ?? Enumerable.Empty<FormulaCandidate>())
                 .Where(x => x != null && !string.IsNullOrWhiteSpace(x.Latex))
-                .Select(x => new FormulaCandidateDto
+                .Select(x => new FormulaCandidate
                 {
                     Latex = x.Latex.Trim(),
                     Context = string.IsNullOrWhiteSpace(x.Context) ? null : x.Context.Trim()
@@ -138,17 +138,17 @@ namespace MathAnalysisAI.Server.Services.Analysis.Structuring
                 .ToList();
         }
 
-        private static List<FormulaCandidateDto> ParseFormulas(string? json)
+        private static List<FormulaCandidate> ParseFormulas(string? json)
         {
             try
             {
                 return string.IsNullOrWhiteSpace(json)
-                    ? new List<FormulaCandidateDto>()
-                    : JsonSerializer.Deserialize<List<FormulaCandidateDto>>(json) ?? new List<FormulaCandidateDto>();
+                    ? new List<FormulaCandidate>()
+                    : JsonSerializer.Deserialize<List<FormulaCandidate>>(json) ?? new List<FormulaCandidate>();
             }
             catch
             {
-                return new List<FormulaCandidateDto>();
+                return new List<FormulaCandidate>();
             }
         }
 

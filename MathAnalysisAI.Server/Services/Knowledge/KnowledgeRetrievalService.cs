@@ -1,7 +1,6 @@
 using System.Text.RegularExpressions;
-using MathAnalysisAI.Server.Data;
 using MathAnalysisAI.Server.DTOs.Knowledge;
-using Microsoft.EntityFrameworkCore;
+using MathAnalysisAI.Server.Services.Analysis.Persistence;
 
 namespace MathAnalysisAI.Server.Services.Knowledge
 {
@@ -50,11 +49,11 @@ namespace MathAnalysisAI.Server.Services.Knowledge
             "因为", "所以", "请", "请问", "判断", "这个", "那个", "进行", "并且", "然后", "我们", "你", "我", "他", "她", "它", "是否", "怎么", "如何", "求", "计算", "证明"
         };
 
-        private readonly ApplicationDbContext _db;
+        private readonly IPersistenceService _persistenceService;
 
-        public KnowledgeRetrievalService(ApplicationDbContext db)
+        public KnowledgeRetrievalService(IPersistenceService persistenceService)
         {
-            _db = db;
+            _persistenceService = persistenceService;
         }
 
         public async Task<IReadOnlyList<KnowledgeChunkContextDto>> RetrieveAsync(
@@ -76,21 +75,11 @@ namespace MathAnalysisAI.Server.Services.Knowledge
                 request.ChapterId,
                 cancellationToken);
 
-            var candidateQuery = _db.MaterialChunks
-                .AsNoTracking()
-                .Where(c => c.CourseId == request.CourseId)
-                .Where(c => !string.IsNullOrWhiteSpace(c.ContentPreview))
-                .Where(c => c.CourseMaterial != null && c.CourseMaterial.ParseStatus == "success");
-
-            if (request.ChapterId.HasValue)
-            {
-                var chapterId = request.ChapterId.Value;
-                candidateQuery = candidateQuery.Where(c => c.ChapterId == chapterId);
-            }
-
-            var candidates = await candidateQuery
-                .OrderByDescending(c => c.CourseMaterial!.UploadedAt)
-                .Take(600)
+            var materialChunks = await _persistenceService.GetKnowledgeRetrievalMaterialChunksAsync(
+                new MaterialChunkRetrievalQuery(request.CourseId, request.ChapterId, 600),
+                cancellationToken);
+            var candidates = materialChunks
+                .Where(c => c.CourseMaterial != null)
                 .Select(c => new ChunkCandidate
                 {
                     ChunkId = c.Id,
@@ -108,7 +97,7 @@ namespace MathAnalysisAI.Server.Services.Knowledge
                     ContentPreview = c.ContentPreview,
                     IsVerified = c.IsVerified
                 })
-                .ToListAsync(cancellationToken);
+                .ToList();
 
             if (candidates.Count == 0)
             {
@@ -121,19 +110,19 @@ namespace MathAnalysisAI.Server.Services.Knowledge
                 requestedKnowledgePointCodes,
                 cancellationToken);
 
-            var candidateLinks = await _db.MaterialChunkKnowledgePoints
-                .AsNoTracking()
-                .Where(x => candidateChunkIds.Contains(x.MaterialChunkId))
+            var candidateLinks = (await _persistenceService.GetMaterialChunkKnowledgePointLinksAsync(
+                    new MaterialChunkKnowledgePointLinksQuery(candidateChunkIds),
+                    cancellationToken))
                 .Select(x => new
                 {
                     x.MaterialChunkId,
                     x.KnowledgePointId,
                     x.IsPrimary,
                     x.Confidence,
-                    KnowledgePointCode = x.KnowledgePoint != null ? x.KnowledgePoint.Code : null,
-                    KnowledgePointName = x.KnowledgePoint != null ? x.KnowledgePoint.Name : null
+                    KnowledgePointCode = x.KnowledgePoint?.Code,
+                    KnowledgePointName = x.KnowledgePoint?.Name
                 })
-                .ToListAsync(cancellationToken);
+                .ToList();
 
             var linksByChunk = candidateLinks
                 .GroupBy(x => x.MaterialChunkId)
@@ -255,13 +244,13 @@ namespace MathAnalysisAI.Server.Services.Knowledge
                 return Array.Empty<string>();
             }
 
-            return await KnowledgePointNormalizer.NormalizeAsync(
-                _db,
-                labels,
-                courseId,
-                chapterId,
-                problemText,
-                studentSolutionText,
+            return await _persistenceService.NormalizeKnowledgePointsAsync(
+                new NormalizeKnowledgePointsQuery(
+                    labels,
+                    courseId,
+                    chapterId,
+                    problemText,
+                    studentSolutionText),
                 cancellationToken);
         }
 
@@ -286,11 +275,9 @@ namespace MathAnalysisAI.Server.Services.Knowledge
                 return new Dictionary<int, string>();
             }
 
-            var points = await _db.KnowledgePoints
-                .AsNoTracking()
-                .Where(x => x.CourseId == courseId && x.Code != null && codes.Contains(x.Code))
-                .Select(x => new { x.Id, x.Code })
-                .ToListAsync(cancellationToken);
+            var points = await _persistenceService.GetKnowledgePointsByCodesAsync(
+                new KnowledgePointsByCodesQuery(courseId, codes),
+                cancellationToken);
 
             return points
                 .Where(x => !string.IsNullOrWhiteSpace(x.Code))

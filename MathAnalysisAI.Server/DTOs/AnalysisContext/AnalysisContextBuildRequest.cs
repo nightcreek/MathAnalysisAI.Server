@@ -1,11 +1,11 @@
-using MathAnalysisAI.Server.DTOs.Analysis;
 using MathAnalysisAI.Server.Models;
+using MathAnalysisAI.Server.Services.Analysis.UAO;
 
 namespace MathAnalysisAI.Server.DTOs.AnalysisContext;
 
 public sealed class AnalysisContextBuildRequest
 {
-    public required AnalysisRequestDto Request { get; set; }
+    public required UAOInputModel Request { get; set; }
     public required Course Course { get; set; }
     public Chapter? Chapter { get; set; }
     public required Problem Problem { get; set; }

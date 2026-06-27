@@ -1,16 +1,15 @@
-using MathAnalysisAI.Server.Data;
+using MathAnalysisAI.Server.Services.Auth;
 using MathAnalysisAI.Server.Models;
-using Microsoft.EntityFrameworkCore;
 
 namespace MathAnalysisAI.Server.Services.Security
 {
     public class PermissionService
     {
-        private readonly ApplicationDbContext _db;
+        private readonly IPermissionPersistenceService _permissionPersistenceService;
 
-        public PermissionService(ApplicationDbContext db)
+        public PermissionService(IPermissionPersistenceService permissionPersistenceService)
         {
-            _db = db;
+            _permissionPersistenceService = permissionPersistenceService;
         }
 
         public async Task<bool> CanViewRealStudentInfoAsync(
@@ -24,9 +23,7 @@ namespace MathAnalysisAI.Server.Services.Security
                 return false;
             }
 
-            var viewer = await _db.AppUsers
-                .AsNoTracking()
-                .FirstOrDefaultAsync(x => x.Id == viewerUserId, cancellationToken);
+            var viewer = await _permissionPersistenceService.FindUserByIdAsync(viewerUserId, cancellationToken);
 
             if (viewer == null)
             {
@@ -64,9 +61,7 @@ namespace MathAnalysisAI.Server.Services.Security
                 return false;
             }
 
-            var viewer = await _db.AppUsers
-                .AsNoTracking()
-                .FirstOrDefaultAsync(x => x.Id == viewerUserId, cancellationToken);
+            var viewer = await _permissionPersistenceService.FindUserByIdAsync(viewerUserId, cancellationToken);
 
             if (viewer == null)
             {

@@ -1,13 +1,12 @@
-using MathAnalysisAI.Server.Data;
 using MathAnalysisAI.Server.DTOs.CourseMaterials;
 using MathAnalysisAI.Server.DTOs.Knowledge;
+using MathAnalysisAI.Server.Services.Analysis.Persistence;
 using MathAnalysisAI.Server.Services.Auth;
 using MathAnalysisAI.Server.Services.ExceptionHandling;
 using MathAnalysisAI.Server.Services.Knowledge;
 using MathAnalysisAI.Server.Services.Materials;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 
 namespace MathAnalysisAI.Server.Controllers;
 
@@ -15,18 +14,18 @@ namespace MathAnalysisAI.Server.Controllers;
 [Route("api/course-materials")]
 public class CourseMaterialsController : ControllerBase
 {
-    private readonly ApplicationDbContext _db;
+    private readonly IPersistenceService _persistenceService;
     private readonly CourseMaterialIngestionService _ingestionService;
     private readonly IKnowledgeRetrievalService _knowledgeRetrievalService;
     private readonly ILogger<CourseMaterialsController> _logger;
 
     public CourseMaterialsController(
-        ApplicationDbContext db,
+        IPersistenceService persistenceService,
         CourseMaterialIngestionService ingestionService,
         IKnowledgeRetrievalService knowledgeRetrievalService,
         ILogger<CourseMaterialsController> logger)
     {
-        _db = db;
+        _persistenceService = persistenceService;
         _ingestionService = ingestionService;
         _knowledgeRetrievalService = knowledgeRetrievalService;
         _logger = logger;
@@ -46,49 +45,26 @@ public class CourseMaterialsController : ControllerBase
         }
 
         var safeTake = Math.Clamp(take ?? 50, 1, 100);
+        var items = await _persistenceService.ListCourseMaterialsAsync(
+            new CourseMaterialsListQuery(courseId, chapterId, parseStatus, safeTake),
+            cancellationToken);
 
-        var query = _db.CourseMaterials
-            .AsNoTracking()
-            .Where(x => x.CourseId == courseId);
-
-        if (chapterId.HasValue)
+        return Ok(items.Select(x => new CourseMaterialListItemDto
         {
-            var selectedChapterId = chapterId.Value;
-            query = query.Where(x => _db.MaterialChunks.Any(c => c.CourseMaterialId == x.Id && c.ChapterId == selectedChapterId));
-        }
-
-        if (!string.IsNullOrWhiteSpace(parseStatus))
-        {
-            var normalizedStatus = parseStatus.Trim().ToLowerInvariant();
-            query = query.Where(x => x.ParseStatus.ToLower() == normalizedStatus);
-        }
-
-        var items = await query
-            .OrderByDescending(x => x.UploadedAt)
-            .Take(safeTake)
-            .Select(x => new CourseMaterialListItemDto
-            {
-                MaterialId = x.Id,
-                CourseId = x.CourseId,
-                ChapterId = _db.MaterialChunks
-                    .Where(c => c.CourseMaterialId == x.Id && c.ChapterId != null)
-                    .OrderBy(c => c.ChunkIndex)
-                    .Select(c => c.ChapterId)
-                    .FirstOrDefault(),
-                Title = x.Title,
-                MaterialKind = x.MaterialKind,
-                OriginalFileName = x.OriginalFileName,
-                FileExtension = x.FileExtension,
-                FileSizeBytes = x.FileSizeBytes,
-                ParseStatus = x.ParseStatus,
-                ParseMessage = x.ParseMessage,
-                ChunkCount = x.Chunks.Count,
-                UploadedAt = x.UploadedAt,
-                ParsedAt = x.ParsedAt
-            })
-            .ToListAsync(cancellationToken);
-
-        return Ok(items);
+            MaterialId = x.MaterialId,
+            CourseId = x.CourseId,
+            ChapterId = x.ChapterId,
+            Title = x.Title,
+            MaterialKind = x.MaterialKind,
+            OriginalFileName = x.OriginalFileName,
+            FileExtension = x.FileExtension,
+            FileSizeBytes = x.FileSizeBytes,
+            ParseStatus = x.ParseStatus,
+            ParseMessage = x.ParseMessage,
+            ChunkCount = x.ChunkCount,
+            UploadedAt = x.UploadedAt,
+            ParsedAt = x.ParsedAt
+        }));
     }
 
     [HttpGet("search")]

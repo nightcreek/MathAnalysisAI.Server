@@ -1,26 +1,26 @@
 using System.Text.Json;
-using MathAnalysisAI.Server.Data;
-using MathAnalysisAI.Server.DTOs.Visualization;
 using MathAnalysisAI.Server.Models;
+using MathAnalysisAI.Server.SharedKernel.Analysis;
+using MathAnalysisAI.Server.Services.Analysis.Persistence;
 
 namespace MathAnalysisAI.Server.Services.Visualization
 {
-    public class VisualizationService
+    public class VisualizationService : IVisualizationService
     {
-        private readonly ApplicationDbContext _db;
+        private readonly IPersistenceService _persistenceService;
         private readonly IGeoGebraCommandValidator _commandValidator;
 
         public VisualizationService(
-            ApplicationDbContext db,
+            IPersistenceService persistenceService,
             IGeoGebraCommandValidator commandValidator)
         {
-            _db = db;
+            _persistenceService = persistenceService;
             _commandValidator = commandValidator;
         }
 
         public async Task<AnalysisVisualization?> SaveVisualizationAsync(
             int analysisResultId,
-            VisualizationDto visualization,
+            VisualizationSpec visualization,
             CancellationToken cancellationToken = default)
         {
             if (analysisResultId <= 0 || visualization == null)
@@ -45,9 +45,9 @@ namespace MathAnalysisAI.Server.Services.Visualization
                     CreatedAt = DateTime.UtcNow
                 };
 
-                _db.AnalysisVisualizations.Add(noneRecord);
-                await _db.SaveChangesAsync(cancellationToken);
-                return noneRecord;
+                return await _persistenceService.CreateAnalysisVisualizationAsync(
+                    new CreateAnalysisVisualizationCommand(noneRecord),
+                    cancellationToken);
             }
 
             var validation = _commandValidator.Validate(visualization.GeoGebraCommands);
@@ -72,9 +72,9 @@ namespace MathAnalysisAI.Server.Services.Visualization
                 CreatedAt = DateTime.UtcNow
             };
 
-            _db.AnalysisVisualizations.Add(entity);
-            await _db.SaveChangesAsync(cancellationToken);
-            return entity;
+            return await _persistenceService.CreateAnalysisVisualizationAsync(
+                new CreateAnalysisVisualizationCommand(entity),
+                cancellationToken);
         }
     }
 }

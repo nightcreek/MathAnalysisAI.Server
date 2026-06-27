@@ -1,7 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
-using MathAnalysisAI.Server.DTOs.Analysis;
-using MathAnalysisAI.Server.DTOs.Visualization;
+using MathAnalysisAI.Server.SharedKernel.Analysis;
+using MathAnalysisAI.Server.Services.Analysis.UAO;
 
 namespace MathAnalysisAI.Server.Services.Analysis.Parsing
 {
@@ -138,7 +138,7 @@ namespace MathAnalysisAI.Server.Services.Analysis.Parsing
             };
         }
 
-        private static AnalysisResponseDto MapToAnalysisResponse(JsonElement root)
+        private static AnalysisUao MapToAnalysisResponse(JsonElement root)
         {
             var course = GetFlexibleString(root, "course");
             var chapter = GetFlexibleString(root, "chapter");
@@ -153,7 +153,7 @@ namespace MathAnalysisAI.Server.Services.Analysis.Parsing
             var reviewSuggestions = ParseStringList(root, "reviewSuggestions");
             var visualization = ParseVisualization(root, "visualization");
 
-            return new AnalysisResponseDto
+            return new AnalysisUao
             {
                 Course = course ?? string.Empty,
                 Chapter = chapter,
@@ -169,22 +169,22 @@ namespace MathAnalysisAI.Server.Services.Analysis.Parsing
             };
         }
 
-        private static List<StandardSolutionStepDto> ParseStandardSolution(JsonElement root, string property)
+        private static List<StandardSolutionStep> ParseStandardSolution(JsonElement root, string property)
         {
             if (!TryGetProperty(root, property, out var element) || element.ValueKind == JsonValueKind.Null)
             {
-                return new List<StandardSolutionStepDto>();
+                return new List<StandardSolutionStep>();
             }
 
             if (element.ValueKind == JsonValueKind.Array)
             {
-                var list = new List<StandardSolutionStepDto>();
+                var list = new List<StandardSolutionStep>();
                 var step = 1;
                 foreach (var item in element.EnumerateArray())
                 {
                     if (item.ValueKind == JsonValueKind.Object)
                     {
-                        list.Add(new StandardSolutionStepDto
+                        list.Add(new StandardSolutionStep
                         {
                             Step = GetFlexibleInt(item, "step") ?? step,
                             Title = GetFlexibleString(item, "title") ?? $"步骤{step}",
@@ -193,7 +193,7 @@ namespace MathAnalysisAI.Server.Services.Analysis.Parsing
                     }
                     else
                     {
-                        list.Add(new StandardSolutionStepDto
+                        list.Add(new StandardSolutionStep
                         {
                             Step = step,
                             Title = $"步骤{step}",
@@ -209,7 +209,7 @@ namespace MathAnalysisAI.Server.Services.Analysis.Parsing
 
             if (element.ValueKind == JsonValueKind.String)
             {
-                return new List<StandardSolutionStepDto>
+                return new List<StandardSolutionStep>
                 {
                     new()
                     {
@@ -222,10 +222,10 @@ namespace MathAnalysisAI.Server.Services.Analysis.Parsing
 
             if (element.ValueKind == JsonValueKind.Object)
             {
-                var list = new List<StandardSolutionStepDto>();
+                var list = new List<StandardSolutionStep>();
                 if (TryGetProperty(element, "content", out var contentElement))
                 {
-                    list.Add(new StandardSolutionStepDto
+                    list.Add(new StandardSolutionStep
                     {
                         Step = GetFlexibleInt(element, "step") ?? 1,
                         Title = GetFlexibleString(element, "title") ?? "标准解答",
@@ -237,7 +237,7 @@ namespace MathAnalysisAI.Server.Services.Analysis.Parsing
                 var step = 1;
                 foreach (var prop in element.EnumerateObject())
                 {
-                    list.Add(new StandardSolutionStepDto
+                    list.Add(new StandardSolutionStep
                     {
                         Step = step++,
                         Title = prop.Name,
@@ -247,7 +247,7 @@ namespace MathAnalysisAI.Server.Services.Analysis.Parsing
 
                 if (list.Count == 0)
                 {
-                    list.Add(new StandardSolutionStepDto
+                    list.Add(new StandardSolutionStep
                     {
                         Step = 1,
                         Title = "标准解答",
@@ -258,7 +258,7 @@ namespace MathAnalysisAI.Server.Services.Analysis.Parsing
                 return list;
             }
 
-            return new List<StandardSolutionStepDto>
+            return new List<StandardSolutionStep>
             {
                 new()
                 {
@@ -269,7 +269,7 @@ namespace MathAnalysisAI.Server.Services.Analysis.Parsing
             };
         }
 
-        private static StudentSolutionReviewDto ParseStudentSolutionReview(JsonElement root, string property)
+        private static StudentSolutionReview ParseStudentSolutionReview(JsonElement root, string property)
         {
             if (!TryGetProperty(root, property, out var element) || element.ValueKind == JsonValueKind.Null)
             {
@@ -278,7 +278,7 @@ namespace MathAnalysisAI.Server.Services.Analysis.Parsing
 
             if (element.ValueKind == JsonValueKind.String)
             {
-                return new StudentSolutionReviewDto
+                return new StudentSolutionReview
                 {
                     IsCorrect = null,
                     MainIssue = element.GetString(),
@@ -302,7 +302,7 @@ namespace MathAnalysisAI.Server.Services.Analysis.Parsing
                     };
                 }
 
-                return new StudentSolutionReviewDto
+                return new StudentSolutionReview
                 {
                     IsCorrect = isCorrect,
                     MainIssue = GetFlexibleString(element, "mainIssue"),
@@ -314,11 +314,11 @@ namespace MathAnalysisAI.Server.Services.Analysis.Parsing
             return BuildDefaultStudentSolutionReview();
         }
 
-        private static VisualizationDto ParseVisualization(JsonElement root, string property)
+        private static VisualizationSpec ParseVisualization(JsonElement root, string property)
         {
             if (!TryGetProperty(root, property, out var element) || element.ValueKind != JsonValueKind.Object)
             {
-                return new VisualizationDto
+                return new VisualizationSpec
                 {
                     ShouldUse = false,
                     Engine = "none",
@@ -340,7 +340,7 @@ namespace MathAnalysisAI.Server.Services.Analysis.Parsing
                 };
             }
 
-            return new VisualizationDto
+            return new VisualizationSpec
             {
                 ShouldUse = shouldUse,
                 Engine = GetFlexibleString(element, "engine") ?? "none",
@@ -466,9 +466,9 @@ namespace MathAnalysisAI.Server.Services.Analysis.Parsing
             return bool.TryParse(text, out var parsed) ? parsed : null;
         }
 
-        private static StudentSolutionReviewDto BuildDefaultStudentSolutionReview()
+        private static StudentSolutionReview BuildDefaultStudentSolutionReview()
         {
-            return new StudentSolutionReviewDto
+            return new StudentSolutionReview
             {
                 IsCorrect = null,
                 MainIssue = null,

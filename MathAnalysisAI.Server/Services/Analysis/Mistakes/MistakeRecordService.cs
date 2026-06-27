@@ -1,19 +1,18 @@
-using MathAnalysisAI.Server.Data;
 using MathAnalysisAI.Server.Models;
-using Microsoft.EntityFrameworkCore;
+using MathAnalysisAI.Server.Services.Analysis.Persistence;
 
 namespace MathAnalysisAI.Server.Services.Analysis.Mistakes
 {
     public sealed class MistakeRecordService : IMistakeRecordService
     {
-        private readonly ApplicationDbContext _db;
+        private readonly IPersistenceService _persistenceService;
         private readonly ILogger<MistakeRecordService> _logger;
 
         public MistakeRecordService(
-            ApplicationDbContext db,
+            IPersistenceService persistenceService,
             ILogger<MistakeRecordService> logger)
         {
-            _db = db;
+            _persistenceService = persistenceService;
             _logger = logger;
         }
 
@@ -86,8 +85,7 @@ namespace MathAnalysisAI.Server.Services.Analysis.Mistakes
                 return new List<int>();
             }
 
-            _db.MistakeRecords.AddRange(records);
-            await _db.SaveChangesAsync(cancellationToken);
+            await _persistenceService.AddMistakeRecordsAsync(new AddMistakeRecordsCommand(records), cancellationToken);
             return records
                 .Where(x => x.KnowledgePointId.HasValue && x.KnowledgePointId.Value > 0)
                 .Select(x => x.KnowledgePointId!.Value)
@@ -120,13 +118,11 @@ namespace MathAnalysisAI.Server.Services.Analysis.Mistakes
                 normalizedCodes,
                 StringComparer.OrdinalIgnoreCase);
 
-            var map = await _db.KnowledgePoints
-                .AsNoTracking()
-                .Where(kp => kp.CourseId == courseId)
-                .Where(kp => kp.Code != null)
-                .Where(kp => requestedSet.Contains(kp.Code!))
-                .Select(kp => new { Code = kp.Code!, kp.Id })
-                .ToDictionaryAsync(kp => kp.Code, kp => kp.Id, StringComparer.OrdinalIgnoreCase, cancellationToken);
+            var map = (await _persistenceService.GetKnowledgePointsByCodesAsync(
+                    new KnowledgePointsByCodesQuery(courseId, requestedSet.ToList()),
+                    cancellationToken))
+                .Where(kp => !string.IsNullOrWhiteSpace(kp.Code))
+                .ToDictionary(kp => kp.Code!, kp => kp.Id, StringComparer.OrdinalIgnoreCase);
 
             return map;
         }
