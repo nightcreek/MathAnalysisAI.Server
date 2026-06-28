@@ -20,10 +20,14 @@ Current architectural baseline:
 
 - controllers stay thin
 - application services own business decisions
+- intelligence logic is isolated into dedicated Intelligence layer modules
 - persistence access is isolated behind narrow interfaces
 - EF Core stays inside `Data/` and persistence adapters
 - the analysis stack runs through a fixed pipeline
+- the analysis frontend is bootstrapped through a runtime entry layer
 - module boundaries are checked by the ModuleContracts validator
+- contract drift is checked by contract validation and compilation tooling
+- architecture drift is locked by the Freeze layer
 
 ## Canonical Request Flow
 
@@ -36,6 +40,10 @@ For analysis requests, the internal flow is:
 `Controller -> IAnalysisService -> IAnalysisPipeline -> Ordered Analysis Steps -> Persistence / Response Mapping`
 
 Frontend rendering uses response DTOs and MAMP-facing fields where applicable. Backend semantic reasoning does not depend on frontend rendering code.
+
+For the analysis page, the frontend runtime flow is:
+
+`analysis.html -> analysisBootstrap.js -> AnalysisUIRuntime -> Renderer / Motion / Perception`
 
 ## Analysis Pipeline
 
@@ -131,6 +139,12 @@ Persistence rules are strict:
 
 The repository includes a lightweight ModuleContracts validator under `Architecture/ModuleContracts`.
 
+Additional enforcement layers:
+
+- `Architecture/ContractValidator`
+- `Architecture/ContractCompiler`
+- `Architecture/Freeze`
+
 Modes:
 
 - default mode: observation, non-blocking
@@ -154,9 +168,15 @@ Main commands:
 ```bash
 dotnet build MathAnalysisAI.Server/MathAnalysisAI.Server.csproj --configuration Release --no-restore
 dotnet build Architecture/ModuleContracts/Architecture.ModuleContracts.csproj
+dotnet build Architecture/ContractValidator/Architecture.ContractValidator.csproj
+dotnet build Architecture/ContractCompiler/Architecture.ContractCompiler.csproj
+dotnet build Architecture/Freeze/Architecture.Freeze.csproj
 dotnet test MathAnalysisAI.Server/MathAnalysisAI.Server.sln --no-build
 dotnet run --project Architecture/ModuleContracts/Architecture.ModuleContracts.csproj
 dotnet run --project Architecture/ModuleContracts/Architecture.ModuleContracts.csproj -- --strict
+dotnet run --project Architecture/ContractValidator/Architecture.ContractValidator.csproj -- Contracts/api.contract.json contract-mismatches.json
+dotnet run --project Architecture/ContractCompiler/Architecture.ContractCompiler.csproj -- Contracts/api.contract.json MathAnalysisAI.Server/wwwroot/js/api/compiled-contracts.js
+dotnet run --project Architecture/Freeze/Architecture.Freeze.csproj -- architecture-drift-report.json dependency-graph.json intelligence-isolation-report.json --strict
 ```
 
 ## Development Rules for Humans and AI Agents
@@ -176,19 +196,19 @@ Server deployment is documented in:
 
 - [`MathAnalysisAI.Server/DockerDeployment.md`](MathAnalysisAI.Server/DockerDeployment.md)
 
-That guide covers Docker, environment variables, health checks, rebuild flow, and production safety notes.
+That guide covers Docker, manual environment provisioning, health checks, SSE-aware reverse proxy notes, rebuild flow, and production safety notes.
 
 ## Current Stable Baseline
 
-The architecture cleanup line through Phase 7B is complete.
-
 Current stable baseline:
 
-- strict mode is green
+- strict module boundary validation is green
+- contract validation and contract compilation tooling are in place
+- Freeze layer validation is in place
 - accepted legacy count is zero
 - server build is green
 - full tests are green
-- runtime behavior has been preserved through the architecture cleanup line
+- runtime behavior has been preserved through the architecture convergence line
 
 ## Tool-local Documentation
 

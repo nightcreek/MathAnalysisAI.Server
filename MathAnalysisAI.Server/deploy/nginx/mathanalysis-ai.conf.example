@@ -18,9 +18,8 @@
 #      Verify readiness with: curl -I https://your-domain/ready
 #
 # Related docs:
-#   - Docs/NginxHttpsDesign.md
-#   - Docs/ForwardedHeadersDesign.md (R34-c)
-#   - Docs/TencentCloudSecurityGroupChecklist.md (R34-f)
+#   - MathAnalysisAI.Server/DockerDeployment.md
+#   - README.md
 # =============================================================================
 
 # ---------------------------------------------------------------------------
@@ -106,6 +105,29 @@ server {
         #   - LiteLLM proxy (port 4000)
         #   - SQL Server (port 1433)
         # These are handled by NOT adding corresponding location blocks.
+    }
+
+    # -----------------------------------------------------------------------
+    # SSE streaming analysis endpoint
+    # -----------------------------------------------------------------------
+    # The frontend analysis runtime consumes Server-Sent Events from:
+    #   POST /api/learning-analysis/analyze/stream
+    # Buffering must be disabled or the UI will not receive incremental output.
+    location = /api/learning-analysis/analyze/stream {
+        proxy_pass http://127.0.0.1:5131;
+
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP         $remote_addr;
+        proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-Host  $host;
+
+        proxy_http_version 1.1;
+        proxy_set_header Connection "";
+        proxy_buffering off;
+        proxy_cache off;
+        proxy_read_timeout 300s;
+        proxy_send_timeout 300s;
     }
 
     # -----------------------------------------------------------------------
