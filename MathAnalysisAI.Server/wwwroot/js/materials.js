@@ -123,7 +123,7 @@
     if (parseStatusSelect.value) params.set("parseStatus", parseStatusSelect.value);
 
     try {
-      const data = await Api.getJson("/api/course-materials?" + params.toString());
+      const data = await window.BackendApi.materials.listCourseMaterials(params);
       renderList(data);
       UI.showStatus(statusEl, "已刷新。", false);
     } catch (err) {
@@ -170,7 +170,7 @@
     }
 
     try {
-      const result = await Api.getJsonDetailed("/api/courses/" + courseId + "/chapters");
+      const result = await window.BackendApi.courses.listChaptersDetailed(courseId);
       const chapters = Array.isArray(result.data) ? result.data : [];
       const listSelect = UI.qs("#materialsListChapterSelect");
       if (!listSelect) return;
@@ -225,7 +225,7 @@
     var params = courseId ? ("?courseId=" + encodeURIComponent(courseId)) : "";
 
     try {
-      var result = await Api.getJsonDetailed("/api/resources" + params);
+      var result = await window.BackendApi.resources.listDetailed(courseId);
       if (result.meta && result.meta.degraded) {
         UI.renderBootstrapError(container, "网络资源当前处于降级状态，请稍后重试。", fetchNetworkResources, result.meta.traceId);
         return;

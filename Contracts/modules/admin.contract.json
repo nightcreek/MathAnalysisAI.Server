@@ -1,0 +1,49 @@
+{
+  "moduleName": "admin",
+  "version": "1.0.0",
+  "description": "Admin dashboard and management endpoints.",
+  "endpoints": [
+    {
+      "name": "dashboard",
+      "endpoint": "/api/admin/dashboard",
+      "method": "GET",
+      "description": "Returns admin dashboard metrics."
+    },
+    {
+      "name": "users",
+      "endpoint": "/api/admin/users",
+      "method": "GET",
+      "description": "Returns admin user list."
+    },
+    {
+      "name": "updateUserRole",
+      "endpointTemplate": "/api/admin/users/{userId}/role",
+      "method": "PUT",
+      "description": "Updates a user role."
+    },
+    {
+      "name": "teachers",
+      "endpoint": "/api/admin/teachers",
+      "method": "GET",
+      "description": "Returns teacher list."
+    },
+    {
+      "name": "createTeacher",
+      "endpoint": "/api/admin/teachers",
+      "method": "POST",
+      "description": "Creates teacher account."
+    },
+    {
+      "name": "importStudents",
+      "endpoint": "/api/admin/import-students",
+      "method": "POST",
+      "description": "Imports student roster."
+    },
+    {
+      "name": "teacherStudents",
+      "endpointTemplate": "/api/admin/teachers/{teacherId}/students",
+      "method": "GET",
+      "description": "Returns students for a teacher."
+    }
+  ]
+}

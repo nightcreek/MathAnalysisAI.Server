@@ -1,0 +1,31 @@
+{
+  "moduleName": "resources",
+  "version": "1.0.0",
+  "description": "Network resource endpoints used by frontend pages.",
+  "endpoints": [
+    {
+      "name": "list",
+      "endpoint": "/api/resources",
+      "method": "GET",
+      "description": "Lists network resources."
+    },
+    {
+      "name": "create",
+      "endpoint": "/api/resources",
+      "method": "POST",
+      "description": "Creates a network resource."
+    },
+    {
+      "name": "update",
+      "endpointTemplate": "/api/resources/{resourceId}",
+      "method": "PUT",
+      "description": "Updates a network resource."
+    },
+    {
+      "name": "delete",
+      "endpointTemplate": "/api/resources/{resourceId}",
+      "method": "DELETE",
+      "description": "Deletes a network resource."
+    }
+  ]
+}

@@ -220,11 +220,7 @@
     try {
       var courseSelect = document.getElementById("statsCourseSelect");
       var courseId = courseSelect && courseSelect.value ? courseSelect.value : "";
-      var url = "/api/stats/personal";
-      if (courseId) {
-        url += "?courseId=" + courseId;
-      }
-      var stats = await Api.getJson(url);
+      var stats = await window.BackendApi.stats.getPersonal(courseId);
       renderSummary(stats.summary);
       renderCourseProgress(stats.courseProgress);
       renderRadarChart(stats.knowledgeMastery);

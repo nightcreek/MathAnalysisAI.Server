@@ -1,0 +1,37 @@
+{
+  "moduleName": "auth",
+  "version": "1.0.0",
+  "description": "Frontend-facing authentication endpoints.",
+  "endpoints": [
+    {
+      "name": "info",
+      "endpoint": "/api/auth/info",
+      "method": "GET",
+      "description": "Returns auth mode and OIDC metadata."
+    },
+    {
+      "name": "me",
+      "endpoint": "/api/auth/me",
+      "method": "GET",
+      "description": "Returns current authenticated user."
+    },
+    {
+      "name": "login",
+      "endpoint": "/api/auth/login",
+      "method": "POST",
+      "description": "Logs in and returns token payload."
+    },
+    {
+      "name": "register",
+      "endpoint": "/api/auth/register",
+      "method": "POST",
+      "description": "Registers and returns token payload."
+    },
+    {
+      "name": "impersonate",
+      "endpoint": "/api/auth/impersonate",
+      "method": "POST",
+      "description": "Sets or clears admin impersonation role."
+    }
+  ]
+}

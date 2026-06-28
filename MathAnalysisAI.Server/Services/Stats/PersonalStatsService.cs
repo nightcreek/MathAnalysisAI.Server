@@ -1,4 +1,5 @@
 using MathAnalysisAI.Server.DTOs.Stats;
+using MathAnalysisAI.Server.Intelligence.Interfaces;
 using MathAnalysisAI.Server.Services.Analysis.Persistence;
 
 namespace MathAnalysisAI.Server.Services.Stats;
@@ -6,10 +7,14 @@ namespace MathAnalysisAI.Server.Services.Stats;
 public class PersonalStatsService
 {
     private readonly IPersistenceService _persistenceService;
+    private readonly IPersonalStatsIntelligenceService _personalStatsIntelligenceService;
 
-    public PersonalStatsService(IPersistenceService persistenceService)
+    public PersonalStatsService(
+        IPersistenceService persistenceService,
+        IPersonalStatsIntelligenceService personalStatsIntelligenceService)
     {
         _persistenceService = persistenceService;
+        _personalStatsIntelligenceService = personalStatsIntelligenceService;
     }
 
     public async Task<PersonalStatsDto> GetPersonalStatsAsync(int userId, int? courseId = null, CancellationToken cancellationToken = default)
@@ -43,26 +48,25 @@ public class PersonalStatsService
             })
             .ToList();
 
-        var totalAttempts = courseStats.Sum(x => x.AttemptCount);
-        var totalCorrect = courseStats.Sum(x => x.CorrectCount);
-        var totalWrong = courseStats.Sum(x => x.WrongCount);
-        var overallAccuracy = totalAttempts > 0
-            ? Math.Round((decimal)totalCorrect / totalAttempts * 100, 1)
-            : 0m;
-
-        var masteredCount = knowledgeStates.Count(x => x.MasteryLevel >= 70);
+        var summary = _personalStatsIntelligenceService.Compute(
+            courseStats
+                .Select(x => new PersonalCourseProgressModel(x.AttemptCount, x.CorrectCount, x.WrongCount))
+                .ToList(),
+            knowledgeStates
+                .Select(x => new PersonalKnowledgeMasteryModel(x.MasteryLevel))
+                .ToList());
 
         return new PersonalStatsDto
         {
             Summary = new PersonalSummaryDto
             {
-                TotalAttempts = totalAttempts,
-                TotalCorrect = totalCorrect,
-                TotalWrong = totalWrong,
-                OverallAccuracy = overallAccuracy,
-                CoursesEnrolled = courseStats.Count,
-                TotalKnowledgePoints = knowledgeStates.Count,
-                MasteredKnowledgePoints = masteredCount
+                TotalAttempts = summary.TotalAttempts,
+                TotalCorrect = summary.TotalCorrect,
+                TotalWrong = summary.TotalWrong,
+                OverallAccuracy = summary.OverallAccuracy,
+                CoursesEnrolled = summary.CoursesEnrolled,
+                TotalKnowledgePoints = summary.TotalKnowledgePoints,
+                MasteredKnowledgePoints = summary.MasteredKnowledgePoints
             },
             CourseProgress = courseStats,
             KnowledgeMastery = knowledgeStates

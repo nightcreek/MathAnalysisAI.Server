@@ -1,0 +1,11 @@
+{
+  "RepoRoot": "/Users/night_creek/\u5F00\u53D1/\u6570\u5B66\u5206\u6790\u667A\u80FD\u4F53",
+  "GeneratedAtUtc": "2026-06-28T05:46:09.513318Z",
+  "Summary": {
+    "TotalViolations": 0,
+    "BlockingViolations": 0,
+    "ObservationViolations": 0,
+    "ViolationsByRule": {}
+  },
+  "Violations": []
+}

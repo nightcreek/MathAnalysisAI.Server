@@ -531,7 +531,7 @@
     UI.showStatus(status, "正在分析，请稍候……", false);
 
     try {
-      var data = await Api.postJson("/api/learning-analysis/analyze", payload);
+      var data = await window.BackendApi.analysis.run(payload);
       box.innerHTML = renderAnalysisReport(data || {});
       await UI.renderMathInElement(box);
       UI.showStatus(status, "分析完成。", false);
@@ -573,11 +573,7 @@
     box.innerHTML = '<div class="streaming-container"><div class="streaming-indicator"><span class="streaming-dot"></span> 正在生成分析结果…</div><pre class="streaming-content"></pre></div>';
 
     try {
-      var response = await Api.fetchWithAuth("/api/learning-analysis/analyze/stream", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload)
-      });
+      var response = await window.BackendApi.analysis.runStream(payload);
 
       if (!response.ok) {
         var errorText = "";
@@ -689,7 +685,7 @@
      }
 
      try {
-       var result = await Api.getJsonDetailed("/api/courses/" + courseId + "/chapters");
+       var result = await window.BackendApi.courses.listChaptersDetailed(courseId);
        var chapters = Array.isArray(result.data) ? result.data : [];
        if (result.meta && result.meta.degraded) {
          chapterSelect.innerHTML = '<option value="">章节加载降级</option>';
@@ -726,6 +722,7 @@
     var analyzeBtn = UI.qs("#analyzeBtn");
     var problemInput = UI.qs("#problemTextInput");
     var solutionInput = UI.qs("#studentSolutionTextInput");
+    var runtimeMirrorInput = UI.qs("#analysis-input");
 
     if (manualBtn) {
       manualBtn.addEventListener("click", function () {
@@ -739,12 +736,18 @@
       });
     }
 
-    if (analyzeBtn) {
+    if (analyzeBtn && !window.__ANALYSIS_UI_RUNTIME_ACTIVE) {
       analyzeBtn.addEventListener("click", analyzeTextStream);
     }
 
     if (problemInput) {
       problemInput.addEventListener("input", scheduleInputPreviewRefresh);
+      if (runtimeMirrorInput) {
+        runtimeMirrorInput.value = problemInput.value || "";
+        problemInput.addEventListener("input", function () {
+          runtimeMirrorInput.value = problemInput.value || "";
+        });
+      }
     }
 
     if (solutionInput) {
@@ -756,6 +759,9 @@
   mathAnalysis.analyzeText = analyzeText;
   mathAnalysis.analyzeTextStream = analyzeTextStream;
   mathAnalysis.refreshInputPreviews = refreshInputPreviews;
+  mathAnalysis.ensureUserAuthenticated = ensureUserAuthenticated;
+  mathAnalysis.validateOcrConfirmed = validateOcrConfirmed;
+  mathAnalysis.buildAnalysisPayload = buildAnalysisPayload;
   window.MathAnalysis = mathAnalysis;
 
   document.addEventListener("DOMContentLoaded", function () {

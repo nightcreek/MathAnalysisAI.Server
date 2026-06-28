@@ -50,7 +50,7 @@
     UI.showStatus(box, "加载中...", false);
 
     try {
-      var result = await Api.getJsonDetailed("/api/leaderboard/public?courseId=" + courseId + "&take=" + AppConfig.leaderboardTake);
+      var result = await window.BackendApi.leaderboard.getPublicDetailed(courseId, AppConfig.leaderboardTake);
       if (result.meta && result.meta.degraded) {
         UI.renderBootstrapError(box, "排行榜当前处于降级状态，请稍后重试。", loadLeaderboard, result.meta.traceId);
       } else {

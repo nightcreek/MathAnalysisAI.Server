@@ -1,0 +1,14 @@
+{
+  "moduleName": "question",
+  "version": "1.0.0",
+  "description": "Frontend compatibility adapter contract for the removed question endpoint.",
+  "endpoints": [
+    {
+      "name": "list",
+      "endpoint": "/api/resources",
+      "method": "GET",
+      "description": "Frontend-only adapter: maps resources list into legacy question page cards.",
+      "adapterSource": "resources.list"
+    }
+  ]
+}

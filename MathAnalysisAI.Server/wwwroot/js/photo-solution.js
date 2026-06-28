@@ -308,7 +308,7 @@
     UI.setText(summary, "");
 
     try {
-      var data = await Api.postFormData("/api/photo-solutions/ocr", form);
+      var data = await window.BackendApi.photoSolutions.runOcr(form);
       if (!data || typeof data !== "object") {
         var emptyError = new Error("OCR_EMPTY_RESULT");
         emptyError.errorCode = "OCR_EMPTY_RESULT";
@@ -357,7 +357,7 @@
         formulas: getFormulaPayload()
       };
 
-      var data = await Api.postJson("/api/photo-solutions/ocr/" + state.recordId + "/confirm", payload);
+      var data = await window.BackendApi.photoSolutions.confirmOcr(state.recordId, payload);
       applyRecognizedPayload(data || {});
       state.isConfirmed = true;
       state.dirty = false;

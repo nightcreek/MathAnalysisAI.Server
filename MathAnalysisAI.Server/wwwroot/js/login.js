@@ -291,7 +291,7 @@
     }
 
     try {
-      var result = await Api.postJson("/api/auth/login", payload);
+      var result = await window.BackendApi.auth.login(payload);
       await persistAuthenticatedSession(result, "login");
       renderUserInfo(window.Auth.getCurrentUser());
       UI.showStatus(status, "登录成功，正在跳转…", false);
@@ -328,7 +328,7 @@
     UI.showStatus(status, "正在注册…", false);
 
     try {
-      var result = await Api.postJson("/api/auth/register", {
+      var result = await window.BackendApi.auth.register({
         username: username,
         password: password,
         realName: realName || null,

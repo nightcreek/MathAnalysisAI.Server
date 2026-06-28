@@ -183,7 +183,7 @@
       return authInfoPromise;
     }
 
-    authInfoPromise = Api.getJson("/api/auth/info")
+    authInfoPromise = window.BackendApi.auth.getInfo()
       .then(function (info) {
         authInfoCache = info || null;
         authInfoPromise = null;
@@ -236,7 +236,7 @@
 
     loadingPromise = (async function () {
       try {
-        var user = await Api.getJson("/api/auth/me");
+        var user = await window.BackendApi.auth.getCurrentUser();
         currentUser = user || null;
         setLastAuthState(null);
       } catch (err) {

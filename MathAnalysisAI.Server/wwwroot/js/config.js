@@ -24,7 +24,7 @@
 
     setCourseLoadState({ status: "loading", message: "", traceId: "" });
 
-    _courseCachePromise = Api.getJsonDetailed("/api/courses")
+    _courseCachePromise = window.BackendApi.courses.listDetailed()
       .then(function (result) {
         var courses = Array.isArray(result.data) ? result.data : [];
         _courseCache = courses;

@@ -1,0 +1,423 @@
+{
+  "scannedRevision": "36e915afeb661120dab62d2ba33d7a5f0d0fe8eb",
+  "deterministic": true,
+  "violationCount": 52,
+  "violations": [
+    {
+      "rule": "DB_LEAKAGE_APPLICATION_DBCONTEXT",
+      "file": "/Users/night_creek/开发/数学分析智能体/MathAnalysisAI.Server/Program.cs",
+      "line": 82,
+      "severity": "error",
+      "message": "ApplicationDbContext must not be used outside PersistenceModule.",
+      "snippet": "builder.Services.AddDbContext<ApplicationDbContext>(options =>"
+    },
+    {
+      "rule": "DB_LEAKAGE_APPLICATION_DBCONTEXT",
+      "file": "/Users/night_creek/开发/数学分析智能体/MathAnalysisAI.Server/Program.cs",
+      "line": 496,
+      "severity": "error",
+      "message": "ApplicationDbContext must not be used outside PersistenceModule.",
+      "snippet": "    var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();"
+    },
+    {
+      "rule": "DB_LEAKAGE_APPLICATION_DBCONTEXT",
+      "file": "/Users/night_creek/开发/数学分析智能体/MathAnalysisAI.Server/Services/Analysis/Structuring/ProblemStructuringService.cs",
+      "line": 16,
+      "severity": "error",
+      "message": "ApplicationDbContext must not be used outside PersistenceModule.",
+      "snippet": "        private readonly ApplicationDbContext _db;"
+    },
+    {
+      "rule": "DB_LEAKAGE_APPLICATION_DBCONTEXT",
+      "file": "/Users/night_creek/开发/数学分析智能体/MathAnalysisAI.Server/Services/Analysis/Structuring/ProblemStructuringService.cs",
+      "line": 18,
+      "severity": "error",
+      "message": "ApplicationDbContext must not be used outside PersistenceModule.",
+      "snippet": "        public ProblemStructuringService(ApplicationDbContext db)"
+    },
+    {
+      "rule": "DB_LEAKAGE_APPLICATION_DBCONTEXT",
+      "file": "/Users/night_creek/开发/数学分析智能体/MathAnalysisAI.Server/Services/ExceptionHandling/DbHealthCheck.cs",
+      "line": 9,
+      "severity": "error",
+      "message": "ApplicationDbContext must not be used outside PersistenceModule.",
+      "snippet": "    private readonly ApplicationDbContext _db;"
+    },
+    {
+      "rule": "DB_LEAKAGE_APPLICATION_DBCONTEXT",
+      "file": "/Users/night_creek/开发/数学分析智能体/MathAnalysisAI.Server/Services/ExceptionHandling/DbHealthCheck.cs",
+      "line": 11,
+      "severity": "error",
+      "message": "ApplicationDbContext must not be used outside PersistenceModule.",
+      "snippet": "    public DbHealthCheck(ApplicationDbContext db)"
+    },
+    {
+      "rule": "DB_LEAKAGE_APPLICATION_DBCONTEXT",
+      "file": "/Users/night_creek/开发/数学分析智能体/MathAnalysisAI.Server/Services/LLM/LLMGateway.cs",
+      "line": 26,
+      "severity": "error",
+      "message": "ApplicationDbContext must not be used outside PersistenceModule.",
+      "snippet": "        private readonly ApplicationDbContext _db;"
+    },
+    {
+      "rule": "DB_LEAKAGE_APPLICATION_DBCONTEXT",
+      "file": "/Users/night_creek/开发/数学分析智能体/MathAnalysisAI.Server/Services/LLM/LLMGateway.cs",
+      "line": 32,
+      "severity": "error",
+      "message": "ApplicationDbContext must not be used outside PersistenceModule.",
+      "snippet": "            ApplicationDbContext db,"
+    },
+    {
+      "rule": "FORBIDDEN_IMPORT_ENTITY_FRAMEWORK_CORE",
+      "file": "/Users/night_creek/开发/数学分析智能体/MathAnalysisAI.Server/Models/PhotoSolutionOcrRecord.cs",
+      "line": 2,
+      "severity": "error",
+      "message": "Microsoft.EntityFrameworkCore must not be imported outside persistence, data, migrations, or startup.",
+      "snippet": "using Microsoft.EntityFrameworkCore;"
+    },
+    {
+      "rule": "FORBIDDEN_IMPORT_ENTITY_FRAMEWORK_CORE",
+      "file": "/Users/night_creek/开发/数学分析智能体/MathAnalysisAI.Server/Models/StructuredProblem.cs",
+      "line": 2,
+      "severity": "error",
+      "message": "Microsoft.EntityFrameworkCore must not be imported outside persistence, data, migrations, or startup.",
+      "snippet": "using Microsoft.EntityFrameworkCore;"
+    },
+    {
+      "rule": "FORBIDDEN_IMPORT_ENTITY_FRAMEWORK_CORE",
+      "file": "/Users/night_creek/开发/数学分析智能体/MathAnalysisAI.Server/Services/ExceptionHandling/ApiExceptionClassifier.cs",
+      "line": 1,
+      "severity": "error",
+      "message": "Microsoft.EntityFrameworkCore must not be imported outside persistence, data, migrations, or startup.",
+      "snippet": "using Microsoft.EntityFrameworkCore;"
+    },
+    {
+      "rule": "FORBIDDEN_IMPORT_ENTITY_FRAMEWORK_CORE",
+      "file": "/Users/night_creek/开发/数学分析智能体/MathAnalysisAI.Server/Services/ExceptionHandling/DbHealthCheck.cs",
+      "line": 2,
+      "severity": "error",
+      "message": "Microsoft.EntityFrameworkCore must not be imported outside persistence, data, migrations, or startup.",
+      "snippet": "using Microsoft.EntityFrameworkCore;"
+    },
+    {
+      "rule": "FORBIDDEN_PROVIDER_USAGE_LLM_GATEWAY",
+      "file": "/Users/night_creek/开发/数学分析智能体/MathAnalysisAI.Server/Options/LLMOptions.cs",
+      "line": 5,
+      "severity": "error",
+      "message": "Direct LLMGateway usage is forbidden outside LLM service module or startup composition root.",
+      "snippet": "    public const string SectionName = \"LLMGateway\";"
+    },
+    {
+      "rule": "CONTROLLER_BUSINESS_LOGIC_HEURISTIC",
+      "file": "/Users/night_creek/开发/数学分析智能体/MathAnalysisAI.Server/Controllers/LearningAnalysisController.cs",
+      "line": 93,
+      "severity": "warning",
+      "message": "Controller contains business-logic helper patterns. Review for thin-controller compliance.",
+      "snippet": "            var encoded = System.Text.Json.JsonSerializer.Serialize(chunk);"
+    },
+    {
+      "rule": "CONTROLLER_BUSINESS_LOGIC_HEURISTIC",
+      "file": "/Users/night_creek/开发/数学分析智能体/MathAnalysisAI.Server/Controllers/PhotoSolutionsController.cs",
+      "line": 130,
+      "severity": "warning",
+      "message": "Controller contains business-logic helper patterns. Review for thin-controller compliance.",
+      "snippet": "                var assessment = AssessReviewState(recognized);"
+    },
+    {
+      "rule": "CONTROLLER_BUSINESS_LOGIC_HEURISTIC",
+      "file": "/Users/night_creek/开发/数学分析智能体/MathAnalysisAI.Server/Controllers/PhotoSolutionsController.cs",
+      "line": 139,
+      "severity": "warning",
+      "message": "Controller contains business-logic helper patterns. Review for thin-controller compliance.",
+      "snippet": "                    ImageHash = ComputeSha256Hex(imageBytes),"
+    },
+    {
+      "rule": "CONTROLLER_BUSINESS_LOGIC_HEURISTIC",
+      "file": "/Users/night_creek/开发/数学分析智能体/MathAnalysisAI.Server/Controllers/PhotoSolutionsController.cs",
+      "line": 145,
+      "severity": "warning",
+      "message": "Controller contains business-logic helper patterns. Review for thin-controller compliance.",
+      "snippet": "                    DetectedSectionsJson = JsonSerializer.Serialize(recognized.DetectedSections),"
+    },
+    {
+      "rule": "CONTROLLER_BUSINESS_LOGIC_HEURISTIC",
+      "file": "/Users/night_creek/开发/数学分析智能体/MathAnalysisAI.Server/Controllers/PhotoSolutionsController.cs",
+      "line": 146,
+      "severity": "warning",
+      "message": "Controller contains business-logic helper patterns. Review for thin-controller compliance.",
+      "snippet": "                    FormulasJson = JsonSerializer.Serialize(recognized.Formulas),"
+    },
+    {
+      "rule": "CONTROLLER_BUSINESS_LOGIC_HEURISTIC",
+      "file": "/Users/night_creek/开发/数学分析智能体/MathAnalysisAI.Server/Controllers/PhotoSolutionsController.cs",
+      "line": 147,
+      "severity": "warning",
+      "message": "Controller contains business-logic helper patterns. Review for thin-controller compliance.",
+      "snippet": "                    WarningsJson = JsonSerializer.Serialize(recognized.Warnings),"
+    },
+    {
+      "rule": "CONTROLLER_BUSINESS_LOGIC_HEURISTIC",
+      "file": "/Users/night_creek/开发/数学分析智能体/MathAnalysisAI.Server/Controllers/PhotoSolutionsController.cs",
+      "line": 148,
+      "severity": "warning",
+      "message": "Controller contains business-logic helper patterns. Review for thin-controller compliance.",
+      "snippet": "                    ReviewReasonsJson = JsonSerializer.Serialize(assessment.ReviewReasons),"
+    },
+    {
+      "rule": "CONTROLLER_BUSINESS_LOGIC_HEURISTIC",
+      "file": "/Users/night_creek/开发/数学分析智能体/MathAnalysisAI.Server/Controllers/PhotoSolutionsController.cs",
+      "line": 216,
+      "severity": "warning",
+      "message": "Controller contains business-logic helper patterns. Review for thin-controller compliance.",
+      "snippet": "            var confirmedProblemText = NormalizeText(request.ProblemText);"
+    },
+    {
+      "rule": "CONTROLLER_BUSINESS_LOGIC_HEURISTIC",
+      "file": "/Users/night_creek/开发/数学分析智能体/MathAnalysisAI.Server/Controllers/PhotoSolutionsController.cs",
+      "line": 222,
+      "severity": "warning",
+      "message": "Controller contains business-logic helper patterns. Review for thin-controller compliance.",
+      "snippet": "            var confirmedStudentSolutionText = NormalizeNullableText(request.StudentSolutionText);"
+    },
+    {
+      "rule": "CONTROLLER_BUSINESS_LOGIC_HEURISTIC",
+      "file": "/Users/night_creek/开发/数学分析智能体/MathAnalysisAI.Server/Controllers/PhotoSolutionsController.cs",
+      "line": 223,
+      "severity": "warning",
+      "message": "Controller contains business-logic helper patterns. Review for thin-controller compliance.",
+      "snippet": "            var confirmedFormulas = NormalizeFormulas(request.Formulas);"
+    },
+    {
+      "rule": "CONTROLLER_BUSINESS_LOGIC_HEURISTIC",
+      "file": "/Users/night_creek/开发/数学分析智能体/MathAnalysisAI.Server/Controllers/PhotoSolutionsController.cs",
+      "line": 230,
+      "severity": "warning",
+      "message": "Controller contains business-logic helper patterns. Review for thin-controller compliance.",
+      "snippet": "                    JsonSerializer.Serialize(confirmedFormulas),"
+    },
+    {
+      "rule": "CONTROLLER_BUSINESS_LOGIC_HEURISTIC",
+      "file": "/Users/night_creek/开发/数学分析智能体/MathAnalysisAI.Server/Controllers/PhotoSolutionsController.cs",
+      "line": 236,
+      "severity": "warning",
+      "message": "Controller contains business-logic helper patterns. Review for thin-controller compliance.",
+      "snippet": "            var recognized = BuildRecognizedDto(record);"
+    },
+    {
+      "rule": "CONTROLLER_BUSINESS_LOGIC_HEURISTIC",
+      "file": "/Users/night_creek/开发/数学分析智能体/MathAnalysisAI.Server/Controllers/PhotoSolutionsController.cs",
+      "line": 237,
+      "severity": "warning",
+      "message": "Controller contains business-logic helper patterns. Review for thin-controller compliance.",
+      "snippet": "            var assessment = AssessReviewState(recognized);"
+    },
+    {
+      "rule": "CONTROLLER_BUSINESS_LOGIC_HEURISTIC",
+      "file": "/Users/night_creek/开发/数学分析智能体/MathAnalysisAI.Server/Controllers/PhotoSolutionsController.cs",
+      "line": 260,
+      "severity": "warning",
+      "message": "Controller contains business-logic helper patterns. Review for thin-controller compliance.",
+      "snippet": "                    ? ParseFormulas(record.ConfirmedFormulasJson)"
+    },
+    {
+      "rule": "CONTROLLER_BUSINESS_LOGIC_HEURISTIC",
+      "file": "/Users/night_creek/开发/数学分析智能体/MathAnalysisAI.Server/Controllers/PhotoSolutionsController.cs",
+      "line": 279,
+      "severity": "warning",
+      "message": "Controller contains business-logic helper patterns. Review for thin-controller compliance.",
+      "snippet": "        private static PhotoSolutionOcrResponseDto BuildRecognizedDto(PhotoSolutionOcrRecord record)"
+    },
+    {
+      "rule": "CONTROLLER_BUSINESS_LOGIC_HEURISTIC",
+      "file": "/Users/night_creek/开发/数学分析智能体/MathAnalysisAI.Server/Controllers/PhotoSolutionsController.cs",
+      "line": 287,
+      "severity": "warning",
+      "message": "Controller contains business-logic helper patterns. Review for thin-controller compliance.",
+      "snippet": "                DetectedSections = ParseDetectedSections(record.DetectedSectionsJson),"
+    },
+    {
+      "rule": "CONTROLLER_BUSINESS_LOGIC_HEURISTIC",
+      "file": "/Users/night_creek/开发/数学分析智能体/MathAnalysisAI.Server/Controllers/PhotoSolutionsController.cs",
+      "line": 288,
+      "severity": "warning",
+      "message": "Controller contains business-logic helper patterns. Review for thin-controller compliance.",
+      "snippet": "                Formulas = ParseFormulas(record.FormulasJson),"
+    },
+    {
+      "rule": "CONTROLLER_BUSINESS_LOGIC_HEURISTIC",
+      "file": "/Users/night_creek/开发/数学分析智能体/MathAnalysisAI.Server/Controllers/PhotoSolutionsController.cs",
+      "line": 289,
+      "severity": "warning",
+      "message": "Controller contains business-logic helper patterns. Review for thin-controller compliance.",
+      "snippet": "                Warnings = ParseWarnings(record.WarningsJson),"
+    },
+    {
+      "rule": "CONTROLLER_BUSINESS_LOGIC_HEURISTIC",
+      "file": "/Users/night_creek/开发/数学分析智能体/MathAnalysisAI.Server/Controllers/PhotoSolutionsController.cs",
+      "line": 300,
+      "severity": "warning",
+      "message": "Controller contains business-logic helper patterns. Review for thin-controller compliance.",
+      "snippet": "                ReviewReasons = ParseStrings(record.ReviewReasonsJson)"
+    },
+    {
+      "rule": "CONTROLLER_BUSINESS_LOGIC_HEURISTIC",
+      "file": "/Users/night_creek/开发/数学分析智能体/MathAnalysisAI.Server/Controllers/PhotoSolutionsController.cs",
+      "line": 304,
+      "severity": "warning",
+      "message": "Controller contains business-logic helper patterns. Review for thin-controller compliance.",
+      "snippet": "        private static PhotoSolutionOcrReviewAssessment AssessReviewState(PhotoSolutionOcrResponseDto response)"
+    },
+    {
+      "rule": "CONTROLLER_BUSINESS_LOGIC_HEURISTIC",
+      "file": "/Users/night_creek/开发/数学分析智能体/MathAnalysisAI.Server/Controllers/PhotoSolutionsController.cs",
+      "line": 340,
+      "severity": "warning",
+      "message": "Controller contains business-logic helper patterns. Review for thin-controller compliance.",
+      "snippet": "        private static bool ContainsUnclear(string? text)"
+    },
+    {
+      "rule": "CONTROLLER_BUSINESS_LOGIC_HEURISTIC",
+      "file": "/Users/night_creek/开发/数学分析智能体/MathAnalysisAI.Server/Controllers/PhotoSolutionsController.cs",
+      "line": 346,
+      "severity": "warning",
+      "message": "Controller contains business-logic helper patterns. Review for thin-controller compliance.",
+      "snippet": "        private static bool IsObviouslyTooShort(string text)"
+    },
+    {
+      "rule": "CONTROLLER_BUSINESS_LOGIC_HEURISTIC",
+      "file": "/Users/night_creek/开发/数学分析智能体/MathAnalysisAI.Server/Controllers/PhotoSolutionsController.cs",
+      "line": 352,
+      "severity": "warning",
+      "message": "Controller contains business-logic helper patterns. Review for thin-controller compliance.",
+      "snippet": "        private static string RemoveWhitespace(string text)"
+    },
+    {
+      "rule": "CONTROLLER_BUSINESS_LOGIC_HEURISTIC",
+      "file": "/Users/night_creek/开发/数学分析智能体/MathAnalysisAI.Server/Controllers/PhotoSolutionsController.cs",
+      "line": 366,
+      "severity": "warning",
+      "message": "Controller contains business-logic helper patterns. Review for thin-controller compliance.",
+      "snippet": "        private static string ComputeSha256Hex(byte[] bytes)"
+    },
+    {
+      "rule": "CONTROLLER_BUSINESS_LOGIC_HEURISTIC",
+      "file": "/Users/night_creek/开发/数学分析智能体/MathAnalysisAI.Server/Controllers/PhotoSolutionsController.cs",
+      "line": 368,
+      "severity": "warning",
+      "message": "Controller contains business-logic helper patterns. Review for thin-controller compliance.",
+      "snippet": "            var hash = SHA256.HashData(bytes);"
+    },
+    {
+      "rule": "CONTROLLER_BUSINESS_LOGIC_HEURISTIC",
+      "file": "/Users/night_creek/开发/数学分析智能体/MathAnalysisAI.Server/Controllers/PhotoSolutionsController.cs",
+      "line": 372,
+      "severity": "warning",
+      "message": "Controller contains business-logic helper patterns. Review for thin-controller compliance.",
+      "snippet": "        private static string NormalizeText(string value)"
+    },
+    {
+      "rule": "CONTROLLER_BUSINESS_LOGIC_HEURISTIC",
+      "file": "/Users/night_creek/开发/数学分析智能体/MathAnalysisAI.Server/Controllers/PhotoSolutionsController.cs",
+      "line": 377,
+      "severity": "warning",
+      "message": "Controller contains business-logic helper patterns. Review for thin-controller compliance.",
+      "snippet": "        private static string? NormalizeNullableText(string? value)"
+    },
+    {
+      "rule": "CONTROLLER_BUSINESS_LOGIC_HEURISTIC",
+      "file": "/Users/night_creek/开发/数学分析智能体/MathAnalysisAI.Server/Controllers/PhotoSolutionsController.cs",
+      "line": 387,
+      "severity": "warning",
+      "message": "Controller contains business-logic helper patterns. Review for thin-controller compliance.",
+      "snippet": "        private static List<FormulaCandidateDto> NormalizeFormulas(IEnumerable<FormulaCandidateDto>? formulas)"
+    },
+    {
+      "rule": "CONTROLLER_BUSINESS_LOGIC_HEURISTIC",
+      "file": "/Users/night_creek/开发/数学分析智能体/MathAnalysisAI.Server/Controllers/PhotoSolutionsController.cs",
+      "line": 399,
+      "severity": "warning",
+      "message": "Controller contains business-logic helper patterns. Review for thin-controller compliance.",
+      "snippet": "        private static List<DetectedSectionDto> ParseDetectedSections(string? json)"
+    },
+    {
+      "rule": "CONTROLLER_BUSINESS_LOGIC_HEURISTIC",
+      "file": "/Users/night_creek/开发/数学分析智能体/MathAnalysisAI.Server/Controllers/PhotoSolutionsController.cs",
+      "line": 405,
+      "severity": "warning",
+      "message": "Controller contains business-logic helper patterns. Review for thin-controller compliance.",
+      "snippet": "                    : JsonSerializer.Deserialize<List<DetectedSectionDto>>(json) ?? new List<DetectedSectionDto>();"
+    },
+    {
+      "rule": "CONTROLLER_BUSINESS_LOGIC_HEURISTIC",
+      "file": "/Users/night_creek/开发/数学分析智能体/MathAnalysisAI.Server/Controllers/PhotoSolutionsController.cs",
+      "line": 413,
+      "severity": "warning",
+      "message": "Controller contains business-logic helper patterns. Review for thin-controller compliance.",
+      "snippet": "        private static List<FormulaCandidateDto> ParseFormulas(string? json)"
+    },
+    {
+      "rule": "CONTROLLER_BUSINESS_LOGIC_HEURISTIC",
+      "file": "/Users/night_creek/开发/数学分析智能体/MathAnalysisAI.Server/Controllers/PhotoSolutionsController.cs",
+      "line": 419,
+      "severity": "warning",
+      "message": "Controller contains business-logic helper patterns. Review for thin-controller compliance.",
+      "snippet": "                    : JsonSerializer.Deserialize<List<FormulaCandidateDto>>(json) ?? new List<FormulaCandidateDto>();"
+    },
+    {
+      "rule": "CONTROLLER_BUSINESS_LOGIC_HEURISTIC",
+      "file": "/Users/night_creek/开发/数学分析智能体/MathAnalysisAI.Server/Controllers/PhotoSolutionsController.cs",
+      "line": 427,
+      "severity": "warning",
+      "message": "Controller contains business-logic helper patterns. Review for thin-controller compliance.",
+      "snippet": "        private static List<string> ParseWarnings(string? json)"
+    },
+    {
+      "rule": "CONTROLLER_BUSINESS_LOGIC_HEURISTIC",
+      "file": "/Users/night_creek/开发/数学分析智能体/MathAnalysisAI.Server/Controllers/PhotoSolutionsController.cs",
+      "line": 429,
+      "severity": "warning",
+      "message": "Controller contains business-logic helper patterns. Review for thin-controller compliance.",
+      "snippet": "            return ParseStrings(json);"
+    },
+    {
+      "rule": "CONTROLLER_BUSINESS_LOGIC_HEURISTIC",
+      "file": "/Users/night_creek/开发/数学分析智能体/MathAnalysisAI.Server/Controllers/PhotoSolutionsController.cs",
+      "line": 432,
+      "severity": "warning",
+      "message": "Controller contains business-logic helper patterns. Review for thin-controller compliance.",
+      "snippet": "        private static List<string> ParseStrings(string? json)"
+    },
+    {
+      "rule": "CONTROLLER_BUSINESS_LOGIC_HEURISTIC",
+      "file": "/Users/night_creek/开发/数学分析智能体/MathAnalysisAI.Server/Controllers/PhotoSolutionsController.cs",
+      "line": 438,
+      "severity": "warning",
+      "message": "Controller contains business-logic helper patterns. Review for thin-controller compliance.",
+      "snippet": "                    : JsonSerializer.Deserialize<List<string>>(json) ?? new List<string>();"
+    },
+    {
+      "rule": "MATH_MARKUP_LEAKAGE_BACKEND",
+      "file": "/Users/night_creek/开发/数学分析智能体/MathAnalysisAI.Server/Services/Visualization/GeoGebraCommandValidator.cs",
+      "line": 18,
+      "severity": "warning",
+      "message": "Backend C# code appears to embed raw math markup/render strings. Review boundary ownership.",
+      "snippet": "            @\"^\\s*[A-Za-z][A-Za-z0-9_]*(\\([A-Za-z][A-Za-z0-9_]*\\))?\\s*=.+$\","
+    },
+    {
+      "rule": "MATH_MARKUP_LEAKAGE_BACKEND",
+      "file": "/Users/night_creek/开发/数学分析智能体/MathAnalysisAI.Server/Services/Visualization/GeoGebraCommandValidator.cs",
+      "line": 23,
+      "severity": "warning",
+      "message": "Backend C# code appears to embed raw math markup/render strings. Review boundary ownership.",
+      "snippet": "            @\"^\\s*([A-Za-z][A-Za-z0-9_]*)\\s*\\(.*\\)\\s*$\","
+    },
+    {
+      "rule": "MATH_MARKUP_LEAKAGE_BACKEND",
+      "file": "/Users/night_creek/开发/数学分析智能体/MathAnalysisAI.Server/Services/Visualization/GeoGebraCommandValidator.cs",
+      "line": 28,
+      "severity": "warning",
+      "message": "Backend C# code appears to embed raw math markup/render strings. Review boundary ownership.",
+      "snippet": "            @\"(;|`|\\|\\||&&|<script|javascript:|onerror=|onload=|\\$\\(|\\bexec\\b|\\bsystem\\b)\","
+    }
+  ]
+}

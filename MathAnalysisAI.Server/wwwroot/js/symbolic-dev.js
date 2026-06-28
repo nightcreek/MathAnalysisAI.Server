@@ -100,7 +100,7 @@
     UI.showStatus(status, "计算中，请稍候……", false);
 
     try {
-      const data = await Api.postJson("/api/symbolic/compute", payload);
+      const data = await window.BackendApi.symbolic.compute(payload);
       renderResult(data || {});
       UI.showStatus(status, "计算完成。", false);
     } catch (err) {

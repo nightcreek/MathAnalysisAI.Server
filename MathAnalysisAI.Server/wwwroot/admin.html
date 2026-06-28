@@ -77,6 +77,16 @@
 </div>
 
 <script src="/js/config.js"></script>
+<script src="/js/api/compiled-contracts.js"></script>
+<script src="/js/api/contracts.js"></script>
+<script src="/js/api/contractValidator.js"></script>
+<script src="/js/api/endpoints.js"></script>
+<script src="/js/api/apiClient.js"></script>
+<script src="/js/api/authApi.js"></script>
+<script src="/js/api/analysisApi.js"></script>
+<script src="/js/api/adminApi.js"></script>
+<script src="/js/api/resourcesApi.js"></script>
+<script src="/js/api/questionApi.js"></script>
 <script src="/js/api.js"></script>
 <script src="/js/ui.js"></script>
 <script src="/js/auth.js"></script>
@@ -112,7 +122,7 @@
     var statusEl = UI.qs("#teacherListStatus");
     UI.showStatus(statusEl, "加载中…", false);
     try {
-      var teachers = await Api.getJson("/api/admin/teachers");
+      var teachers = await window.BackendApi.admin.listTeachers();
       renderTeacherList(teachers);
       UI.showStatus(statusEl, "已刷新。", false);
     } catch (_) {
@@ -124,7 +134,7 @@
 
   async function populateTeacherSelects() {
     try {
-      var teachers = await Api.getJson("/api/admin/teachers");
+      var teachers = await window.BackendApi.admin.listTeachers();
       var select = UI.qs("#studentImportTeacher");
       if (!select) return;
       var html = "<option value=''>-- 选择教师 --</option>";
@@ -149,7 +159,7 @@
     UI.showStatus(statusEl, "正在创建…", false);
 
     try {
-      await Api.postJson("/api/admin/teachers", { username: username, password: password, realName: realName || null });
+      await window.BackendApi.admin.createTeacher({ username: username, password: password, realName: realName || null });
       UI.showStatus(statusEl, "创建成功。", false);
       UI.qs("#teacherUsername").value = "";
       UI.qs("#teacherPassword").value = "";
@@ -200,7 +210,7 @@
     UI.showStatus(statusEl, "正在导入 " + students.length + " 名学生…", false);
 
     try {
-      var result = await Api.postJson("/api/admin/import-students", { teacherId: teacherId, students: students });
+      var result = await window.BackendApi.admin.importStudents({ teacherId: teacherId, students: students });
       UI.showStatus(statusEl, "导入完成：创建 " + (result.created || 0) + "，跳过 " + (result.skipped || 0) + "。", false);
       UI.qs("#studentImportText").value = "";
       loadTeachers();

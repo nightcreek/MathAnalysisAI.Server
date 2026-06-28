@@ -77,6 +77,8 @@
                         <h2>题目与解答</h2>
                         <p>无论使用哪种输入方式，最终都在这里确认题目和我的解答。</p>
                     </div>
+                    <form id="analysis-form">
+                    <textarea id="analysis-input" hidden aria-hidden="true"></textarea>
                     <div class="form-grid">
                         <div>
                         <label for="chapterSelect">章节</label>
@@ -115,11 +117,12 @@
                         <span id="analyzeStatus" class="status"></span>
                     </div>
                     <div id="currentUserHint" class="hint"></div>
+                    </form>
                 </section>
             </div>
 
             <aside class="workbench-side">
-                <section class="panel result-panel">
+                <section id="analysis-root" class="panel result-panel">
                     <div class="panel-header">
                         <h2>分析结果</h2>
                         <p>提交题目和解答后，这里会显示标准解法、错因分析和复习建议。</p>
@@ -136,6 +139,16 @@
 </div>
 
 <script src="/js/config.js"></script>
+<script src="/js/api/compiled-contracts.js"></script>
+<script src="/js/api/contracts.js"></script>
+<script src="/js/api/contractValidator.js"></script>
+<script src="/js/api/endpoints.js"></script>
+<script src="/js/api/apiClient.js"></script>
+<script src="/js/api/authApi.js"></script>
+<script src="/js/api/analysisApi.js"></script>
+<script src="/js/api/adminApi.js"></script>
+<script src="/js/api/resourcesApi.js"></script>
+<script src="/js/api/questionApi.js"></script>
 <script src="/js/api.js"></script>
 <script src="/js/ui.js"></script>
 <script src="/js/auth.js"></script>
@@ -144,5 +157,9 @@
 <script src="/js/analysis.js"></script>
 <script src="/js/photo-solution.js"></script>
 <script src="/js/mathlive-ocr.js"></script>
+<script type="module">
+  import { AnalysisBootstrap } from "./js/analysis-ui/bootstrap/analysisBootstrap.js";
+  AnalysisBootstrap.start();
+</script>
 </body>
 </html>

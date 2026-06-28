@@ -1,0 +1,19 @@
+{
+  "moduleName": "analysis",
+  "version": "1.0.0",
+  "description": "Analysis pipeline frontend endpoints.",
+  "endpoints": [
+    {
+      "name": "run",
+      "endpoint": "/api/learning-analysis/analyze",
+      "method": "POST",
+      "description": "Runs the main analysis pipeline."
+    },
+    {
+      "name": "stream",
+      "endpoint": "/api/learning-analysis/analyze/stream",
+      "method": "POST",
+      "description": "Streams analysis output as SSE."
+    }
+  ]
+}

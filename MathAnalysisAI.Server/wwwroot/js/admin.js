@@ -202,7 +202,7 @@
 
   async function updateUserRole(userId, newRole, selectEl) {
     try {
-      await Api.putJson("/api/admin/users/" + userId + "/role", { role: newRole });
+      await window.BackendApi.admin.updateUserRole(userId, { role: newRole });
       selectEl.setAttribute("data-current-role", newRole);
     } catch (err) {
       var currentRole = selectEl.getAttribute("data-current-role");
@@ -213,7 +213,7 @@
 
   async function loadDashboard() {
     try {
-      var dashboard = await Api.getJson("/api/admin/dashboard");
+      var dashboard = await window.BackendApi.admin.getDashboard();
       renderDashboard(dashboard);
       renderTrendChart(dashboard.dailyStats);
     } catch (err) {
@@ -237,7 +237,7 @@
     if (role) params.set("role", role);
 
     try {
-      var data = await Api.getJson("/api/admin/users?" + params.toString());
+      var data = await window.BackendApi.admin.listUsers(params);
       renderUserList(data);
     } catch (err) {
       if (container) container.innerHTML = '<div class="hint error">加载失败，可能无管理员权限。</div>';

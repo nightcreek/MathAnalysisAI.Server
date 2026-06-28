@@ -1,7 +1,11 @@
 using MathAnalysisAI.Server.Controllers;
+using MathAnalysisAI.Server.Options;
 using MathAnalysisAI.Server.Services.Analysis.Persistence;
+using MathAnalysisAI.Server.Services.Auth;
 using MathAnalysisAI.Server.Services.Ranking;
 using MathAnalysisAI.Server.Services.Security;
+using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging.Abstractions;
 using Xunit;
 
@@ -13,7 +17,16 @@ public class LeaderboardControllerTests
     public async Task GetPublicLeaderboard_ReturnsEmptyList_WhenNoData()
     {
         await using var db = TestDb.Create(nameof(GetPublicLeaderboard_ReturnsEmptyList_WhenNoData));
-        var permissionService = new PermissionService(new AuthPersistenceService(db, NullLogger<AuthPersistenceService>.Instance));
+        var authPersistence = new AuthPersistenceService(db, NullLogger<AuthPersistenceService>.Instance);
+        var identityKernel = new IdentityKernel(
+            authPersistence,
+            authPersistence,
+            authPersistence,
+            new HttpContextAccessor(),
+            new FakeWebHostEnvironment { EnvironmentName = Environments.Development },
+            Microsoft.Extensions.Options.Options.Create(new AuthOptions()),
+            Microsoft.Extensions.Options.Options.Create(new OidcOptions()));
+        var permissionService = new PermissionService(identityKernel);
         var leaderboardService = new LeaderboardService(new AnalysisPersistenceService(db), permissionService);
         var controller = new LeaderboardController(leaderboardService, NullLogger<LeaderboardController>.Instance);
 
@@ -42,7 +55,16 @@ public class LeaderboardControllerTests
         db.UserCourseStats.Add(stats);
         await db.SaveChangesAsync();
 
-        var permissionService = new PermissionService(new AuthPersistenceService(db, NullLogger<AuthPersistenceService>.Instance));
+        var authPersistence = new AuthPersistenceService(db, NullLogger<AuthPersistenceService>.Instance);
+        var identityKernel = new IdentityKernel(
+            authPersistence,
+            authPersistence,
+            authPersistence,
+            new HttpContextAccessor(),
+            new FakeWebHostEnvironment { EnvironmentName = Environments.Development },
+            Microsoft.Extensions.Options.Options.Create(new AuthOptions()),
+            Microsoft.Extensions.Options.Options.Create(new OidcOptions()));
+        var permissionService = new PermissionService(identityKernel);
         var leaderboardService = new LeaderboardService(new AnalysisPersistenceService(db), permissionService);
         var controller = new LeaderboardController(leaderboardService, NullLogger<LeaderboardController>.Instance);
 

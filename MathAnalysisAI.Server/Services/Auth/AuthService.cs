@@ -11,7 +11,7 @@ public sealed class AuthService
     private readonly IWebHostEnvironment _environment;
     private readonly AuthOptions _authOptions;
     private readonly OidcOptions _oidcOptions;
-    private readonly IUserContext _userContext;
+    private readonly IIdentityKernel _identityKernel;
     private readonly ILocalJwtTokenService _localJwtTokenService;
 
     public AuthService(
@@ -19,14 +19,14 @@ public sealed class AuthService
         IWebHostEnvironment environment,
         IOptions<AuthOptions> authOptions,
         IOptions<OidcOptions> oidcOptions,
-        IUserContext userContext,
+        IIdentityKernel identityKernel,
         ILocalJwtTokenService localJwtTokenService)
     {
         _authPersistenceService = authPersistenceService;
         _environment = environment;
         _authOptions = authOptions.Value ?? new AuthOptions();
         _oidcOptions = oidcOptions.Value ?? new OidcOptions();
-        _userContext = userContext;
+        _identityKernel = identityKernel;
         _localJwtTokenService = localJwtTokenService;
     }
 
@@ -56,7 +56,7 @@ public sealed class AuthService
 
     public async Task<AuthServiceResult<CurrentUserDto>> GetCurrentUserAsync(CancellationToken cancellationToken = default)
     {
-        var user = await _userContext.GetCurrentUserAsync(cancellationToken);
+        var user = await _identityKernel.GetCurrentUserAsync(cancellationToken);
         if (user == null)
         {
             return AuthServiceResult<CurrentUserDto>.Failure(401, "AUTH_NOT_LOGGED_IN", "Not logged in.");
@@ -80,34 +80,16 @@ public sealed class AuthService
             return AuthServiceResult<AuthTokenResponseDto>.Failure(400, "AUTH_USERNAME_REQUIRED", "Username is required.");
         }
 
-        var user = await _authPersistenceService.FindUserByUsernameAsync(username, cancellationToken);
-        if (user == null)
+        var authentication = await _identityKernel.AuthenticateAsync(username, request.Password, cancellationToken);
+        if (!authentication.Succeeded || authentication.User == null)
         {
-            return AuthServiceResult<AuthTokenResponseDto>.Failure(401, "AUTH_INVALID_CREDENTIALS", "Invalid username or password.");
+            return AuthServiceResult<AuthTokenResponseDto>.Failure(
+                authentication.StatusCode,
+                authentication.ErrorCode ?? "AUTH_ERROR",
+                authentication.Message ?? "Authentication failed.");
         }
 
-        if (_authOptions.IsLocalPasswordMode())
-        {
-            var passwordValue = request.Password?.Trim() ?? string.Empty;
-            if (string.IsNullOrWhiteSpace(passwordValue))
-            {
-                return AuthServiceResult<AuthTokenResponseDto>.Failure(400, "AUTH_PASSWORD_REQUIRED", "Password is required.");
-            }
-
-            if (string.IsNullOrWhiteSpace(user.PasswordHash) || !BCrypt.Net.BCrypt.Verify(passwordValue, user.PasswordHash))
-            {
-                return AuthServiceResult<AuthTokenResponseDto>.Failure(401, "AUTH_INVALID_CREDENTIALS", "Invalid username or password.");
-            }
-
-            return AuthServiceResult<AuthTokenResponseDto>.Succeeded(BuildTokenResponse(user));
-        }
-
-        if (_authOptions.IsDevelopmentUsernameMode() && _environment.IsDevelopment())
-        {
-            return AuthServiceResult<AuthTokenResponseDto>.Succeeded(BuildTokenResponse(user));
-        }
-
-        return BuildAuthModeError<AuthTokenResponseDto>(mode);
+        return AuthServiceResult<AuthTokenResponseDto>.Succeeded(BuildTokenResponse(authentication.User));
     }
 
     public async Task<AuthServiceResult<AuthTokenResponseDto>> RegisterAsync(RegisterRequestDto request, CancellationToken cancellationToken = default)
@@ -166,7 +148,7 @@ public sealed class AuthService
                 "Password management is not available in the current deployment mode.");
         }
 
-        var currentUser = await _userContext.GetCurrentUserAsync(cancellationToken);
+        var currentUser = await _identityKernel.GetCurrentUserAsync(cancellationToken);
         if (currentUser == null)
         {
             return AuthServiceResult<bool>.Failure(401, "AUTH_NOT_LOGGED_IN", "You must be logged in to change your password.");
@@ -221,7 +203,7 @@ public sealed class AuthService
 
     public async Task<AuthServiceResult<CurrentUserDto>> JoinClassAsync(JoinClassRequestDto request, CancellationToken cancellationToken = default)
     {
-        var currentUser = await _userContext.GetCurrentUserAsync(cancellationToken);
+        var currentUser = await _identityKernel.GetCurrentUserAsync(cancellationToken);
         if (currentUser == null)
         {
             return AuthServiceResult<CurrentUserDto>.Failure(401, "AUTH_NOT_LOGGED_IN", "Not logged in.");
@@ -352,7 +334,7 @@ public sealed class AuthService
             DepartmentName = user.DepartmentName,
             ClassName = user.ClassName,
             TeacherId = user.TeacherId,
-            ImpersonatedRole = _userContext.GetImpersonatedRole()
+            ImpersonatedRole = _identityKernel.GetImpersonatedRole()
         };
     }
 }

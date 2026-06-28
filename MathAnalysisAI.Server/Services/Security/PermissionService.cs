@@ -1,15 +1,14 @@
 using MathAnalysisAI.Server.Services.Auth;
-using MathAnalysisAI.Server.Models;
 
 namespace MathAnalysisAI.Server.Services.Security
 {
     public class PermissionService
     {
-        private readonly IPermissionPersistenceService _permissionPersistenceService;
+        private readonly IIdentityKernel _identityKernel;
 
-        public PermissionService(IPermissionPersistenceService permissionPersistenceService)
+        public PermissionService(IIdentityKernel identityKernel)
         {
-            _permissionPersistenceService = permissionPersistenceService;
+            _identityKernel = identityKernel;
         }
 
         public async Task<bool> CanViewRealStudentInfoAsync(
@@ -17,70 +16,12 @@ namespace MathAnalysisAI.Server.Services.Security
             int targetStudentUserId,
             int courseId,
             CancellationToken cancellationToken = default)
-        {
-            if (viewerUserId <= 0 || targetStudentUserId <= 0 || courseId <= 0)
-            {
-                return false;
-            }
-
-            var viewer = await _permissionPersistenceService.FindUserByIdAsync(viewerUserId, cancellationToken);
-
-            if (viewer == null)
-            {
-                return false;
-            }
-
-            if (viewer.Role == AppUserRole.Admin || viewer.Role == AppUserRole.SchoolLeader)
-            {
-                return true;
-            }
-
-            // Phase-1 temporary rule: teacher can view real info for the requested course.
-            // TODO: replace with TeacherCourseAssignment/CourseEnrollment relation checks.
-            if (viewer.Role == AppUserRole.Teacher)
-            {
-                return true;
-            }
-
-            // student can only view own real info.
-            if (viewer.Role == AppUserRole.Student && viewerUserId == targetStudentUserId)
-            {
-                return true;
-            }
-
-            return false;
-        }
+            => await _identityKernel.CanViewRealStudentInfoAsync(viewerUserId, targetStudentUserId, courseId, cancellationToken);
 
         public async Task<bool> CanViewCourseLeaderboardWithRealNamesAsync(
             int viewerUserId,
             int courseId,
             CancellationToken cancellationToken = default)
-        {
-            if (viewerUserId <= 0 || courseId <= 0)
-            {
-                return false;
-            }
-
-            var viewer = await _permissionPersistenceService.FindUserByIdAsync(viewerUserId, cancellationToken);
-
-            if (viewer == null)
-            {
-                return false;
-            }
-
-            if (viewer.Role == AppUserRole.Admin || viewer.Role == AppUserRole.SchoolLeader)
-            {
-                return true;
-            }
-
-            // Phase-1 temporary rule: teacher can view real-name leaderboard for requested course.
-            // TODO: replace with TeacherCourseAssignment relation checks.
-            if (viewer.Role == AppUserRole.Teacher)
-            {
-                return true;
-            }
-
-            return false;
-        }
+            => await _identityKernel.CanViewCourseLeaderboardWithRealNamesAsync(viewerUserId, courseId, cancellationToken);
     }
 }

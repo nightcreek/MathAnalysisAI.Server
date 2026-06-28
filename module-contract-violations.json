@@ -1,10 +1,10 @@
 {
   "registryPath": "/Users/night_creek/\u5F00\u53D1/\u6570\u5B66\u5206\u6790\u667A\u80FD\u4F53/Architecture/ModuleContracts/module-contracts.json",
   "sourceRoot": "/Users/night_creek/\u5F00\u53D1/\u6570\u5B66\u5206\u6790\u667A\u80FD\u4F53/MathAnalysisAI.Server",
-  "outputMode": "observation",
+  "outputMode": "strict",
   "summary": {
     "moduleCount": 10,
-    "filesScanned": 218,
+    "filesScanned": 226,
     "violationCount": 0,
     "blockingViolationCount": 0,
     "observationViolationCount": 0,

@@ -4,8 +4,6 @@ using MathAnalysisAI.Server.Services.Auth;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging.Abstractions;
-using Microsoft.Extensions.Options;
 using Xunit;
 
 namespace MathAnalysisAI.Server.Tests;
@@ -19,18 +17,22 @@ public class CurrentUserServiceTests
         var user = TestServiceFactory.SeedUser(db, 1, "test_student");
         var httpContext = new DefaultHttpContext();
         httpContext.Features.Set<ISessionFeature>(new FakeSessionFeature());
-
-        var service = new CurrentUserService(
-            new AuthPersistenceService(db, NullLogger<AuthPersistenceService>.Instance),
+        var authPersistence = new AuthPersistenceService(db, NullLogger<AuthPersistenceService>.Instance);
+        var identityKernel = new IdentityKernel(
+            authPersistence,
+            authPersistence,
+            authPersistence,
             new HttpContextAccessor { HttpContext = httpContext },
+            new FakeWebHostEnvironment { EnvironmentName = Environments.Development },
             Microsoft.Extensions.Options.Options.Create(new AuthOptions
             {
                 Mode = AuthOptions.ModeDisabled,
                 EnableDevelopmentFallback = true,
                 DevelopmentFallbackUser = user.Username
             }),
-            Microsoft.Extensions.Options.Options.Create(new OidcOptions()),
-            NullLogger<CurrentUserService>.Instance);
+            Microsoft.Extensions.Options.Options.Create(new OidcOptions()));
+
+        var service = new CurrentUserService(identityKernel);
 
         var currentUser = await service.GetCurrentUserAsync(CancellationToken.None);
 
@@ -44,18 +46,22 @@ public class CurrentUserServiceTests
         var user = TestServiceFactory.SeedUser(db, 1, "test_student");
         var httpContext = new DefaultHttpContext();
         httpContext.Features.Set<ISessionFeature>(new FakeSessionFeature());
-
-        var service = new CurrentUserService(
-            new AuthPersistenceService(db, NullLogger<AuthPersistenceService>.Instance),
+        var authPersistence = new AuthPersistenceService(db, NullLogger<AuthPersistenceService>.Instance);
+        var identityKernel = new IdentityKernel(
+            authPersistence,
+            authPersistence,
+            authPersistence,
             new HttpContextAccessor { HttpContext = httpContext },
+            new FakeWebHostEnvironment { EnvironmentName = Environments.Development },
             Microsoft.Extensions.Options.Options.Create(new AuthOptions
             {
                 Mode = AuthOptions.ModeDevelopmentUsername,
                 EnableDevelopmentFallback = true,
                 DevelopmentFallbackUser = user.Username
             }),
-            Microsoft.Extensions.Options.Options.Create(new OidcOptions()),
-            NullLogger<CurrentUserService>.Instance);
+            Microsoft.Extensions.Options.Options.Create(new OidcOptions()));
+
+        var service = new CurrentUserService(identityKernel);
 
         var currentUser = await service.GetCurrentUserAsync(CancellationToken.None);
 

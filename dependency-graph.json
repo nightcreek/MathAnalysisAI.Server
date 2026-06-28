@@ -1,0 +1,2111 @@
+{
+  "RepoRoot": "/Users/night_creek/\u5F00\u53D1/\u6570\u5B66\u5206\u6790\u667A\u80FD\u4F53",
+  "GeneratedAtUtc": "2026-06-28T05:46:09.534201Z",
+  "Summary": {
+    "TotalNodes": 226,
+    "TotalEdges": 42,
+    "TotalViolations": 0,
+    "BlockingViolations": 0
+  },
+  "Nodes": [
+    {
+      "Path": "MathAnalysisAI.Server/Configuration/ServerConfigurationLoader.cs",
+      "Layer": "backend-application",
+      "Usings": [
+        "MathAnalysisAI.Server.Services.Security",
+        "Microsoft.Extensions.Configuration",
+        "Microsoft.Extensions.Hosting"
+      ]
+    },
+    {
+      "Path": "MathAnalysisAI.Server/Controllers/AdminController.cs",
+      "Layer": "backend-api",
+      "Usings": [
+        "MathAnalysisAI.Server.DTOs.Admin",
+        "MathAnalysisAI.Server.Models",
+        "MathAnalysisAI.Server.Options",
+        "MathAnalysisAI.Server.Services.Admin",
+        "MathAnalysisAI.Server.Services.Auth",
+        "MathAnalysisAI.Server.Services.ExceptionHandling",
+        "Microsoft.AspNetCore.Authorization",
+        "Microsoft.AspNetCore.Mvc",
+        "Microsoft.Extensions.Options"
+      ]
+    },
+    {
+      "Path": "MathAnalysisAI.Server/Controllers/AuthController.cs",
+      "Layer": "backend-api",
+      "Usings": [
+        "MathAnalysisAI.Server.DTOs.Auth",
+        "MathAnalysisAI.Server.Data",
+        "MathAnalysisAI.Server.Models",
+        "MathAnalysisAI.Server.Services.Auth",
+        "MathAnalysisAI.Server.Services.ExceptionHandling",
+        "Microsoft.AspNetCore.Authorization",
+        "Microsoft.AspNetCore.Mvc",
+        "Microsoft.AspNetCore.RateLimiting"
+      ]
+    },
+    {
+      "Path": "MathAnalysisAI.Server/Controllers/CourseController.cs",
+      "Layer": "backend-api",
+      "Usings": [
+        "MathAnalysisAI.Server.Services.Courses",
+        "MathAnalysisAI.Server.Services.ExceptionHandling",
+        "Microsoft.AspNetCore.Mvc"
+      ]
+    },
+    {
+      "Path": "MathAnalysisAI.Server/Controllers/CourseMaterialsController.cs",
+      "Layer": "backend-api",
+      "Usings": [
+        "MathAnalysisAI.Server.DTOs.CourseMaterials",
+        "MathAnalysisAI.Server.DTOs.Knowledge",
+        "MathAnalysisAI.Server.Services.Analysis.Persistence",
+        "MathAnalysisAI.Server.Services.Auth",
+        "MathAnalysisAI.Server.Services.ExceptionHandling",
+        "MathAnalysisAI.Server.Services.Knowledge",
+        "MathAnalysisAI.Server.Services.Materials",
+        "Microsoft.AspNetCore.Authorization",
+        "Microsoft.AspNetCore.Mvc"
+      ]
+    },
+    {
+      "Path": "MathAnalysisAI.Server/Controllers/HealthController.cs",
+      "Layer": "backend-api",
+      "Usings": [
+        "Microsoft.AspNetCore.Mvc",
+        "Microsoft.AspNetCore.RateLimiting"
+      ]
+    },
+    {
+      "Path": "MathAnalysisAI.Server/Controllers/LeaderboardController.cs",
+      "Layer": "backend-api",
+      "Usings": [
+        "MathAnalysisAI.Server.Services.ExceptionHandling",
+        "MathAnalysisAI.Server.Services.Ranking",
+        "Microsoft.AspNetCore.Mvc"
+      ]
+    },
+    {
+      "Path": "MathAnalysisAI.Server/Controllers/LearningAnalysisController.cs",
+      "Layer": "backend-api",
+      "Usings": [
+        "MathAnalysisAI.Server.DTOs.Analysis",
+        "MathAnalysisAI.Server.Filters",
+        "MathAnalysisAI.Server.Services.Analysis",
+        "MathAnalysisAI.Server.Services.Auth",
+        "MathAnalysisAI.Server.Services.ExceptionHandling",
+        "Microsoft.AspNetCore.Mvc",
+        "Microsoft.AspNetCore.RateLimiting"
+      ]
+    },
+    {
+      "Path": "MathAnalysisAI.Server/Controllers/LearningPathController.cs",
+      "Layer": "backend-api",
+      "Usings": [
+        "MathAnalysisAI.Server.DTOs.Knowledge",
+        "MathAnalysisAI.Server.Filters",
+        "MathAnalysisAI.Server.Services.Auth",
+        "MathAnalysisAI.Server.Services.Knowledge",
+        "Microsoft.AspNetCore.Mvc"
+      ]
+    },
+    {
+      "Path": "MathAnalysisAI.Server/Controllers/PhotoSolutionsController.cs",
+      "Layer": "backend-api",
+      "Usings": [
+        "MathAnalysisAI.Server.DTOs.PhotoSolutions",
+        "MathAnalysisAI.Server.Filters",
+        "MathAnalysisAI.Server.Models",
+        "MathAnalysisAI.Server.Services.Analysis.Persistence",
+        "MathAnalysisAI.Server.Services.Auth",
+        "MathAnalysisAI.Server.Services.ExceptionHandling",
+        "MathAnalysisAI.Server.Services.OCR",
+        "Microsoft.AspNetCore.Mvc",
+        "Microsoft.AspNetCore.RateLimiting",
+        "System.Net",
+        "System.Security.Cryptography",
+        "System.Text",
+        "System.Text.Json"
+      ]
+    },
+    {
+      "Path": "MathAnalysisAI.Server/Controllers/ResourcesController.cs",
+      "Layer": "backend-api",
+      "Usings": [
+        "MathAnalysisAI.Server.DTOs.Resources",
+        "MathAnalysisAI.Server.Models",
+        "MathAnalysisAI.Server.Services.Analysis.Persistence",
+        "MathAnalysisAI.Server.Services.Auth",
+        "MathAnalysisAI.Server.Services.ExceptionHandling",
+        "Microsoft.AspNetCore.Authorization",
+        "Microsoft.AspNetCore.Mvc"
+      ]
+    },
+    {
+      "Path": "MathAnalysisAI.Server/Controllers/StatsController.cs",
+      "Layer": "backend-api",
+      "Usings": [
+        "MathAnalysisAI.Server.Filters",
+        "MathAnalysisAI.Server.Services.Auth",
+        "MathAnalysisAI.Server.Services.Stats",
+        "Microsoft.AspNetCore.Mvc"
+      ]
+    },
+    {
+      "Path": "MathAnalysisAI.Server/Controllers/SymbolicController.cs",
+      "Layer": "backend-api",
+      "Usings": [
+        "MathAnalysisAI.Server.DTOs.Symbolic",
+        "MathAnalysisAI.Server.Services.Auth",
+        "MathAnalysisAI.Server.Services.ExceptionHandling",
+        "MathAnalysisAI.Server.Services.Symbolic",
+        "Microsoft.AspNetCore.Authorization",
+        "Microsoft.AspNetCore.Mvc",
+        "Microsoft.AspNetCore.RateLimiting"
+      ]
+    },
+    {
+      "Path": "MathAnalysisAI.Server/DTOs/Admin/AdminDtos.cs",
+      "Layer": "backend-application",
+      "Usings": []
+    },
+    {
+      "Path": "MathAnalysisAI.Server/DTOs/Admin/CreateTeacherRequestDto.cs",
+      "Layer": "backend-application",
+      "Usings": [
+        "System.ComponentModel.DataAnnotations"
+      ]
+    },
+    {
+      "Path": "MathAnalysisAI.Server/DTOs/Admin/ImportStudentsRequestDto.cs",
+      "Layer": "backend-application",
+      "Usings": []
+    },
+    {
+      "Path": "MathAnalysisAI.Server/DTOs/Analysis/AnalysisRequestDto.cs",
+      "Layer": "backend-application",
+      "Usings": [
+        "MathAnalysisAI.Server.DTOs.PhotoSolutions",
+        "System.ComponentModel.DataAnnotations"
+      ]
+    },
+    {
+      "Path": "MathAnalysisAI.Server/DTOs/Analysis/AnalysisResponseDto.cs",
+      "Layer": "backend-application",
+      "Usings": [
+        "MathAnalysisAI.Server.DTOs.Visualization"
+      ]
+    },
+    {
+      "Path": "MathAnalysisAI.Server/DTOs/Analysis/QuestionDtos.cs",
+      "Layer": "backend-application",
+      "Usings": [
+        "System.ComponentModel.DataAnnotations"
+      ]
+    },
+    {
+      "Path": "MathAnalysisAI.Server/DTOs/Analysis/StandardSolutionStepDto.cs",
+      "Layer": "backend-application",
+      "Usings": []
+    },
+    {
+      "Path": "MathAnalysisAI.Server/DTOs/Analysis/StudentSolutionReviewDto.cs",
+      "Layer": "backend-application",
+      "Usings": []
+    },
+    {
+      "Path": "MathAnalysisAI.Server/DTOs/AnalysisContext/AnalysisContextBuildRequest.cs",
+      "Layer": "backend-application",
+      "Usings": [
+        "MathAnalysisAI.Server.Models",
+        "MathAnalysisAI.Server.Services.Analysis.UAO"
+      ]
+    },
+    {
+      "Path": "MathAnalysisAI.Server/DTOs/AnalysisContext/AnalysisContextDto.cs",
+      "Layer": "backend-application",
+      "Usings": [
+        "MathAnalysisAI.Server.DTOs.Knowledge"
+      ]
+    },
+    {
+      "Path": "MathAnalysisAI.Server/DTOs/AnalysisContext/SymbolicEvidenceDto.cs",
+      "Layer": "backend-application",
+      "Usings": []
+    },
+    {
+      "Path": "MathAnalysisAI.Server/DTOs/AnalysisContext/SymbolicTaskDto.cs",
+      "Layer": "backend-application",
+      "Usings": []
+    },
+    {
+      "Path": "MathAnalysisAI.Server/DTOs/Auth/AuthTokenResponseDto.cs",
+      "Layer": "backend-application",
+      "Usings": []
+    },
+    {
+      "Path": "MathAnalysisAI.Server/DTOs/Auth/ChangePasswordRequestDto.cs",
+      "Layer": "backend-application",
+      "Usings": [
+        "System.ComponentModel.DataAnnotations"
+      ]
+    },
+    {
+      "Path": "MathAnalysisAI.Server/DTOs/Auth/CurrentUserDto.cs",
+      "Layer": "backend-application",
+      "Usings": []
+    },
+    {
+      "Path": "MathAnalysisAI.Server/DTOs/Auth/ImpersonateRequestDto.cs",
+      "Layer": "backend-application",
+      "Usings": []
+    },
+    {
+      "Path": "MathAnalysisAI.Server/DTOs/Auth/JoinClassRequestDto.cs",
+      "Layer": "backend-application",
+      "Usings": []
+    },
+    {
+      "Path": "MathAnalysisAI.Server/DTOs/Auth/LoginRequestDto.cs",
+      "Layer": "backend-application",
+      "Usings": [
+        "System.ComponentModel.DataAnnotations"
+      ]
+    },
+    {
+      "Path": "MathAnalysisAI.Server/DTOs/Auth/RegisterRequestDto.cs",
+      "Layer": "backend-application",
+      "Usings": [
+        "System.ComponentModel.DataAnnotations"
+      ]
+    },
+    {
+      "Path": "MathAnalysisAI.Server/DTOs/CourseMaterials/CourseMaterialListItemDto.cs",
+      "Layer": "backend-application",
+      "Usings": []
+    },
+    {
+      "Path": "MathAnalysisAI.Server/DTOs/CourseMaterials/CourseMaterialUploadResponseDto.cs",
+      "Layer": "backend-application",
+      "Usings": []
+    },
+    {
+      "Path": "MathAnalysisAI.Server/DTOs/Knowledge/KnowledgeChunkContextDto.cs",
+      "Layer": "backend-application",
+      "Usings": []
+    },
+    {
+      "Path": "MathAnalysisAI.Server/DTOs/Knowledge/KnowledgeRetrievalRequest.cs",
+      "Layer": "backend-application",
+      "Usings": []
+    },
+    {
+      "Path": "MathAnalysisAI.Server/DTOs/Knowledge/LearningPathDtos.cs",
+      "Layer": "backend-application",
+      "Usings": []
+    },
+    {
+      "Path": "MathAnalysisAI.Server/DTOs/LLM/LLMChatMessageDto.cs",
+      "Layer": "backend-application",
+      "Usings": []
+    },
+    {
+      "Path": "MathAnalysisAI.Server/DTOs/LLM/LLMChatRequestDto.cs",
+      "Layer": "backend-application",
+      "Usings": []
+    },
+    {
+      "Path": "MathAnalysisAI.Server/DTOs/LLM/LLMChatResponseDto.cs",
+      "Layer": "backend-application",
+      "Usings": []
+    },
+    {
+      "Path": "MathAnalysisAI.Server/DTOs/Leaderboard/LeaderboardEntryDto.cs",
+      "Layer": "backend-application",
+      "Usings": []
+    },
+    {
+      "Path": "MathAnalysisAI.Server/DTOs/Leaderboard/TeacherLeaderboardEntryDto.cs",
+      "Layer": "backend-application",
+      "Usings": []
+    },
+    {
+      "Path": "MathAnalysisAI.Server/DTOs/PhotoSolutions/ConfirmPhotoSolutionOcrRequestDto.cs",
+      "Layer": "backend-application",
+      "Usings": []
+    },
+    {
+      "Path": "MathAnalysisAI.Server/DTOs/PhotoSolutions/DetectedSectionDto.cs",
+      "Layer": "backend-application",
+      "Usings": []
+    },
+    {
+      "Path": "MathAnalysisAI.Server/DTOs/PhotoSolutions/FormulaCandidateDto.cs",
+      "Layer": "backend-application",
+      "Usings": []
+    },
+    {
+      "Path": "MathAnalysisAI.Server/DTOs/PhotoSolutions/PhotoSolutionOcrResponseDto.cs",
+      "Layer": "backend-application",
+      "Usings": [
+        "MathAnalysisAI.Server.Models"
+      ]
+    },
+    {
+      "Path": "MathAnalysisAI.Server/DTOs/Resources/NetworkResourceDto.cs",
+      "Layer": "backend-application",
+      "Usings": []
+    },
+    {
+      "Path": "MathAnalysisAI.Server/DTOs/Stats/PersonalStatsDto.cs",
+      "Layer": "backend-application",
+      "Usings": []
+    },
+    {
+      "Path": "MathAnalysisAI.Server/DTOs/Symbolic/SymbolicComputeRequestDto.cs",
+      "Layer": "backend-application",
+      "Usings": []
+    },
+    {
+      "Path": "MathAnalysisAI.Server/DTOs/Symbolic/SymbolicComputeResponseDto.cs",
+      "Layer": "backend-application",
+      "Usings": []
+    },
+    {
+      "Path": "MathAnalysisAI.Server/DTOs/Visualization/GeoGebraValidationResultDto.cs",
+      "Layer": "backend-application",
+      "Usings": []
+    },
+    {
+      "Path": "MathAnalysisAI.Server/DTOs/Visualization/VisualizationDto.cs",
+      "Layer": "backend-application",
+      "Usings": []
+    },
+    {
+      "Path": "MathAnalysisAI.Server/Data/Admin/AdminPersistenceService.cs",
+      "Layer": "data-access",
+      "Usings": [
+        "MathAnalysisAI.Server.DTOs.Admin",
+        "MathAnalysisAI.Server.Models",
+        "MathAnalysisAI.Server.Services.Admin",
+        "Microsoft.EntityFrameworkCore"
+      ]
+    },
+    {
+      "Path": "MathAnalysisAI.Server/Data/ApplicationDbContext.cs",
+      "Layer": "data-access",
+      "Usings": [
+        "MathAnalysisAI.Server.Data.Seed",
+        "MathAnalysisAI.Server.Models",
+        "Microsoft.EntityFrameworkCore"
+      ]
+    },
+    {
+      "Path": "MathAnalysisAI.Server/Data/ApplicationDbContextFactory.cs",
+      "Layer": "data-access",
+      "Usings": [
+        "MathAnalysisAI.Server.Configuration",
+        "Microsoft.EntityFrameworkCore",
+        "Microsoft.EntityFrameworkCore.Design"
+      ]
+    },
+    {
+      "Path": "MathAnalysisAI.Server/Data/Auth/AuthPersistenceService.cs",
+      "Layer": "data-access",
+      "Usings": [
+        "MathAnalysisAI.Server.Data",
+        "MathAnalysisAI.Server.Models",
+        "Microsoft.EntityFrameworkCore",
+        "System.Security.Claims"
+      ]
+    },
+    {
+      "Path": "MathAnalysisAI.Server/Data/Courses/CoursePersistenceService.cs",
+      "Layer": "data-access",
+      "Usings": [
+        "MathAnalysisAI.Server.Services.Courses",
+        "Microsoft.EntityFrameworkCore"
+      ]
+    },
+    {
+      "Path": "MathAnalysisAI.Server/Data/Knowledge/LearningPathPersistenceService.cs",
+      "Layer": "data-access",
+      "Usings": [
+        "MathAnalysisAI.Server.Services.Knowledge",
+        "Microsoft.EntityFrameworkCore"
+      ]
+    },
+    {
+      "Path": "MathAnalysisAI.Server/Data/Materials/CourseMaterialIngestionPersistenceService.cs",
+      "Layer": "data-access",
+      "Usings": [
+        "MathAnalysisAI.Server.Models",
+        "MathAnalysisAI.Server.Services.Materials",
+        "Microsoft.EntityFrameworkCore"
+      ]
+    },
+    {
+      "Path": "MathAnalysisAI.Server/Data/Seed/AdminUserSeeder.cs",
+      "Layer": "data-access",
+      "Usings": [
+        "MathAnalysisAI.Server.Models",
+        "Microsoft.EntityFrameworkCore"
+      ]
+    },
+    {
+      "Path": "MathAnalysisAI.Server/Data/Seed/AppUserSeeder.cs",
+      "Layer": "data-access",
+      "Usings": [
+        "MathAnalysisAI.Server.Models",
+        "Microsoft.EntityFrameworkCore"
+      ]
+    },
+    {
+      "Path": "MathAnalysisAI.Server/Data/Seed/PlatformSeedData.cs",
+      "Layer": "data-access",
+      "Usings": [
+        "MathAnalysisAI.Server.Models"
+      ]
+    },
+    {
+      "Path": "MathAnalysisAI.Server/Data/Seed/PromptProfileSeeder.cs",
+      "Layer": "data-access",
+      "Usings": [
+        "MathAnalysisAI.Server.Models",
+        "Microsoft.EntityFrameworkCore",
+        "System.Text.Json"
+      ]
+    },
+    {
+      "Path": "MathAnalysisAI.Server/Filters/RequireAuthAttribute.cs",
+      "Layer": "backend-application",
+      "Usings": [
+        "MathAnalysisAI.Server.Services.Auth",
+        "Microsoft.AspNetCore.Authorization"
+      ]
+    },
+    {
+      "Path": "MathAnalysisAI.Server/Intelligence/Collective/WeakPointInsightProjector.cs",
+      "Layer": "intelligence",
+      "Usings": [
+        "MathAnalysisAI.Server.DTOs.Knowledge",
+        "MathAnalysisAI.Server.Intelligence.Interfaces"
+      ]
+    },
+    {
+      "Path": "MathAnalysisAI.Server/Intelligence/ExperienceOS/LearningPathIntelligenceService.cs",
+      "Layer": "intelligence",
+      "Usings": [
+        "MathAnalysisAI.Server.DTOs.Knowledge",
+        "MathAnalysisAI.Server.Intelligence.Interfaces"
+      ]
+    },
+    {
+      "Path": "MathAnalysisAI.Server/Intelligence/Interfaces/ILearningPathIntelligenceService.cs",
+      "Layer": "intelligence",
+      "Usings": [
+        "MathAnalysisAI.Server.DTOs.Knowledge"
+      ]
+    },
+    {
+      "Path": "MathAnalysisAI.Server/Intelligence/Interfaces/IPersonalStatsIntelligenceService.cs",
+      "Layer": "intelligence",
+      "Usings": []
+    },
+    {
+      "Path": "MathAnalysisAI.Server/Intelligence/Interfaces/IWeakPointInsightProjector.cs",
+      "Layer": "intelligence",
+      "Usings": [
+        "MathAnalysisAI.Server.DTOs.Knowledge"
+      ]
+    },
+    {
+      "Path": "MathAnalysisAI.Server/Intelligence/PIM/PersonalStatsIntelligenceService.cs",
+      "Layer": "intelligence",
+      "Usings": [
+        "MathAnalysisAI.Server.Intelligence.Interfaces"
+      ]
+    },
+    {
+      "Path": "MathAnalysisAI.Server/Migrations/20260321132650_Init.Designer.cs",
+      "Layer": "data-access",
+      "Usings": [
+        "MathAnalysisAI.Server.Data",
+        "Microsoft.EntityFrameworkCore",
+        "Microsoft.EntityFrameworkCore.Infrastructure",
+        "Microsoft.EntityFrameworkCore.Metadata",
+        "Microsoft.EntityFrameworkCore.Migrations",
+        "Microsoft.EntityFrameworkCore.Storage.ValueConversion",
+        "System"
+      ]
+    },
+    {
+      "Path": "MathAnalysisAI.Server/Migrations/20260321132650_Init.cs",
+      "Layer": "data-access",
+      "Usings": [
+        "Microsoft.EntityFrameworkCore.Migrations"
+      ]
+    },
+    {
+      "Path": "MathAnalysisAI.Server/Migrations/20260425051101_InitialCreate.Designer.cs",
+      "Layer": "data-access",
+      "Usings": [
+        "MathAnalysisAI.Server.Data",
+        "Microsoft.EntityFrameworkCore",
+        "Microsoft.EntityFrameworkCore.Infrastructure",
+        "Microsoft.EntityFrameworkCore.Metadata",
+        "Microsoft.EntityFrameworkCore.Migrations",
+        "Microsoft.EntityFrameworkCore.Storage.ValueConversion",
+        "System"
+      ]
+    },
+    {
+      "Path": "MathAnalysisAI.Server/Migrations/20260425051101_InitialCreate.cs",
+      "Layer": "data-access",
+      "Usings": [
+        "Microsoft.EntityFrameworkCore.Migrations"
+      ]
+    },
+    {
+      "Path": "MathAnalysisAI.Server/Migrations/20260529152908_AddLearningPlatformSchema.Designer.cs",
+      "Layer": "data-access",
+      "Usings": [
+        "MathAnalysisAI.Server.Data",
+        "Microsoft.EntityFrameworkCore",
+        "Microsoft.EntityFrameworkCore.Infrastructure",
+        "Microsoft.EntityFrameworkCore.Metadata",
+        "Microsoft.EntityFrameworkCore.Migrations",
+        "Microsoft.EntityFrameworkCore.Storage.ValueConversion",
+        "System"
+      ]
+    },
+    {
+      "Path": "MathAnalysisAI.Server/Migrations/20260529152908_AddLearningPlatformSchema.cs",
+      "Layer": "data-access",
+      "Usings": [
+        "Microsoft.EntityFrameworkCore.Migrations",
+        "System"
+      ]
+    },
+    {
+      "Path": "MathAnalysisAI.Server/Migrations/20260529155549_AddMathAnalysisSeedData.Designer.cs",
+      "Layer": "data-access",
+      "Usings": [
+        "MathAnalysisAI.Server.Data",
+        "Microsoft.EntityFrameworkCore",
+        "Microsoft.EntityFrameworkCore.Infrastructure",
+        "Microsoft.EntityFrameworkCore.Metadata",
+        "Microsoft.EntityFrameworkCore.Migrations",
+        "Microsoft.EntityFrameworkCore.Storage.ValueConversion",
+        "System"
+      ]
+    },
+    {
+      "Path": "MathAnalysisAI.Server/Migrations/20260529155549_AddMathAnalysisSeedData.cs",
+      "Layer": "data-access",
+      "Usings": [
+        "Microsoft.EntityFrameworkCore.Migrations",
+        "System"
+      ]
+    },
+    {
+      "Path": "MathAnalysisAI.Server/Migrations/20260530153419_AddCourseMaterialKnowledgeBase.Designer.cs",
+      "Layer": "data-access",
+      "Usings": [
+        "MathAnalysisAI.Server.Data",
+        "Microsoft.EntityFrameworkCore",
+        "Microsoft.EntityFrameworkCore.Infrastructure",
+        "Microsoft.EntityFrameworkCore.Metadata",
+        "Microsoft.EntityFrameworkCore.Migrations",
+        "Microsoft.EntityFrameworkCore.Storage.ValueConversion",
+        "System"
+      ]
+    },
+    {
+      "Path": "MathAnalysisAI.Server/Migrations/20260530153419_AddCourseMaterialKnowledgeBase.cs",
+      "Layer": "data-access",
+      "Usings": [
+        "Microsoft.EntityFrameworkCore.Migrations",
+        "System"
+      ]
+    },
+    {
+      "Path": "MathAnalysisAI.Server/Migrations/20260607081213_AddPhotoSolutionOcrRecords.Designer.cs",
+      "Layer": "data-access",
+      "Usings": [
+        "MathAnalysisAI.Server.Data",
+        "Microsoft.EntityFrameworkCore",
+        "Microsoft.EntityFrameworkCore.Infrastructure",
+        "Microsoft.EntityFrameworkCore.Metadata",
+        "Microsoft.EntityFrameworkCore.Migrations",
+        "Microsoft.EntityFrameworkCore.Storage.ValueConversion",
+        "System"
+      ]
+    },
+    {
+      "Path": "MathAnalysisAI.Server/Migrations/20260607081213_AddPhotoSolutionOcrRecords.cs",
+      "Layer": "data-access",
+      "Usings": [
+        "Microsoft.EntityFrameworkCore.Migrations",
+        "System"
+      ]
+    },
+    {
+      "Path": "MathAnalysisAI.Server/Migrations/20260607195000_AddStructuredProblems.cs",
+      "Layer": "data-access",
+      "Usings": [
+        "Microsoft.EntityFrameworkCore.Migrations",
+        "System"
+      ]
+    },
+    {
+      "Path": "MathAnalysisAI.Server/Migrations/20260607201500_AddAnalysisResultReliabilityFields.cs",
+      "Layer": "data-access",
+      "Usings": [
+        "Microsoft.EntityFrameworkCore.Migrations",
+        "System"
+      ]
+    },
+    {
+      "Path": "MathAnalysisAI.Server/Migrations/20260607214000_AddLlmRequestLogAttemptTracking.cs",
+      "Layer": "data-access",
+      "Usings": [
+        "Microsoft.EntityFrameworkCore.Migrations"
+      ]
+    },
+    {
+      "Path": "MathAnalysisAI.Server/Migrations/20260608093000_AddMathAnalysisKnowledgePointSeeds.cs",
+      "Layer": "data-access",
+      "Usings": [
+        "Microsoft.EntityFrameworkCore.Migrations",
+        "System"
+      ]
+    },
+    {
+      "Path": "MathAnalysisAI.Server/Migrations/20260614160009_AddAppUserPasswordHash.Designer.cs",
+      "Layer": "data-access",
+      "Usings": [
+        "MathAnalysisAI.Server.Data",
+        "Microsoft.EntityFrameworkCore",
+        "Microsoft.EntityFrameworkCore.Infrastructure",
+        "Microsoft.EntityFrameworkCore.Metadata",
+        "Microsoft.EntityFrameworkCore.Migrations",
+        "Microsoft.EntityFrameworkCore.Storage.ValueConversion",
+        "System"
+      ]
+    },
+    {
+      "Path": "MathAnalysisAI.Server/Migrations/20260614160009_AddAppUserPasswordHash.cs",
+      "Layer": "data-access",
+      "Usings": [
+        "Microsoft.EntityFrameworkCore.Migrations",
+        "System"
+      ]
+    },
+    {
+      "Path": "MathAnalysisAI.Server/Migrations/20260614160512_DropLegacyWrongQuestionsTable.Designer.cs",
+      "Layer": "data-access",
+      "Usings": [
+        "MathAnalysisAI.Server.Data",
+        "Microsoft.EntityFrameworkCore",
+        "Microsoft.EntityFrameworkCore.Infrastructure",
+        "Microsoft.EntityFrameworkCore.Metadata",
+        "Microsoft.EntityFrameworkCore.Migrations",
+        "Microsoft.EntityFrameworkCore.Storage.ValueConversion",
+        "System"
+      ]
+    },
+    {
+      "Path": "MathAnalysisAI.Server/Migrations/20260614160512_DropLegacyWrongQuestionsTable.cs",
+      "Layer": "data-access",
+      "Usings": [
+        "Microsoft.EntityFrameworkCore.Migrations",
+        "System"
+      ]
+    },
+    {
+      "Path": "MathAnalysisAI.Server/Migrations/20260614164220_AddQuestionBank.Designer.cs",
+      "Layer": "data-access",
+      "Usings": [
+        "MathAnalysisAI.Server.Data",
+        "Microsoft.EntityFrameworkCore",
+        "Microsoft.EntityFrameworkCore.Infrastructure",
+        "Microsoft.EntityFrameworkCore.Metadata",
+        "Microsoft.EntityFrameworkCore.Migrations",
+        "Microsoft.EntityFrameworkCore.Storage.ValueConversion",
+        "System"
+      ]
+    },
+    {
+      "Path": "MathAnalysisAI.Server/Migrations/20260614164220_AddQuestionBank.cs",
+      "Layer": "data-access",
+      "Usings": [
+        "Microsoft.EntityFrameworkCore.Migrations",
+        "System"
+      ]
+    },
+    {
+      "Path": "MathAnalysisAI.Server/Migrations/20260618051146_InitOrUpdate.Designer.cs",
+      "Layer": "data-access",
+      "Usings": [
+        "MathAnalysisAI.Server.Data",
+        "Microsoft.EntityFrameworkCore",
+        "Microsoft.EntityFrameworkCore.Infrastructure",
+        "Microsoft.EntityFrameworkCore.Metadata",
+        "Microsoft.EntityFrameworkCore.Migrations",
+        "Microsoft.EntityFrameworkCore.Storage.ValueConversion",
+        "System"
+      ]
+    },
+    {
+      "Path": "MathAnalysisAI.Server/Migrations/20260618051146_InitOrUpdate.cs",
+      "Layer": "data-access",
+      "Usings": [
+        "Microsoft.EntityFrameworkCore.Migrations",
+        "System"
+      ]
+    },
+    {
+      "Path": "MathAnalysisAI.Server/Migrations/ApplicationDbContextModelSnapshot.cs",
+      "Layer": "data-access",
+      "Usings": [
+        "MathAnalysisAI.Server.Data",
+        "Microsoft.EntityFrameworkCore",
+        "Microsoft.EntityFrameworkCore.Infrastructure",
+        "Microsoft.EntityFrameworkCore.Metadata",
+        "Microsoft.EntityFrameworkCore.Storage.ValueConversion",
+        "System"
+      ]
+    },
+    {
+      "Path": "MathAnalysisAI.Server/Models/AnalysisResult.cs",
+      "Layer": "data-access",
+      "Usings": [
+        "System.ComponentModel.DataAnnotations"
+      ]
+    },
+    {
+      "Path": "MathAnalysisAI.Server/Models/AnalysisVisualization.cs",
+      "Layer": "data-access",
+      "Usings": [
+        "System.ComponentModel.DataAnnotations"
+      ]
+    },
+    {
+      "Path": "MathAnalysisAI.Server/Models/AnswerReliability.cs",
+      "Layer": "data-access",
+      "Usings": []
+    },
+    {
+      "Path": "MathAnalysisAI.Server/Models/AppUser.cs",
+      "Layer": "data-access",
+      "Usings": [
+        "System.ComponentModel.DataAnnotations",
+        "System.ComponentModel.DataAnnotations.Schema"
+      ]
+    },
+    {
+      "Path": "MathAnalysisAI.Server/Models/AppUserRole.cs",
+      "Layer": "data-access",
+      "Usings": []
+    },
+    {
+      "Path": "MathAnalysisAI.Server/Models/Chapter.cs",
+      "Layer": "data-access",
+      "Usings": [
+        "System.ComponentModel.DataAnnotations"
+      ]
+    },
+    {
+      "Path": "MathAnalysisAI.Server/Models/CorrectnessSource.cs",
+      "Layer": "data-access",
+      "Usings": []
+    },
+    {
+      "Path": "MathAnalysisAI.Server/Models/Course.cs",
+      "Layer": "data-access",
+      "Usings": [
+        "System.ComponentModel.DataAnnotations"
+      ]
+    },
+    {
+      "Path": "MathAnalysisAI.Server/Models/CourseMaterial.cs",
+      "Layer": "data-access",
+      "Usings": [
+        "System.ComponentModel.DataAnnotations"
+      ]
+    },
+    {
+      "Path": "MathAnalysisAI.Server/Models/KnowledgeDependency.cs",
+      "Layer": "data-access",
+      "Usings": [
+        "System.ComponentModel.DataAnnotations"
+      ]
+    },
+    {
+      "Path": "MathAnalysisAI.Server/Models/KnowledgePoint.cs",
+      "Layer": "data-access",
+      "Usings": [
+        "System.ComponentModel.DataAnnotations"
+      ]
+    },
+    {
+      "Path": "MathAnalysisAI.Server/Models/LLMRequestLog.cs",
+      "Layer": "data-access",
+      "Usings": [
+        "System.ComponentModel.DataAnnotations"
+      ]
+    },
+    {
+      "Path": "MathAnalysisAI.Server/Models/MaterialChunk.cs",
+      "Layer": "data-access",
+      "Usings": [
+        "System.ComponentModel.DataAnnotations"
+      ]
+    },
+    {
+      "Path": "MathAnalysisAI.Server/Models/MaterialChunkKnowledgePoint.cs",
+      "Layer": "data-access",
+      "Usings": [
+        "System.ComponentModel.DataAnnotations"
+      ]
+    },
+    {
+      "Path": "MathAnalysisAI.Server/Models/MistakeRecord.cs",
+      "Layer": "data-access",
+      "Usings": [
+        "System.ComponentModel.DataAnnotations"
+      ]
+    },
+    {
+      "Path": "MathAnalysisAI.Server/Models/NetworkResource.cs",
+      "Layer": "data-access",
+      "Usings": [
+        "System.ComponentModel.DataAnnotations"
+      ]
+    },
+    {
+      "Path": "MathAnalysisAI.Server/Models/PhotoSolutionOcrRecord.cs",
+      "Layer": "data-access",
+      "Usings": [
+        "Microsoft.EntityFrameworkCore",
+        "System.ComponentModel.DataAnnotations"
+      ]
+    },
+    {
+      "Path": "MathAnalysisAI.Server/Models/PhotoSolutionOcrRecordStatus.cs",
+      "Layer": "data-access",
+      "Usings": []
+    },
+    {
+      "Path": "MathAnalysisAI.Server/Models/Problem.cs",
+      "Layer": "data-access",
+      "Usings": [
+        "System.ComponentModel.DataAnnotations"
+      ]
+    },
+    {
+      "Path": "MathAnalysisAI.Server/Models/PromptProfile.cs",
+      "Layer": "data-access",
+      "Usings": [
+        "System.ComponentModel.DataAnnotations"
+      ]
+    },
+    {
+      "Path": "MathAnalysisAI.Server/Models/Question.cs",
+      "Layer": "data-access",
+      "Usings": [
+        "System.ComponentModel.DataAnnotations",
+        "System.ComponentModel.DataAnnotations.Schema"
+      ]
+    },
+    {
+      "Path": "MathAnalysisAI.Server/Models/StructuredProblem.cs",
+      "Layer": "data-access",
+      "Usings": [
+        "Microsoft.EntityFrameworkCore",
+        "System.ComponentModel.DataAnnotations"
+      ]
+    },
+    {
+      "Path": "MathAnalysisAI.Server/Models/StructuredProblemSourceType.cs",
+      "Layer": "data-access",
+      "Usings": []
+    },
+    {
+      "Path": "MathAnalysisAI.Server/Models/StructuredProblemStatus.cs",
+      "Layer": "data-access",
+      "Usings": []
+    },
+    {
+      "Path": "MathAnalysisAI.Server/Models/StudentSolution.cs",
+      "Layer": "data-access",
+      "Usings": [
+        "System.ComponentModel.DataAnnotations"
+      ]
+    },
+    {
+      "Path": "MathAnalysisAI.Server/Models/Subject.cs",
+      "Layer": "data-access",
+      "Usings": [
+        "System.ComponentModel.DataAnnotations"
+      ]
+    },
+    {
+      "Path": "MathAnalysisAI.Server/Models/UserCourseStats.cs",
+      "Layer": "data-access",
+      "Usings": [
+        "System.ComponentModel.DataAnnotations"
+      ]
+    },
+    {
+      "Path": "MathAnalysisAI.Server/Models/UserKnowledgeState.cs",
+      "Layer": "data-access",
+      "Usings": [
+        "System.ComponentModel.DataAnnotations"
+      ]
+    },
+    {
+      "Path": "MathAnalysisAI.Server/Options/AdminOptions.cs",
+      "Layer": "backend-application",
+      "Usings": []
+    },
+    {
+      "Path": "MathAnalysisAI.Server/Options/AnalysisContextOptions.cs",
+      "Layer": "backend-application",
+      "Usings": []
+    },
+    {
+      "Path": "MathAnalysisAI.Server/Options/AuthOptions.cs",
+      "Layer": "backend-application",
+      "Usings": []
+    },
+    {
+      "Path": "MathAnalysisAI.Server/Options/LLMOptions.cs",
+      "Layer": "backend-application",
+      "Usings": []
+    },
+    {
+      "Path": "MathAnalysisAI.Server/Options/OidcOptions.cs",
+      "Layer": "backend-application",
+      "Usings": []
+    },
+    {
+      "Path": "MathAnalysisAI.Server/Options/PhotoSolutionOcrOptions.cs",
+      "Layer": "backend-application",
+      "Usings": []
+    },
+    {
+      "Path": "MathAnalysisAI.Server/Program.cs",
+      "Layer": "composition-root",
+      "Usings": [
+        "MathAnalysisAI.Server.Configuration",
+        "MathAnalysisAI.Server.Data",
+        "MathAnalysisAI.Server.Data.Admin",
+        "MathAnalysisAI.Server.Data.Courses",
+        "MathAnalysisAI.Server.Data.Knowledge",
+        "MathAnalysisAI.Server.Data.Materials",
+        "MathAnalysisAI.Server.Data.Seed",
+        "MathAnalysisAI.Server.Intelligence.Collective",
+        "MathAnalysisAI.Server.Intelligence.ExperienceOS",
+        "MathAnalysisAI.Server.Intelligence.Interfaces",
+        "MathAnalysisAI.Server.Intelligence.PIM",
+        "MathAnalysisAI.Server.Options",
+        "MathAnalysisAI.Server.Services.Admin",
+        "MathAnalysisAI.Server.Services.Analysis",
+        "MathAnalysisAI.Server.Services.Analysis.Context",
+        "MathAnalysisAI.Server.Services.Analysis.Fallback",
+        "MathAnalysisAI.Server.Services.Analysis.LLM",
+        "MathAnalysisAI.Server.Services.Analysis.Mistakes",
+        "MathAnalysisAI.Server.Services.Analysis.Parsing",
+        "MathAnalysisAI.Server.Services.Analysis.Persistence",
+        "MathAnalysisAI.Server.Services.Analysis.Stats",
+        "MathAnalysisAI.Server.Services.Analysis.Structuring",
+        "MathAnalysisAI.Server.Services.Analysis.Verification",
+        "MathAnalysisAI.Server.Services.Auth",
+        "MathAnalysisAI.Server.Services.Courses",
+        "MathAnalysisAI.Server.Services.ExceptionHandling",
+        "MathAnalysisAI.Server.Services.Knowledge",
+        "MathAnalysisAI.Server.Services.LLM",
+        "MathAnalysisAI.Server.Services.Materials",
+        "MathAnalysisAI.Server.Services.OCR",
+        "MathAnalysisAI.Server.Services.Orchestration",
+        "MathAnalysisAI.Server.Services.Orchestration.Steps",
+        "MathAnalysisAI.Server.Services.Ranking",
+        "MathAnalysisAI.Server.Services.Security",
+        "MathAnalysisAI.Server.Services.Stats",
+        "MathAnalysisAI.Server.Services.Symbolic",
+        "MathAnalysisAI.Server.Services.Visualization",
+        "Microsoft.AspNetCore.Authentication.JwtBearer",
+        "Microsoft.AspNetCore.Authorization",
+        "Microsoft.AspNetCore.Diagnostics.HealthChecks",
+        "Microsoft.AspNetCore.Http.Features",
+        "Microsoft.AspNetCore.HttpOverrides",
+        "Microsoft.AspNetCore.RateLimiting",
+        "Microsoft.AspNetCore.ResponseCompression",
+        "Microsoft.AspNetCore.Server.Kestrel.Core",
+        "Microsoft.EntityFrameworkCore",
+        "Microsoft.IdentityModel.Tokens",
+        "Serilog",
+        "System.IdentityModel.Tokens.Jwt",
+        "System.Net",
+        "System.Security.Claims",
+        "System.Text",
+        "System.Text.Json",
+        "System.Threading.RateLimiting"
+      ]
+    },
+    {
+      "Path": "MathAnalysisAI.Server/Properties/AssemblyInfo.cs",
+      "Layer": "backend-application",
+      "Usings": [
+        "System.Runtime.CompilerServices"
+      ]
+    },
+    {
+      "Path": "MathAnalysisAI.Server/Services/Admin/AdminService.cs",
+      "Layer": "backend-application",
+      "Usings": [
+        "MathAnalysisAI.Server.DTOs.Admin",
+        "MathAnalysisAI.Server.Models"
+      ]
+    },
+    {
+      "Path": "MathAnalysisAI.Server/Services/Admin/IAdminPersistenceService.cs",
+      "Layer": "data-access",
+      "Usings": [
+        "MathAnalysisAI.Server.DTOs.Admin",
+        "MathAnalysisAI.Server.Models"
+      ]
+    },
+    {
+      "Path": "MathAnalysisAI.Server/Services/Analysis/AnalysisService.cs",
+      "Layer": "backend-application",
+      "Usings": [
+        "MathAnalysisAI.Server.DTOs.Analysis",
+        "MathAnalysisAI.Server.Models",
+        "MathAnalysisAI.Server.Services.Orchestration"
+      ]
+    },
+    {
+      "Path": "MathAnalysisAI.Server/Services/Analysis/Application/AnalysisResultModelMapper.cs",
+      "Layer": "backend-application",
+      "Usings": [
+        "MathAnalysisAI.Server.DTOs.Analysis",
+        "MathAnalysisAI.Server.DTOs.Visualization",
+        "MathAnalysisAI.Server.Services.Analysis.Domain",
+        "MathAnalysisAI.Server.Services.Analysis.UAO"
+      ]
+    },
+    {
+      "Path": "MathAnalysisAI.Server/Services/Analysis/Application/UAOInputModelMapper.cs",
+      "Layer": "backend-application",
+      "Usings": [
+        "MathAnalysisAI.Server.DTOs.Analysis",
+        "MathAnalysisAI.Server.DTOs.PhotoSolutions",
+        "MathAnalysisAI.Server.Services.Analysis.UAO",
+        "MathAnalysisAI.Server.SharedKernel.Analysis"
+      ]
+    },
+    {
+      "Path": "MathAnalysisAI.Server/Services/Analysis/Context/AnalysisContextBuilder.cs",
+      "Layer": "backend-application",
+      "Usings": [
+        "MathAnalysisAI.Server.DTOs.AnalysisContext",
+        "MathAnalysisAI.Server.DTOs.Knowledge",
+        "MathAnalysisAI.Server.Options",
+        "MathAnalysisAI.Server.Services.Knowledge",
+        "Microsoft.Extensions.Options",
+        "System.Text"
+      ]
+    },
+    {
+      "Path": "MathAnalysisAI.Server/Services/Analysis/Context/IAnalysisContextBuilder.cs",
+      "Layer": "backend-application",
+      "Usings": [
+        "MathAnalysisAI.Server.DTOs.AnalysisContext"
+      ]
+    },
+    {
+      "Path": "MathAnalysisAI.Server/Services/Analysis/Domain/AnalysisResultModel.cs",
+      "Layer": "backend-application",
+      "Usings": []
+    },
+    {
+      "Path": "MathAnalysisAI.Server/Services/Analysis/Fallback/AnalysisFallbackService.cs",
+      "Layer": "backend-application",
+      "Usings": [
+        "MathAnalysisAI.Server.Services.Analysis.UAO",
+        "MathAnalysisAI.Server.SharedKernel.Analysis",
+        "System.Text.Json",
+        "System.Text.Json.Nodes"
+      ]
+    },
+    {
+      "Path": "MathAnalysisAI.Server/Services/Analysis/Fallback/IAnalysisFallbackService.cs",
+      "Layer": "backend-application",
+      "Usings": [
+        "MathAnalysisAI.Server.Services.Analysis.UAO"
+      ]
+    },
+    {
+      "Path": "MathAnalysisAI.Server/Services/Analysis/IAnalysisService.cs",
+      "Layer": "backend-application",
+      "Usings": [
+        "MathAnalysisAI.Server.DTOs.Analysis",
+        "MathAnalysisAI.Server.Models",
+        "MathAnalysisAI.Server.Services.Orchestration"
+      ]
+    },
+    {
+      "Path": "MathAnalysisAI.Server/Services/Analysis/LLM/ILlmRequestFactory.cs",
+      "Layer": "backend-application",
+      "Usings": [
+        "MathAnalysisAI.Server.DTOs.AnalysisContext",
+        "MathAnalysisAI.Server.DTOs.LLM",
+        "MathAnalysisAI.Server.Models",
+        "MathAnalysisAI.Server.Services.Analysis.UAO"
+      ]
+    },
+    {
+      "Path": "MathAnalysisAI.Server/Services/Analysis/LLM/LlmRequestFactory.cs",
+      "Layer": "backend-application",
+      "Usings": [
+        "MathAnalysisAI.Server.DTOs.AnalysisContext",
+        "MathAnalysisAI.Server.DTOs.LLM",
+        "MathAnalysisAI.Server.Models",
+        "MathAnalysisAI.Server.Services.Analysis.Persistence",
+        "MathAnalysisAI.Server.Services.Analysis.UAO"
+      ]
+    },
+    {
+      "Path": "MathAnalysisAI.Server/Services/Analysis/Mistakes/IMistakeRecordService.cs",
+      "Layer": "backend-application",
+      "Usings": []
+    },
+    {
+      "Path": "MathAnalysisAI.Server/Services/Analysis/Mistakes/MistakeRecordService.cs",
+      "Layer": "backend-application",
+      "Usings": [
+        "MathAnalysisAI.Server.Models",
+        "MathAnalysisAI.Server.Services.Analysis.Persistence"
+      ]
+    },
+    {
+      "Path": "MathAnalysisAI.Server/Services/Analysis/Parsing/ILlmResponseParser.cs",
+      "Layer": "backend-application",
+      "Usings": [
+        "MathAnalysisAI.Server.Services.Analysis.UAO"
+      ]
+    },
+    {
+      "Path": "MathAnalysisAI.Server/Services/Analysis/Parsing/LlmResponseParser.cs",
+      "Layer": "backend-application",
+      "Usings": [
+        "MathAnalysisAI.Server.Services.Analysis.UAO",
+        "MathAnalysisAI.Server.SharedKernel.Analysis",
+        "System.Text.Json",
+        "System.Text.Json.Nodes"
+      ]
+    },
+    {
+      "Path": "MathAnalysisAI.Server/Services/Analysis/Persistence/AnalysisPersistenceService.cs",
+      "Layer": "data-access",
+      "Usings": [
+        "MathAnalysisAI.Server.DTOs.Analysis",
+        "MathAnalysisAI.Server.DTOs.LLM",
+        "MathAnalysisAI.Server.Data",
+        "MathAnalysisAI.Server.Models",
+        "MathAnalysisAI.Server.Services.Analysis.Domain",
+        "MathAnalysisAI.Server.Services.Analysis.UAO",
+        "MathAnalysisAI.Server.Services.Knowledge",
+        "MathAnalysisAI.Server.SharedKernel.Analysis",
+        "Microsoft.EntityFrameworkCore",
+        "System.Text.Json"
+      ]
+    },
+    {
+      "Path": "MathAnalysisAI.Server/Services/Analysis/Persistence/IAnalysisPersistenceService.cs",
+      "Layer": "data-access",
+      "Usings": [
+        "MathAnalysisAI.Server.DTOs.Analysis",
+        "MathAnalysisAI.Server.DTOs.LLM",
+        "MathAnalysisAI.Server.Models",
+        "MathAnalysisAI.Server.Services.Analysis.Domain",
+        "MathAnalysisAI.Server.Services.Analysis.UAO"
+      ]
+    },
+    {
+      "Path": "MathAnalysisAI.Server/Services/Analysis/Stats/IUserStatsUpdateService.cs",
+      "Layer": "backend-application",
+      "Usings": [
+        "MathAnalysisAI.Server.Models"
+      ]
+    },
+    {
+      "Path": "MathAnalysisAI.Server/Services/Analysis/Stats/UserStatsUpdateService.cs",
+      "Layer": "backend-application",
+      "Usings": [
+        "MathAnalysisAI.Server.Models",
+        "MathAnalysisAI.Server.Services.Analysis.Persistence"
+      ]
+    },
+    {
+      "Path": "MathAnalysisAI.Server/Services/Analysis/Structuring/IProblemStructuringService.cs",
+      "Layer": "data-access",
+      "Usings": [
+        "MathAnalysisAI.Server.Models",
+        "MathAnalysisAI.Server.Services.Analysis.UAO"
+      ]
+    },
+    {
+      "Path": "MathAnalysisAI.Server/Services/Analysis/Structuring/ProblemStructuringService.cs",
+      "Layer": "data-access",
+      "Usings": [
+        "MathAnalysisAI.Server.Data",
+        "MathAnalysisAI.Server.Models",
+        "MathAnalysisAI.Server.Services.Analysis.UAO",
+        "MathAnalysisAI.Server.SharedKernel.Analysis",
+        "System.Text.Json"
+      ]
+    },
+    {
+      "Path": "MathAnalysisAI.Server/Services/Analysis/UAO/AnalysisUao.cs",
+      "Layer": "backend-application",
+      "Usings": [
+        "MathAnalysisAI.Server.SharedKernel.Analysis"
+      ]
+    },
+    {
+      "Path": "MathAnalysisAI.Server/Services/Analysis/UAO/UAOInputModel.cs",
+      "Layer": "backend-application",
+      "Usings": [
+        "MathAnalysisAI.Server.SharedKernel.Analysis"
+      ]
+    },
+    {
+      "Path": "MathAnalysisAI.Server/Services/Analysis/Verification/AnalysisVerificationResult.cs",
+      "Layer": "backend-application",
+      "Usings": [
+        "MathAnalysisAI.Server.Models"
+      ]
+    },
+    {
+      "Path": "MathAnalysisAI.Server/Services/Analysis/Verification/AnalysisVerificationService.cs",
+      "Layer": "backend-application",
+      "Usings": [
+        "MathAnalysisAI.Server.Models",
+        "MathAnalysisAI.Server.Services.Analysis.Domain",
+        "MathAnalysisAI.Server.Services.Analysis.Persistence",
+        "MathAnalysisAI.Server.SharedKernel.Analysis",
+        "System.Text.Json"
+      ]
+    },
+    {
+      "Path": "MathAnalysisAI.Server/Services/Analysis/Verification/IAnalysisVerificationService.cs",
+      "Layer": "backend-application",
+      "Usings": [
+        "MathAnalysisAI.Server.Models",
+        "MathAnalysisAI.Server.Services.Analysis.Domain"
+      ]
+    },
+    {
+      "Path": "MathAnalysisAI.Server/Services/Auth/AppRoleAuthorizationHandler.cs",
+      "Layer": "backend-application",
+      "Usings": [
+        "Microsoft.AspNetCore.Authorization"
+      ]
+    },
+    {
+      "Path": "MathAnalysisAI.Server/Services/Auth/AppRoleRequirement.cs",
+      "Layer": "backend-application",
+      "Usings": [
+        "Microsoft.AspNetCore.Authorization"
+      ]
+    },
+    {
+      "Path": "MathAnalysisAI.Server/Services/Auth/AuthPolicies.cs",
+      "Layer": "backend-application",
+      "Usings": []
+    },
+    {
+      "Path": "MathAnalysisAI.Server/Services/Auth/AuthService.cs",
+      "Layer": "backend-application",
+      "Usings": [
+        "MathAnalysisAI.Server.DTOs.Auth",
+        "MathAnalysisAI.Server.Models",
+        "MathAnalysisAI.Server.Options",
+        "Microsoft.Extensions.Options"
+      ]
+    },
+    {
+      "Path": "MathAnalysisAI.Server/Services/Auth/CurrentUserService.cs",
+      "Layer": "backend-application",
+      "Usings": [
+        "MathAnalysisAI.Server.Models"
+      ]
+    },
+    {
+      "Path": "MathAnalysisAI.Server/Services/Auth/IAuthPersistenceService.cs",
+      "Layer": "data-access",
+      "Usings": [
+        "MathAnalysisAI.Server.Models",
+        "System.Security.Claims"
+      ]
+    },
+    {
+      "Path": "MathAnalysisAI.Server/Services/Auth/IIdentityKernel.cs",
+      "Layer": "backend-application",
+      "Usings": [
+        "MathAnalysisAI.Server.Models"
+      ]
+    },
+    {
+      "Path": "MathAnalysisAI.Server/Services/Auth/ILocalJwtTokenService.cs",
+      "Layer": "backend-application",
+      "Usings": [
+        "MathAnalysisAI.Server.Models"
+      ]
+    },
+    {
+      "Path": "MathAnalysisAI.Server/Services/Auth/IUserContext.cs",
+      "Layer": "backend-application",
+      "Usings": [
+        "MathAnalysisAI.Server.Models"
+      ]
+    },
+    {
+      "Path": "MathAnalysisAI.Server/Services/Auth/IdentityKernel.cs",
+      "Layer": "backend-application",
+      "Usings": [
+        "MathAnalysisAI.Server.Models",
+        "MathAnalysisAI.Server.Options",
+        "Microsoft.Extensions.Options",
+        "System.IdentityModel.Tokens.Jwt",
+        "System.Security.Claims"
+      ]
+    },
+    {
+      "Path": "MathAnalysisAI.Server/Services/Auth/LocalJwtTokenService.cs",
+      "Layer": "backend-application",
+      "Usings": [
+        "MathAnalysisAI.Server.Models",
+        "MathAnalysisAI.Server.Options",
+        "Microsoft.Extensions.Options",
+        "Microsoft.IdentityModel.Tokens",
+        "System.IdentityModel.Tokens.Jwt",
+        "System.Security.Claims",
+        "System.Text"
+      ]
+    },
+    {
+      "Path": "MathAnalysisAI.Server/Services/Courses/CourseService.cs",
+      "Layer": "backend-application",
+      "Usings": []
+    },
+    {
+      "Path": "MathAnalysisAI.Server/Services/Courses/ICoursePersistenceService.cs",
+      "Layer": "data-access",
+      "Usings": []
+    },
+    {
+      "Path": "MathAnalysisAI.Server/Services/ExceptionHandling/ApiErrorResponse.cs",
+      "Layer": "backend-application",
+      "Usings": []
+    },
+    {
+      "Path": "MathAnalysisAI.Server/Services/ExceptionHandling/ApiExceptionClassifier.cs",
+      "Layer": "data-access",
+      "Usings": [
+        "Microsoft.EntityFrameworkCore"
+      ]
+    },
+    {
+      "Path": "MathAnalysisAI.Server/Services/ExceptionHandling/ControllerApiResponseExtensions.cs",
+      "Layer": "backend-application",
+      "Usings": [
+        "Microsoft.AspNetCore.Mvc"
+      ]
+    },
+    {
+      "Path": "MathAnalysisAI.Server/Services/ExceptionHandling/DbHealthCheck.cs",
+      "Layer": "data-access",
+      "Usings": [
+        "MathAnalysisAI.Server.Data",
+        "Microsoft.EntityFrameworkCore",
+        "Microsoft.Extensions.Diagnostics.HealthChecks"
+      ]
+    },
+    {
+      "Path": "MathAnalysisAI.Server/Services/ExceptionHandling/GlobalExceptionHandler.cs",
+      "Layer": "backend-application",
+      "Usings": [
+        "Microsoft.AspNetCore.Diagnostics"
+      ]
+    },
+    {
+      "Path": "MathAnalysisAI.Server/Services/Knowledge/IKnowledgeRetrievalService.cs",
+      "Layer": "backend-application",
+      "Usings": [
+        "MathAnalysisAI.Server.DTOs.Knowledge"
+      ]
+    },
+    {
+      "Path": "MathAnalysisAI.Server/Services/Knowledge/ILearningPathPersistenceService.cs",
+      "Layer": "data-access",
+      "Usings": []
+    },
+    {
+      "Path": "MathAnalysisAI.Server/Services/Knowledge/IQuestionModule.cs",
+      "Layer": "backend-application",
+      "Usings": [
+        "MathAnalysisAI.Server.DTOs.Analysis"
+      ]
+    },
+    {
+      "Path": "MathAnalysisAI.Server/Services/Knowledge/KnowledgePointLabelHelper.cs",
+      "Layer": "backend-application",
+      "Usings": []
+    },
+    {
+      "Path": "MathAnalysisAI.Server/Services/Knowledge/KnowledgePointNormalizer.cs",
+      "Layer": "backend-application",
+      "Usings": []
+    },
+    {
+      "Path": "MathAnalysisAI.Server/Services/Knowledge/KnowledgeRetrievalService.cs",
+      "Layer": "backend-application",
+      "Usings": [
+        "MathAnalysisAI.Server.DTOs.Knowledge",
+        "MathAnalysisAI.Server.Services.Analysis.Persistence",
+        "System.Text.RegularExpressions"
+      ]
+    },
+    {
+      "Path": "MathAnalysisAI.Server/Services/Knowledge/LearningPathService.cs",
+      "Layer": "backend-application",
+      "Usings": [
+        "MathAnalysisAI.Server.DTOs.Knowledge",
+        "MathAnalysisAI.Server.Intelligence.Interfaces"
+      ]
+    },
+    {
+      "Path": "MathAnalysisAI.Server/Services/Knowledge/QuestionService.cs",
+      "Layer": "backend-application",
+      "Usings": [
+        "MathAnalysisAI.Server.DTOs.Analysis",
+        "MathAnalysisAI.Server.Models",
+        "MathAnalysisAI.Server.Services.Analysis.Persistence"
+      ]
+    },
+    {
+      "Path": "MathAnalysisAI.Server/Services/LLM/ILLMModule.cs",
+      "Layer": "backend-application",
+      "Usings": [
+        "MathAnalysisAI.Server.DTOs.LLM"
+      ]
+    },
+    {
+      "Path": "MathAnalysisAI.Server/Services/LLM/ILLMService.cs",
+      "Layer": "backend-application",
+      "Usings": [
+        "MathAnalysisAI.Server.DTOs.AnalysisContext",
+        "MathAnalysisAI.Server.DTOs.LLM",
+        "MathAnalysisAI.Server.Models",
+        "MathAnalysisAI.Server.Services.Analysis.UAO"
+      ]
+    },
+    {
+      "Path": "MathAnalysisAI.Server/Services/LLM/LLMGateway.cs",
+      "Layer": "data-access",
+      "Usings": [
+        "MathAnalysisAI.Server.DTOs.LLM",
+        "MathAnalysisAI.Server.Data",
+        "MathAnalysisAI.Server.Models",
+        "MathAnalysisAI.Server.Options",
+        "Microsoft.Extensions.Options",
+        "System.Diagnostics",
+        "System.Net",
+        "System.Net.Http.Headers",
+        "System.Runtime.CompilerServices",
+        "System.Text",
+        "System.Text.Json"
+      ]
+    },
+    {
+      "Path": "MathAnalysisAI.Server/Services/LLM/LLMService.cs",
+      "Layer": "backend-application",
+      "Usings": [
+        "MathAnalysisAI.Server.DTOs.AnalysisContext",
+        "MathAnalysisAI.Server.DTOs.LLM",
+        "MathAnalysisAI.Server.Models",
+        "MathAnalysisAI.Server.Services.Analysis.LLM",
+        "MathAnalysisAI.Server.Services.Analysis.UAO"
+      ]
+    },
+    {
+      "Path": "MathAnalysisAI.Server/Services/Materials/CourseMaterialIngestionService.cs",
+      "Layer": "backend-application",
+      "Usings": [
+        "MathAnalysisAI.Server.DTOs.CourseMaterials",
+        "MathAnalysisAI.Server.Models",
+        "Microsoft.AspNetCore.Http"
+      ]
+    },
+    {
+      "Path": "MathAnalysisAI.Server/Services/Materials/CourseMaterialStorageService.cs",
+      "Layer": "backend-application",
+      "Usings": [
+        "Microsoft.AspNetCore.Http",
+        "System.Security.Cryptography",
+        "System.Text"
+      ]
+    },
+    {
+      "Path": "MathAnalysisAI.Server/Services/Materials/ICourseMaterialIngestionPersistenceService.cs",
+      "Layer": "data-access",
+      "Usings": [
+        "MathAnalysisAI.Server.Models"
+      ]
+    },
+    {
+      "Path": "MathAnalysisAI.Server/Services/Materials/MaterialChunkingService.cs",
+      "Layer": "backend-application",
+      "Usings": [
+        "MathAnalysisAI.Server.Models"
+      ]
+    },
+    {
+      "Path": "MathAnalysisAI.Server/Services/Materials/PdfTextExtractionService.cs",
+      "Layer": "backend-application",
+      "Usings": [
+        "UglyToad.PdfPig"
+      ]
+    },
+    {
+      "Path": "MathAnalysisAI.Server/Services/OCR/IOCRService.cs",
+      "Layer": "backend-application",
+      "Usings": [
+        "MathAnalysisAI.Server.DTOs.PhotoSolutions"
+      ]
+    },
+    {
+      "Path": "MathAnalysisAI.Server/Services/OCR/IPhotoSolutionOcrProvider.cs",
+      "Layer": "backend-application",
+      "Usings": [
+        "MathAnalysisAI.Server.DTOs.PhotoSolutions"
+      ]
+    },
+    {
+      "Path": "MathAnalysisAI.Server/Services/OCR/LiteLLMPhotoSolutionOcrProvider.cs",
+      "Layer": "backend-application",
+      "Usings": [
+        "MathAnalysisAI.Server.DTOs.PhotoSolutions",
+        "MathAnalysisAI.Server.Options",
+        "Microsoft.Extensions.Options",
+        "System.Net",
+        "System.Net.Http.Headers",
+        "System.Text",
+        "System.Text.Json"
+      ]
+    },
+    {
+      "Path": "MathAnalysisAI.Server/Services/OCR/OCRService.cs",
+      "Layer": "backend-application",
+      "Usings": [
+        "MathAnalysisAI.Server.DTOs.PhotoSolutions"
+      ]
+    },
+    {
+      "Path": "MathAnalysisAI.Server/Services/OCR/PhotoSolutionOcrRequest.cs",
+      "Layer": "backend-application",
+      "Usings": []
+    },
+    {
+      "Path": "MathAnalysisAI.Server/Services/Orchestration/AnalysisExecutionContext.cs",
+      "Layer": "backend-application",
+      "Usings": [
+        "MathAnalysisAI.Server.DTOs.Analysis",
+        "MathAnalysisAI.Server.DTOs.AnalysisContext",
+        "MathAnalysisAI.Server.DTOs.LLM",
+        "MathAnalysisAI.Server.Models",
+        "MathAnalysisAI.Server.Services.Analysis.Domain",
+        "MathAnalysisAI.Server.Services.Analysis.Parsing",
+        "MathAnalysisAI.Server.Services.Analysis.Persistence",
+        "MathAnalysisAI.Server.Services.Analysis.UAO"
+      ]
+    },
+    {
+      "Path": "MathAnalysisAI.Server/Services/Orchestration/AnalysisPipeline.cs",
+      "Layer": "backend-application",
+      "Usings": [
+        "MathAnalysisAI.Server.DTOs.Analysis",
+        "MathAnalysisAI.Server.DTOs.AnalysisContext",
+        "MathAnalysisAI.Server.DTOs.LLM",
+        "MathAnalysisAI.Server.Models",
+        "MathAnalysisAI.Server.Services.Analysis.Context",
+        "MathAnalysisAI.Server.Services.Analysis.Persistence",
+        "MathAnalysisAI.Server.Services.LLM",
+        "MathAnalysisAI.Server.Services.Orchestration.Steps"
+      ]
+    },
+    {
+      "Path": "MathAnalysisAI.Server/Services/Orchestration/AnalysisPipelineDefinition.cs",
+      "Layer": "backend-application",
+      "Usings": [
+        "MathAnalysisAI.Server.Services.Orchestration.Steps"
+      ]
+    },
+    {
+      "Path": "MathAnalysisAI.Server/Services/Orchestration/AnalysisPipelineSupport.cs",
+      "Layer": "backend-application",
+      "Usings": [
+        "MathAnalysisAI.Server.DTOs.Analysis",
+        "MathAnalysisAI.Server.DTOs.Visualization",
+        "MathAnalysisAI.Server.Models",
+        "MathAnalysisAI.Server.Services.Analysis.Application",
+        "MathAnalysisAI.Server.Services.Analysis.Domain",
+        "MathAnalysisAI.Server.Services.Analysis.UAO",
+        "MathAnalysisAI.Server.SharedKernel.Analysis"
+      ]
+    },
+    {
+      "Path": "MathAnalysisAI.Server/Services/Orchestration/AnalysisRequestPreparationResult.cs",
+      "Layer": "backend-application",
+      "Usings": [
+        "MathAnalysisAI.Server.Services.Analysis.UAO"
+      ]
+    },
+    {
+      "Path": "MathAnalysisAI.Server/Services/Orchestration/IAnalysisPipeline.cs",
+      "Layer": "backend-application",
+      "Usings": [
+        "MathAnalysisAI.Server.DTOs.Analysis",
+        "MathAnalysisAI.Server.Models"
+      ]
+    },
+    {
+      "Path": "MathAnalysisAI.Server/Services/Orchestration/Steps/EvaluationStep.cs",
+      "Layer": "backend-application",
+      "Usings": [
+        "MathAnalysisAI.Server.Services.Analysis.Application",
+        "MathAnalysisAI.Server.Services.Analysis.Fallback",
+        "MathAnalysisAI.Server.Services.Analysis.Parsing",
+        "MathAnalysisAI.Server.Services.Analysis.Persistence"
+      ]
+    },
+    {
+      "Path": "MathAnalysisAI.Server/Services/Orchestration/Steps/IAnalysisPipelineStep.cs",
+      "Layer": "backend-application",
+      "Usings": []
+    },
+    {
+      "Path": "MathAnalysisAI.Server/Services/Orchestration/Steps/LLMStep.cs",
+      "Layer": "backend-application",
+      "Usings": [
+        "MathAnalysisAI.Server.DTOs.AnalysisContext",
+        "MathAnalysisAI.Server.Models",
+        "MathAnalysisAI.Server.Services.Analysis.Context",
+        "MathAnalysisAI.Server.Services.Analysis.Persistence",
+        "MathAnalysisAI.Server.Services.LLM"
+      ]
+    },
+    {
+      "Path": "MathAnalysisAI.Server/Services/Orchestration/Steps/OCRStep.cs",
+      "Layer": "backend-application",
+      "Usings": [
+        "MathAnalysisAI.Server.DTOs.PhotoSolutions",
+        "MathAnalysisAI.Server.Models",
+        "MathAnalysisAI.Server.Services.Analysis",
+        "MathAnalysisAI.Server.Services.Analysis.Persistence",
+        "MathAnalysisAI.Server.Services.Analysis.Structuring"
+      ]
+    },
+    {
+      "Path": "MathAnalysisAI.Server/Services/Orchestration/Steps/PersistenceStep.cs",
+      "Layer": "data-access",
+      "Usings": [
+        "MathAnalysisAI.Server.Services.Analysis.Application",
+        "MathAnalysisAI.Server.Services.Analysis.Domain",
+        "MathAnalysisAI.Server.Services.Analysis.Mistakes",
+        "MathAnalysisAI.Server.Services.Analysis.Persistence",
+        "MathAnalysisAI.Server.Services.Analysis.Stats",
+        "MathAnalysisAI.Server.Services.Analysis.Verification",
+        "MathAnalysisAI.Server.Services.Visualization"
+      ]
+    },
+    {
+      "Path": "MathAnalysisAI.Server/Services/Orchestration/Steps/UAOBuilderStep.cs",
+      "Layer": "backend-application",
+      "Usings": [
+        "MathAnalysisAI.Server.Services.Analysis.Application"
+      ]
+    },
+    {
+      "Path": "MathAnalysisAI.Server/Services/Ranking/LeaderboardService.cs",
+      "Layer": "backend-application",
+      "Usings": [
+        "MathAnalysisAI.Server.DTOs.Leaderboard",
+        "MathAnalysisAI.Server.Services.Analysis.Persistence",
+        "MathAnalysisAI.Server.Services.Security"
+      ]
+    },
+    {
+      "Path": "MathAnalysisAI.Server/Services/Security/ConfigEncryptionService.cs",
+      "Layer": "backend-application",
+      "Usings": [
+        "System.Security.Cryptography"
+      ]
+    },
+    {
+      "Path": "MathAnalysisAI.Server/Services/Security/PermissionService.cs",
+      "Layer": "backend-application",
+      "Usings": [
+        "MathAnalysisAI.Server.Services.Auth"
+      ]
+    },
+    {
+      "Path": "MathAnalysisAI.Server/Services/Stats/PersonalStatsService.cs",
+      "Layer": "backend-application",
+      "Usings": [
+        "MathAnalysisAI.Server.DTOs.Stats",
+        "MathAnalysisAI.Server.Intelligence.Interfaces",
+        "MathAnalysisAI.Server.Services.Analysis.Persistence"
+      ]
+    },
+    {
+      "Path": "MathAnalysisAI.Server/Services/Symbolic/ISymbolicMathService.cs",
+      "Layer": "backend-application",
+      "Usings": [
+        "MathAnalysisAI.Server.DTOs.Symbolic"
+      ]
+    },
+    {
+      "Path": "MathAnalysisAI.Server/Services/Symbolic/SymPySymbolicMathService.cs",
+      "Layer": "backend-application",
+      "Usings": [
+        "MathAnalysisAI.Server.DTOs.Symbolic",
+        "System.Diagnostics",
+        "System.Text",
+        "System.Text.Json"
+      ]
+    },
+    {
+      "Path": "MathAnalysisAI.Server/Services/Visualization/GeoGebraCommandValidator.cs",
+      "Layer": "backend-application",
+      "Usings": [
+        "MathAnalysisAI.Server.DTOs.Visualization",
+        "System.Text.RegularExpressions"
+      ]
+    },
+    {
+      "Path": "MathAnalysisAI.Server/Services/Visualization/IGeoGebraCommandValidator.cs",
+      "Layer": "backend-application",
+      "Usings": [
+        "MathAnalysisAI.Server.DTOs.Visualization"
+      ]
+    },
+    {
+      "Path": "MathAnalysisAI.Server/Services/Visualization/IVisualizationService.cs",
+      "Layer": "backend-application",
+      "Usings": [
+        "MathAnalysisAI.Server.Models",
+        "MathAnalysisAI.Server.SharedKernel.Analysis"
+      ]
+    },
+    {
+      "Path": "MathAnalysisAI.Server/Services/Visualization/VisualizationService.cs",
+      "Layer": "backend-application",
+      "Usings": [
+        "MathAnalysisAI.Server.Models",
+        "MathAnalysisAI.Server.Services.Analysis.Persistence",
+        "MathAnalysisAI.Server.SharedKernel.Analysis",
+        "System.Text.Json"
+      ]
+    },
+    {
+      "Path": "MathAnalysisAI.Server/SharedKernel/Analysis/FormulaCandidate.cs",
+      "Layer": "backend-application",
+      "Usings": []
+    },
+    {
+      "Path": "MathAnalysisAI.Server/SharedKernel/Analysis/StandardSolutionStep.cs",
+      "Layer": "backend-application",
+      "Usings": []
+    },
+    {
+      "Path": "MathAnalysisAI.Server/SharedKernel/Analysis/StudentSolutionReview.cs",
+      "Layer": "backend-application",
+      "Usings": []
+    },
+    {
+      "Path": "MathAnalysisAI.Server/SharedKernel/Analysis/VisualizationSpec.cs",
+      "Layer": "backend-application",
+      "Usings": []
+    },
+    {
+      "Path": "MathAnalysisAI.Server/Tools/ConfigEncryptor/Program.cs",
+      "Layer": "backend-application",
+      "Usings": [
+        "MathAnalysisAI.Server.Services.Security"
+      ]
+    }
+  ],
+  "Edges": [
+    {
+      "Source": "MathAnalysisAI.Server/Data/Admin/AdminPersistenceService.cs",
+      "SourceLayer": "data-access",
+      "Import": "Microsoft.EntityFrameworkCore",
+      "TargetLayer": "data-access-concrete"
+    },
+    {
+      "Source": "MathAnalysisAI.Server/Data/ApplicationDbContext.cs",
+      "SourceLayer": "data-access",
+      "Import": "MathAnalysisAI.Server.Data.Seed",
+      "TargetLayer": "data-access-concrete"
+    },
+    {
+      "Source": "MathAnalysisAI.Server/Data/ApplicationDbContext.cs",
+      "SourceLayer": "data-access",
+      "Import": "Microsoft.EntityFrameworkCore",
+      "TargetLayer": "data-access-concrete"
+    },
+    {
+      "Source": "MathAnalysisAI.Server/Data/ApplicationDbContextFactory.cs",
+      "SourceLayer": "data-access",
+      "Import": "Microsoft.EntityFrameworkCore",
+      "TargetLayer": "data-access-concrete"
+    },
+    {
+      "Source": "MathAnalysisAI.Server/Data/Auth/AuthPersistenceService.cs",
+      "SourceLayer": "data-access",
+      "Import": "Microsoft.EntityFrameworkCore",
+      "TargetLayer": "data-access-concrete"
+    },
+    {
+      "Source": "MathAnalysisAI.Server/Data/Courses/CoursePersistenceService.cs",
+      "SourceLayer": "data-access",
+      "Import": "Microsoft.EntityFrameworkCore",
+      "TargetLayer": "data-access-concrete"
+    },
+    {
+      "Source": "MathAnalysisAI.Server/Data/Knowledge/LearningPathPersistenceService.cs",
+      "SourceLayer": "data-access",
+      "Import": "Microsoft.EntityFrameworkCore",
+      "TargetLayer": "data-access-concrete"
+    },
+    {
+      "Source": "MathAnalysisAI.Server/Data/Materials/CourseMaterialIngestionPersistenceService.cs",
+      "SourceLayer": "data-access",
+      "Import": "Microsoft.EntityFrameworkCore",
+      "TargetLayer": "data-access-concrete"
+    },
+    {
+      "Source": "MathAnalysisAI.Server/Data/Seed/AdminUserSeeder.cs",
+      "SourceLayer": "data-access",
+      "Import": "Microsoft.EntityFrameworkCore",
+      "TargetLayer": "data-access-concrete"
+    },
+    {
+      "Source": "MathAnalysisAI.Server/Data/Seed/AppUserSeeder.cs",
+      "SourceLayer": "data-access",
+      "Import": "Microsoft.EntityFrameworkCore",
+      "TargetLayer": "data-access-concrete"
+    },
+    {
+      "Source": "MathAnalysisAI.Server/Data/Seed/PromptProfileSeeder.cs",
+      "SourceLayer": "data-access",
+      "Import": "Microsoft.EntityFrameworkCore",
+      "TargetLayer": "data-access-concrete"
+    },
+    {
+      "Source": "MathAnalysisAI.Server/Intelligence/Collective/WeakPointInsightProjector.cs",
+      "SourceLayer": "intelligence",
+      "Import": "MathAnalysisAI.Server.Intelligence.Interfaces",
+      "TargetLayer": "intelligence-interface"
+    },
+    {
+      "Source": "MathAnalysisAI.Server/Intelligence/ExperienceOS/LearningPathIntelligenceService.cs",
+      "SourceLayer": "intelligence",
+      "Import": "MathAnalysisAI.Server.Intelligence.Interfaces",
+      "TargetLayer": "intelligence-interface"
+    },
+    {
+      "Source": "MathAnalysisAI.Server/Intelligence/PIM/PersonalStatsIntelligenceService.cs",
+      "SourceLayer": "intelligence",
+      "Import": "MathAnalysisAI.Server.Intelligence.Interfaces",
+      "TargetLayer": "intelligence-interface"
+    },
+    {
+      "Source": "MathAnalysisAI.Server/Migrations/20260321132650_Init.Designer.cs",
+      "SourceLayer": "data-access",
+      "Import": "Microsoft.EntityFrameworkCore",
+      "TargetLayer": "data-access-concrete"
+    },
+    {
+      "Source": "MathAnalysisAI.Server/Migrations/20260425051101_InitialCreate.Designer.cs",
+      "SourceLayer": "data-access",
+      "Import": "Microsoft.EntityFrameworkCore",
+      "TargetLayer": "data-access-concrete"
+    },
+    {
+      "Source": "MathAnalysisAI.Server/Migrations/20260529152908_AddLearningPlatformSchema.Designer.cs",
+      "SourceLayer": "data-access",
+      "Import": "Microsoft.EntityFrameworkCore",
+      "TargetLayer": "data-access-concrete"
+    },
+    {
+      "Source": "MathAnalysisAI.Server/Migrations/20260529155549_AddMathAnalysisSeedData.Designer.cs",
+      "SourceLayer": "data-access",
+      "Import": "Microsoft.EntityFrameworkCore",
+      "TargetLayer": "data-access-concrete"
+    },
+    {
+      "Source": "MathAnalysisAI.Server/Migrations/20260530153419_AddCourseMaterialKnowledgeBase.Designer.cs",
+      "SourceLayer": "data-access",
+      "Import": "Microsoft.EntityFrameworkCore",
+      "TargetLayer": "data-access-concrete"
+    },
+    {
+      "Source": "MathAnalysisAI.Server/Migrations/20260607081213_AddPhotoSolutionOcrRecords.Designer.cs",
+      "SourceLayer": "data-access",
+      "Import": "Microsoft.EntityFrameworkCore",
+      "TargetLayer": "data-access-concrete"
+    },
+    {
+      "Source": "MathAnalysisAI.Server/Migrations/20260614160009_AddAppUserPasswordHash.Designer.cs",
+      "SourceLayer": "data-access",
+      "Import": "Microsoft.EntityFrameworkCore",
+      "TargetLayer": "data-access-concrete"
+    },
+    {
+      "Source": "MathAnalysisAI.Server/Migrations/20260614160512_DropLegacyWrongQuestionsTable.Designer.cs",
+      "SourceLayer": "data-access",
+      "Import": "Microsoft.EntityFrameworkCore",
+      "TargetLayer": "data-access-concrete"
+    },
+    {
+      "Source": "MathAnalysisAI.Server/Migrations/20260614164220_AddQuestionBank.Designer.cs",
+      "SourceLayer": "data-access",
+      "Import": "Microsoft.EntityFrameworkCore",
+      "TargetLayer": "data-access-concrete"
+    },
+    {
+      "Source": "MathAnalysisAI.Server/Migrations/20260618051146_InitOrUpdate.Designer.cs",
+      "SourceLayer": "data-access",
+      "Import": "Microsoft.EntityFrameworkCore",
+      "TargetLayer": "data-access-concrete"
+    },
+    {
+      "Source": "MathAnalysisAI.Server/Migrations/ApplicationDbContextModelSnapshot.cs",
+      "SourceLayer": "data-access",
+      "Import": "Microsoft.EntityFrameworkCore",
+      "TargetLayer": "data-access-concrete"
+    },
+    {
+      "Source": "MathAnalysisAI.Server/Models/PhotoSolutionOcrRecord.cs",
+      "SourceLayer": "data-access",
+      "Import": "Microsoft.EntityFrameworkCore",
+      "TargetLayer": "data-access-concrete"
+    },
+    {
+      "Source": "MathAnalysisAI.Server/Models/StructuredProblem.cs",
+      "SourceLayer": "data-access",
+      "Import": "Microsoft.EntityFrameworkCore",
+      "TargetLayer": "data-access-concrete"
+    },
+    {
+      "Source": "MathAnalysisAI.Server/Program.cs",
+      "SourceLayer": "composition-root",
+      "Import": "MathAnalysisAI.Server.Data.Admin",
+      "TargetLayer": "data-access-concrete"
+    },
+    {
+      "Source": "MathAnalysisAI.Server/Program.cs",
+      "SourceLayer": "composition-root",
+      "Import": "MathAnalysisAI.Server.Data.Courses",
+      "TargetLayer": "data-access-concrete"
+    },
+    {
+      "Source": "MathAnalysisAI.Server/Program.cs",
+      "SourceLayer": "composition-root",
+      "Import": "MathAnalysisAI.Server.Data.Knowledge",
+      "TargetLayer": "data-access-concrete"
+    },
+    {
+      "Source": "MathAnalysisAI.Server/Program.cs",
+      "SourceLayer": "composition-root",
+      "Import": "MathAnalysisAI.Server.Data.Materials",
+      "TargetLayer": "data-access-concrete"
+    },
+    {
+      "Source": "MathAnalysisAI.Server/Program.cs",
+      "SourceLayer": "composition-root",
+      "Import": "MathAnalysisAI.Server.Data.Seed",
+      "TargetLayer": "data-access-concrete"
+    },
+    {
+      "Source": "MathAnalysisAI.Server/Program.cs",
+      "SourceLayer": "composition-root",
+      "Import": "MathAnalysisAI.Server.Intelligence.Collective",
+      "TargetLayer": "intelligence-implementation"
+    },
+    {
+      "Source": "MathAnalysisAI.Server/Program.cs",
+      "SourceLayer": "composition-root",
+      "Import": "MathAnalysisAI.Server.Intelligence.ExperienceOS",
+      "TargetLayer": "intelligence-implementation"
+    },
+    {
+      "Source": "MathAnalysisAI.Server/Program.cs",
+      "SourceLayer": "composition-root",
+      "Import": "MathAnalysisAI.Server.Intelligence.Interfaces",
+      "TargetLayer": "intelligence-interface"
+    },
+    {
+      "Source": "MathAnalysisAI.Server/Program.cs",
+      "SourceLayer": "composition-root",
+      "Import": "MathAnalysisAI.Server.Intelligence.PIM",
+      "TargetLayer": "intelligence-implementation"
+    },
+    {
+      "Source": "MathAnalysisAI.Server/Program.cs",
+      "SourceLayer": "composition-root",
+      "Import": "Microsoft.EntityFrameworkCore",
+      "TargetLayer": "data-access-concrete"
+    },
+    {
+      "Source": "MathAnalysisAI.Server/Services/Analysis/Persistence/AnalysisPersistenceService.cs",
+      "SourceLayer": "data-access",
+      "Import": "Microsoft.EntityFrameworkCore",
+      "TargetLayer": "data-access-concrete"
+    },
+    {
+      "Source": "MathAnalysisAI.Server/Services/ExceptionHandling/ApiExceptionClassifier.cs",
+      "SourceLayer": "data-access",
+      "Import": "Microsoft.EntityFrameworkCore",
+      "TargetLayer": "data-access-concrete"
+    },
+    {
+      "Source": "MathAnalysisAI.Server/Services/ExceptionHandling/DbHealthCheck.cs",
+      "SourceLayer": "data-access",
+      "Import": "Microsoft.EntityFrameworkCore",
+      "TargetLayer": "data-access-concrete"
+    },
+    {
+      "Source": "MathAnalysisAI.Server/Services/Knowledge/LearningPathService.cs",
+      "SourceLayer": "backend-application",
+      "Import": "MathAnalysisAI.Server.Intelligence.Interfaces",
+      "TargetLayer": "intelligence-interface"
+    },
+    {
+      "Source": "MathAnalysisAI.Server/Services/Stats/PersonalStatsService.cs",
+      "SourceLayer": "backend-application",
+      "Import": "MathAnalysisAI.Server.Intelligence.Interfaces",
+      "TargetLayer": "intelligence-interface"
+    }
+  ],
+  "Violations": []
+}

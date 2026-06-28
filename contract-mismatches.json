@@ -1,0 +1,374 @@
+{
+  "ContractsPath": "/Users/night_creek/\u5F00\u53D1/\u6570\u5B66\u5206\u6790\u667A\u80FD\u4F53/Contracts/api.contract.json",
+  "GeneratedAtUtc": "2026-06-28T05:46:09.233625Z",
+  "ControllerEndpoints": [
+    {
+      "Method": "GET",
+      "Path": "/api/admin/dashboard",
+      "Source": "AdminController.cs"
+    },
+    {
+      "Method": "GET",
+      "Path": "/api/admin/users",
+      "Source": "AdminController.cs"
+    },
+    {
+      "Method": "PUT",
+      "Path": "/api/admin/users/{param}/role",
+      "Source": "AdminController.cs"
+    },
+    {
+      "Method": "POST",
+      "Path": "/api/admin/teachers",
+      "Source": "AdminController.cs"
+    },
+    {
+      "Method": "POST",
+      "Path": "/api/admin/import-students",
+      "Source": "AdminController.cs"
+    },
+    {
+      "Method": "GET",
+      "Path": "/api/admin/teachers",
+      "Source": "AdminController.cs"
+    },
+    {
+      "Method": "GET",
+      "Path": "/api/admin/teachers/{param}/students",
+      "Source": "AdminController.cs"
+    },
+    {
+      "Method": "GET",
+      "Path": "/api/auth/info",
+      "Source": "AuthController.cs"
+    },
+    {
+      "Method": "GET",
+      "Path": "/api/auth/me",
+      "Source": "AuthController.cs"
+    },
+    {
+      "Method": "POST",
+      "Path": "/api/auth/login",
+      "Source": "AuthController.cs"
+    },
+    {
+      "Method": "POST",
+      "Path": "/api/auth/register",
+      "Source": "AuthController.cs"
+    },
+    {
+      "Method": "PUT",
+      "Path": "/api/auth/password",
+      "Source": "AuthController.cs"
+    },
+    {
+      "Method": "POST",
+      "Path": "/api/auth/logout",
+      "Source": "AuthController.cs"
+    },
+    {
+      "Method": "POST",
+      "Path": "/api/auth/impersonate",
+      "Source": "AuthController.cs"
+    },
+    {
+      "Method": "POST",
+      "Path": "/api/auth/join-class",
+      "Source": "AuthController.cs"
+    },
+    {
+      "Method": "GET",
+      "Path": "/api/courses",
+      "Source": "CourseController.cs"
+    },
+    {
+      "Method": "GET",
+      "Path": "/api/courses/{param}/chapters",
+      "Source": "CourseController.cs"
+    },
+    {
+      "Method": "GET",
+      "Path": "/api/course-materials",
+      "Source": "CourseMaterialsController.cs"
+    },
+    {
+      "Method": "GET",
+      "Path": "/api/course-materials/search",
+      "Source": "CourseMaterialsController.cs"
+    },
+    {
+      "Method": "POST",
+      "Path": "/api/course-materials/upload",
+      "Source": "CourseMaterialsController.cs"
+    },
+    {
+      "Method": "GET",
+      "Path": "/api/health",
+      "Source": "HealthController.cs"
+    },
+    {
+      "Method": "GET",
+      "Path": "/api/leaderboard/public",
+      "Source": "LeaderboardController.cs"
+    },
+    {
+      "Method": "POST",
+      "Path": "/api/learning-analysis/analyze",
+      "Source": "LearningAnalysisController.cs"
+    },
+    {
+      "Method": "POST",
+      "Path": "/api/learning-analysis/analyze/stream",
+      "Source": "LearningAnalysisController.cs"
+    },
+    {
+      "Method": "GET",
+      "Path": "/api/learningpath",
+      "Source": "LearningPathController.cs"
+    },
+    {
+      "Method": "GET",
+      "Path": "/api/learningpath/weak-points",
+      "Source": "LearningPathController.cs"
+    },
+    {
+      "Method": "POST",
+      "Path": "/api/photo-solutions/ocr",
+      "Source": "PhotoSolutionsController.cs"
+    },
+    {
+      "Method": "POST",
+      "Path": "/api/photo-solutions/ocr/{param}/confirm",
+      "Source": "PhotoSolutionsController.cs"
+    },
+    {
+      "Method": "GET",
+      "Path": "/api/resources",
+      "Source": "ResourcesController.cs"
+    },
+    {
+      "Method": "POST",
+      "Path": "/api/resources",
+      "Source": "ResourcesController.cs"
+    },
+    {
+      "Method": "GET",
+      "Path": "/api/resources/{param}",
+      "Source": "ResourcesController.cs"
+    },
+    {
+      "Method": "PUT",
+      "Path": "/api/resources/{param}",
+      "Source": "ResourcesController.cs"
+    },
+    {
+      "Method": "DELETE",
+      "Path": "/api/resources/{param}",
+      "Source": "ResourcesController.cs"
+    },
+    {
+      "Method": "GET",
+      "Path": "/api/stats/personal",
+      "Source": "StatsController.cs"
+    },
+    {
+      "Method": "GET",
+      "Path": "/api/stats/knowledge-mastery",
+      "Source": "StatsController.cs"
+    },
+    {
+      "Method": "POST",
+      "Path": "/api/symbolic/compute",
+      "Source": "SymbolicController.cs"
+    }
+  ],
+  "ContractEndpoints": [
+    {
+      "Method": "GET",
+      "Path": "/api/auth/info",
+      "Source": "auth.info"
+    },
+    {
+      "Method": "GET",
+      "Path": "/api/auth/me",
+      "Source": "auth.me"
+    },
+    {
+      "Method": "POST",
+      "Path": "/api/auth/login",
+      "Source": "auth.login"
+    },
+    {
+      "Method": "POST",
+      "Path": "/api/auth/register",
+      "Source": "auth.register"
+    },
+    {
+      "Method": "POST",
+      "Path": "/api/auth/impersonate",
+      "Source": "auth.impersonate"
+    },
+    {
+      "Method": "PUT",
+      "Path": "/api/auth/password",
+      "Source": "auth.changePassword"
+    },
+    {
+      "Method": "POST",
+      "Path": "/api/auth/logout",
+      "Source": "auth.logout"
+    },
+    {
+      "Method": "POST",
+      "Path": "/api/auth/join-class",
+      "Source": "auth.joinClass"
+    },
+    {
+      "Method": "POST",
+      "Path": "/api/learning-analysis/analyze",
+      "Source": "analysis.run"
+    },
+    {
+      "Method": "POST",
+      "Path": "/api/learning-analysis/analyze/stream",
+      "Source": "analysis.stream"
+    },
+    {
+      "Method": "GET",
+      "Path": "/api/admin/dashboard",
+      "Source": "admin.dashboard"
+    },
+    {
+      "Method": "GET",
+      "Path": "/api/admin/users",
+      "Source": "admin.users"
+    },
+    {
+      "Method": "PUT",
+      "Path": "/api/admin/users/{param}/role",
+      "Source": "admin.updateUserRole"
+    },
+    {
+      "Method": "GET",
+      "Path": "/api/admin/teachers",
+      "Source": "admin.teachers"
+    },
+    {
+      "Method": "POST",
+      "Path": "/api/admin/teachers",
+      "Source": "admin.createTeacher"
+    },
+    {
+      "Method": "POST",
+      "Path": "/api/admin/import-students",
+      "Source": "admin.importStudents"
+    },
+    {
+      "Method": "GET",
+      "Path": "/api/admin/teachers/{param}/students",
+      "Source": "admin.teacherStudents"
+    },
+    {
+      "Method": "GET",
+      "Path": "/api/resources",
+      "Source": "resources.list"
+    },
+    {
+      "Method": "POST",
+      "Path": "/api/resources",
+      "Source": "resources.create"
+    },
+    {
+      "Method": "PUT",
+      "Path": "/api/resources/{param}",
+      "Source": "resources.update"
+    },
+    {
+      "Method": "DELETE",
+      "Path": "/api/resources/{param}",
+      "Source": "resources.delete"
+    },
+    {
+      "Method": "GET",
+      "Path": "/api/resources/{param}",
+      "Source": "resources.getById"
+    },
+    {
+      "Method": "GET",
+      "Path": "/api/resources",
+      "Source": "question.list"
+    },
+    {
+      "Method": "GET",
+      "Path": "/api/courses",
+      "Source": "support.coursesList"
+    },
+    {
+      "Method": "GET",
+      "Path": "/api/courses/{param}/chapters",
+      "Source": "support.courseChapters"
+    },
+    {
+      "Method": "GET",
+      "Path": "/api/course-materials",
+      "Source": "support.courseMaterialsList"
+    },
+    {
+      "Method": "GET",
+      "Path": "/api/course-materials/search",
+      "Source": "support.courseMaterialsSearch"
+    },
+    {
+      "Method": "POST",
+      "Path": "/api/course-materials/upload",
+      "Source": "support.courseMaterialsUpload"
+    },
+    {
+      "Method": "GET",
+      "Path": "/api/leaderboard/public",
+      "Source": "support.leaderboardPublic"
+    },
+    {
+      "Method": "GET",
+      "Path": "/api/stats/personal",
+      "Source": "support.statsPersonal"
+    },
+    {
+      "Method": "GET",
+      "Path": "/api/stats/knowledge-mastery",
+      "Source": "support.statsKnowledgeMastery"
+    },
+    {
+      "Method": "GET",
+      "Path": "/api/learningpath",
+      "Source": "support.learningPath"
+    },
+    {
+      "Method": "GET",
+      "Path": "/api/learningpath/weak-points",
+      "Source": "support.learningPathWeakPoints"
+    },
+    {
+      "Method": "GET",
+      "Path": "/api/health",
+      "Source": "support.health"
+    },
+    {
+      "Method": "POST",
+      "Path": "/api/photo-solutions/ocr",
+      "Source": "support.photoOcr"
+    },
+    {
+      "Method": "POST",
+      "Path": "/api/photo-solutions/ocr/{param}/confirm",
+      "Source": "support.photoOcrConfirm"
+    },
+    {
+      "Method": "POST",
+      "Path": "/api/symbolic/compute",
+      "Source": "support.symbolicCompute"
+    }
+  ],
+  "Mismatches": []
+}

@@ -160,7 +160,7 @@
 
   async function impersonateRole(role) {
     try {
-      await Api.postJson("/api/auth/impersonate", { role: role || null });
+      await window.BackendApi.auth.impersonate({ role: role || null });
       if (window.Auth && window.Auth.setImpersonatedRole) {
         window.Auth.setImpersonatedRole(role || "");
       }

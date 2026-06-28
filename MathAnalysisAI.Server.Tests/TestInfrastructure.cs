@@ -408,12 +408,21 @@ internal static class TestServiceFactory
         }
 
         var environment = new FakeWebHostEnvironment { EnvironmentName = environmentName };
+        var authPersistence = new AuthPersistenceService(db, NullLogger<AuthPersistenceService>.Instance);
+        var identityKernel = new IdentityKernel(
+            authPersistence,
+            authPersistence,
+            authPersistence,
+            new HttpContextAccessor(),
+            environment,
+            Microsoft.Extensions.Options.Options.Create(options),
+            Microsoft.Extensions.Options.Options.Create(new OidcOptions()));
         var authService = new AuthService(
-            new AuthPersistenceService(db, NullLogger<AuthPersistenceService>.Instance),
+            authPersistence,
             environment,
             Microsoft.Extensions.Options.Options.Create(options),
             Microsoft.Extensions.Options.Options.Create(new OidcOptions()),
-            userContext,
+            identityKernel,
             new FakeLocalJwtTokenService());
 
         return new AuthController(

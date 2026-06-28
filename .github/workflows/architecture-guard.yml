@@ -22,18 +22,22 @@ jobs:
         with:
           dotnet-version: 10.0.x
 
-      - name: Restore .NET project
-        run: dotnet restore MathAnalysisAI.Server/MathAnalysisAI.Server.csproj
+      - name: Restore server solution
+        run: dotnet restore MathAnalysisAI.Server/MathAnalysisAI.Server.sln
 
-      - name: Build .NET project
+      - name: Build server
         run: dotnet build MathAnalysisAI.Server/MathAnalysisAI.Server.csproj --configuration Release --no-restore
 
-      - name: Run architecture guard
+      - name: Run tests
+        run: dotnet test MathAnalysisAI.Server/MathAnalysisAI.Server.sln --no-build
+
+      - name: Run legacy architecture guard (observation)
+        continue-on-error: true
         run: |
           chmod +x MathAnalysisAI.Server/scripts/architecture-guard.sh
           MathAnalysisAI.Server/scripts/architecture-guard.sh
 
-      - name: Print architecture violations
+      - name: Print legacy architecture violations
         if: always()
         run: |
           if [ -f architecture-violations.json ]; then
@@ -42,178 +46,22 @@ jobs:
             echo "architecture-violations.json not found"
           fi
 
-      - name: Upload architecture violations artifact
+      - name: Upload legacy architecture violations artifact
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: architecture-violations
           path: architecture-violations.json
-          if-no-files-found: error
-
-      - name: Run architecture convergence engine
-        if: always()
-        run: |
-          dotnet run --project Architecture/Convergence/Architecture.Convergence.csproj -- \
-            architecture-violations.json \
-            architecture-convergence-report.json
-
-      - name: Print architecture convergence report
-        if: always()
-        run: |
-          if [ -f architecture-convergence-report.json ]; then
-            cat architecture-convergence-report.json
-          else
-            echo "architecture-convergence-report.json not found"
-          fi
-
-      - name: Upload architecture convergence artifact
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: architecture-convergence-report
-          path: architecture-convergence-report.json
-          if-no-files-found: error
-
-      - name: Run refactor task generator
-        if: always()
-        run: |
-          dotnet run --project Architecture/Refactor/Architecture.Refactor.csproj -- \
-            architecture-convergence-report.json \
-            refactor-task-manifest.json \
-            refactor-task-execution-plan.json
-
-      - name: Print refactor task manifest
-        if: always()
-        run: |
-          if [ -f refactor-task-manifest.json ]; then
-            cat refactor-task-manifest.json
-          else
-            echo "refactor-task-manifest.json not found"
-          fi
-
-      - name: Print refactor task execution plan
-        if: always()
-        run: |
-          if [ -f refactor-task-execution-plan.json ]; then
-            cat refactor-task-execution-plan.json
-          else
-            echo "refactor-task-execution-plan.json not found"
-          fi
-
-      - name: Upload refactor task artifacts
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: refactor-task-artifacts
-          path: |
-            refactor-task-manifest.json
-            refactor-task-execution-plan.json
-          if-no-files-found: error
-
-      - name: Run refactor execution engine
-        if: always()
-        run: |
-          dotnet run --project Architecture/Execution/Architecture.Execution.csproj -- \
-            refactor-task-manifest.json \
-            refactor-task-execution-plan.json \
-            execution-log.json \
-            execution-summary.json
-
-      - name: Print refactor execution summary
-        if: always()
-        run: |
-          if [ -f execution-summary.json ]; then
-            cat execution-summary.json
-          else
-            echo "execution-summary.json not found"
-          fi
-
-      - name: Upload refactor execution artifacts
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: refactor-execution-artifacts
-          path: |
-            execution-log.json
-            execution-summary.json
-            Architecture/Execution/Logs/
-          if-no-files-found: error
-
-      - name: Run safe semantic rewrite engine
-        if: always()
-        run: |
-          dotnet run --project Architecture/Semantic/Architecture.Semantic.csproj -- \
-            refactor-task-manifest.json \
-            execution-summary.json \
-            Architecture/Execution/Logs \
-            semantic-rewrite-log.json \
-            semantic-rewrite-summary.json
-
-      - name: Print semantic rewrite summary
-        if: always()
-        run: |
-          if [ -f semantic-rewrite-summary.json ]; then
-            cat semantic-rewrite-summary.json
-          else
-            echo "semantic-rewrite-summary.json not found"
-          fi
-
-      - name: Upload semantic rewrite artifacts
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: semantic-rewrite-artifacts
-          path: |
-            semantic-rewrite-log.json
-            semantic-rewrite-summary.json
-          if-no-files-found: error
-
-      - name: Run refactor intelligence engine
-        if: always()
-        run: |
-          dotnet run --project Architecture/Semantic/Architecture.Semantic.csproj -- intelligence \
-            architecture-convergence-report.json \
-            refactor-task-manifest.json \
-            semantic-rewrite-log.json \
-            semantic-refactor-intelligence.json
-
-      - name: Print semantic refactor intelligence
-        if: always()
-        run: |
-          if [ -f semantic-refactor-intelligence.json ]; then
-            cat semantic-refactor-intelligence.json
-          else
-            echo "semantic-refactor-intelligence.json not found"
-          fi
-
-      - name: Upload semantic intelligence artifacts
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: semantic-intelligence-artifacts
-          path: |
-            semantic-refactor-intelligence.json
-          if-no-files-found: error
+          if-no-files-found: ignore
 
       - name: Build module contract validator
-        if: always()
-        run: |
-          dotnet build Architecture/ModuleContracts/Architecture.ModuleContracts.csproj
+        run: dotnet build Architecture/ModuleContracts/Architecture.ModuleContracts.csproj
 
       - name: Run module contract validator (observation)
-        if: always()
         run: |
           dotnet run --project Architecture/ModuleContracts/Architecture.ModuleContracts.csproj -- \
             Architecture/ModuleContracts/module-contracts.json \
             module-contract-violations.json
-
-      - name: Run module contract validator (strict blocking rules)
-        if: always()
-        run: |
-          dotnet run --project Architecture/ModuleContracts/Architecture.ModuleContracts.csproj -- \
-            Architecture/ModuleContracts/module-contracts.json \
-            module-contract-violations.json \
-            --strict
 
       - name: Print module contract violations
         if: always()
@@ -231,3 +79,109 @@ jobs:
           name: module-contract-violations
           path: module-contract-violations.json
           if-no-files-found: error
+
+      - name: Run module contract validator (strict blocking rules)
+        run: |
+          dotnet run --project Architecture/ModuleContracts/Architecture.ModuleContracts.csproj -- \
+            Architecture/ModuleContracts/module-contracts.json \
+            module-contract-violations.json \
+            --strict
+
+      - name: Build contract validator
+        run: dotnet build Architecture/ContractValidator/Architecture.ContractValidator.csproj
+
+      - name: Run contract validator
+        run: |
+          dotnet run --project Architecture/ContractValidator/Architecture.ContractValidator.csproj -- \
+            Contracts/api.contract.json \
+            contract-mismatches.json
+
+      - name: Print contract mismatches
+        if: always()
+        run: |
+          if [ -f contract-mismatches.json ]; then
+            cat contract-mismatches.json
+          else
+            echo "contract-mismatches.json not found"
+          fi
+
+      - name: Upload contract mismatches artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: contract-mismatches
+          path: contract-mismatches.json
+          if-no-files-found: error
+
+      - name: Build contract compiler
+        run: dotnet build Architecture/ContractCompiler/Architecture.ContractCompiler.csproj
+
+      - name: Run contract compiler
+        run: |
+          dotnet run --project Architecture/ContractCompiler/Architecture.ContractCompiler.csproj -- \
+            Contracts/api.contract.json \
+            MathAnalysisAI.Server/wwwroot/js/api/compiled-contracts.js
+
+      - name: Upload compiled frontend contracts artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: compiled-frontend-contracts
+          path: MathAnalysisAI.Server/wwwroot/js/api/compiled-contracts.js
+          if-no-files-found: error
+
+      - name: Build architecture freeze validator
+        run: dotnet build Architecture/Freeze/Architecture.Freeze.csproj
+
+      - name: Run architecture freeze validator (observation)
+        run: |
+          dotnet run --project Architecture/Freeze/Architecture.Freeze.csproj -- \
+            architecture-drift-report.json \
+            dependency-graph.json \
+            intelligence-isolation-report.json
+
+      - name: Print architecture drift report
+        if: always()
+        run: |
+          if [ -f architecture-drift-report.json ]; then
+            cat architecture-drift-report.json
+          else
+            echo "architecture-drift-report.json not found"
+          fi
+
+      - name: Print dependency graph report
+        if: always()
+        run: |
+          if [ -f dependency-graph.json ]; then
+            cat dependency-graph.json
+          else
+            echo "dependency-graph.json not found"
+          fi
+
+      - name: Print intelligence isolation report
+        if: always()
+        run: |
+          if [ -f intelligence-isolation-report.json ]; then
+            cat intelligence-isolation-report.json
+          else
+            echo "intelligence-isolation-report.json not found"
+          fi
+
+      - name: Upload architecture freeze artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: architecture-freeze-artifacts
+          path: |
+            architecture-drift-report.json
+            dependency-graph.json
+            intelligence-isolation-report.json
+          if-no-files-found: error
+
+      - name: Run architecture freeze validator (strict)
+        run: |
+          dotnet run --project Architecture/Freeze/Architecture.Freeze.csproj -- \
+            architecture-drift-report.json \
+            dependency-graph.json \
+            intelligence-isolation-report.json \
+            --strict

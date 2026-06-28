@@ -1,15 +1,21 @@
 using MathAnalysisAI.Server.DTOs.Knowledge;
+using MathAnalysisAI.Server.Intelligence.Interfaces;
 
 namespace MathAnalysisAI.Server.Services.Knowledge;
 
 public class LearningPathService
 {
     private readonly ILearningPathPersistenceService _learningPathPersistenceService;
+    private readonly ILearningPathIntelligenceService _learningPathIntelligenceService;
     private readonly IQuestionModule _questionService;
 
-    public LearningPathService(ILearningPathPersistenceService learningPathPersistenceService, IQuestionModule questionService)
+    public LearningPathService(
+        ILearningPathPersistenceService learningPathPersistenceService,
+        ILearningPathIntelligenceService learningPathIntelligenceService,
+        IQuestionModule questionService)
     {
         _learningPathPersistenceService = learningPathPersistenceService;
+        _learningPathIntelligenceService = learningPathIntelligenceService;
         _questionService = questionService;
     }
 
@@ -19,106 +25,38 @@ public class LearningPathService
         CancellationToken cancellationToken = default)
     {
         var snapshot = await _learningPathPersistenceService.GetLearningPathSnapshotAsync(courseId, userId, cancellationToken);
-        var allKnowledgePoints = snapshot.KnowledgePoints;
-        var dependencies = snapshot.Dependencies;
-        var userStates = snapshot.UserStates;
-        var mistakeStats = snapshot.MistakeStats;
+        var computed = _learningPathIntelligenceService.Build(
+            new LearningPathIntelligenceInput(
+                courseId,
+                snapshot.CourseName ?? "未知课程",
+                snapshot.KnowledgePoints
+                    .Select(kp => new LearningPathKnowledgePointModel(kp.Id, kp.Name, kp.Code, kp.ChapterName))
+                    .ToList(),
+                snapshot.Dependencies
+                    .Select(dep => new LearningPathDependencyModel(dep.FromKnowledgePointId, dep.ToKnowledgePointId, dep.DependencyType))
+                    .ToList(),
+                snapshot.UserStates
+                    .Select(state => new LearningPathUserStateModel(state.KnowledgePointId, state.MasteryLevel, state.PracticeCount, state.CorrectCount))
+                    .ToList(),
+                snapshot.MistakeStats
+                    .Select(m => new LearningPathMistakeModel(m.KnowledgePointId, m.MistakeCount, m.SeveritySum, m.MostCommonMistakeTag))
+                    .ToList()));
 
-        var prerequisiteMap = new Dictionary<int, List<int>>();
-        var dependentMap = new Dictionary<int, List<int>>();
-        foreach (var kp in allKnowledgePoints)
-        {
-            prerequisiteMap[kp.Id] = new List<int>();
-            dependentMap[kp.Id] = new List<int>();
-        }
-
-        foreach (var dep in dependencies)
-        {
-            if (prerequisiteMap.ContainsKey(dep.ToKnowledgePointId))
+        var orderedItems = computed.RecommendedOrder
+            .Select(item => new LearningPathItemDto
             {
-                prerequisiteMap[dep.ToKnowledgePointId].Add(dep.FromKnowledgePointId);
-            }
-            if (dependentMap.ContainsKey(dep.FromKnowledgePointId))
-            {
-                dependentMap[dep.FromKnowledgePointId].Add(dep.ToKnowledgePointId);
-            }
-        }
-
-        var masteryMap = userStates.ToDictionary(
-            s => s.KnowledgePointId,
-            s => new MasterySummary
-            {
-                MasteryLevel = s.MasteryLevel,
-                PracticeCount = s.PracticeCount,
-                CorrectCount = s.CorrectCount
-            });
-
-        var mistakeMap = mistakeStats
-            .Where(m => m.KnowledgePointId.HasValue)
-            .ToDictionary(
-                m => m.KnowledgePointId!.Value,
-                m => new MistakeSummary
-                {
-                    MistakeCount = m.MistakeCount,
-                    SeveritySum = m.SeveritySum,
-                    MostCommonMistakeTag = m.MostCommonMistakeTag ?? ""
-                });
-
-        var items = new List<LearningPathItemDto>();
-        foreach (var kp in allKnowledgePoints)
-        {
-            masteryMap.TryGetValue(kp.Id, out var state);
-            mistakeMap.TryGetValue(kp.Id, out var mistakes);
-
-            var masteryLevel = state?.MasteryLevel ?? 0;
-            var mistakeCount = mistakes?.MistakeCount ?? 0;
-            var severitySum = mistakes?.SeveritySum ?? 0;
-            var commonMistakeTag = mistakes?.MostCommonMistakeTag ?? "";
-
-            var unmetPrerequisites = prerequisiteMap[kp.Id]
-                .Where(prereqId =>
-                {
-                    masteryMap.TryGetValue(prereqId, out var prereqState);
-                    return (prereqState?.MasteryLevel ?? 0) < 50;
-                })
-                .ToList();
-
-            var unmetPrereqNames = allKnowledgePoints
-                .Where(x => unmetPrerequisites.Contains(x.Id))
-                .Select(x => x.Name)
-                .ToList();
-
-            var priorityScore = ComputePriorityScore(
-                masteryLevel,
-                mistakeCount,
-                severitySum,
-                unmetPrerequisites.Count,
-                prerequisiteMap[kp.Id].Count);
-
-            var hint = BuildRecommendationHint(
-                masteryLevel,
-                mistakeCount,
-                unmetPrerequisites.Count);
-
-            items.Add(new LearningPathItemDto
-            {
-                KnowledgePointId = kp.Id,
-                Name = kp.Name,
-                Code = kp.Code,
-                ChapterName = kp.ChapterName,
-                MasteryLevel = masteryLevel,
-                MistakeCount = mistakeCount,
-                UnmetPrerequisiteIds = unmetPrerequisites,
-                UnmetPrerequisiteNames = unmetPrereqNames,
-                PriorityScore = priorityScore,
-                RecommendationHint = hint
-            });
-        }
-
-        var orderedItems = items
-            .OrderByDescending(i => i.PriorityScore)
-            .ThenBy(i => i.UnmetPrerequisiteIds.Count)
-            .ThenBy(i => i.Name)
+                KnowledgePointId = item.KnowledgePointId,
+                Name = item.Name,
+                Code = item.Code,
+                ChapterName = item.ChapterName,
+                MasteryLevel = item.MasteryLevel,
+                MistakeCount = item.MistakeCount,
+                UnmetPrerequisiteIds = item.UnmetPrerequisiteIds.ToList(),
+                UnmetPrerequisiteNames = item.UnmetPrerequisiteNames.ToList(),
+                PriorityScore = item.PriorityScore,
+                RecommendationHint = item.RecommendationHint,
+                SuggestedQuestions = item.SuggestedQuestions.ToList()
+            })
             .ToList();
 
         var itemsNeedingQuestions = orderedItems
@@ -150,114 +88,14 @@ public class LearningPathService
             }
         }
 
-        var weakPoints = items
-            .Where(i => i.MistakeCount >= 2)
-            .OrderByDescending(i => i.MistakeCount)
-            .ThenByDescending(i =>
-            {
-                var ms = mistakeMap.GetValueOrDefault(i.KnowledgePointId);
-                return i.MistakeCount > 0 && ms != null ? (double)ms.SeveritySum / i.MistakeCount : 0;
-            })
-            .Select(i => new WeakPointDto
-            {
-                KnowledgePointId = i.KnowledgePointId,
-                Name = i.Name,
-                Code = i.Code,
-                ChapterName = i.ChapterName,
-                MistakeCount = i.MistakeCount,
-                SeveritySum = mistakeMap.TryGetValue(i.KnowledgePointId, out var m) ? m.SeveritySum : 0,
-                MostCommonMistakeTag = mistakeMap.TryGetValue(i.KnowledgePointId, out var m2) ? m2.MostCommonMistakeTag ?? "" : "",
-                MasteryLevel = i.MasteryLevel
-            })
-            .ToList();
-
-        var masteredCount = items.Count(i => i.MasteryLevel >= 70);
-
         return new LearningPathResponseDto
         {
             CourseId = courseId,
             CourseName = snapshot.CourseName ?? "未知课程",
-            TotalKnowledgePoints = allKnowledgePoints.Count,
-            MasteredCount = masteredCount,
+            TotalKnowledgePoints = snapshot.KnowledgePoints.Count,
+            MasteredCount = computed.MasteredCount,
             RecommendedOrder = orderedItems,
-            WeakPoints = weakPoints
+            WeakPoints = computed.WeakPoints.ToList()
         };
-    }
-
-    private static double ComputePriorityScore(
-        int masteryLevel,
-        int mistakeCount,
-        int severitySum,
-        int unmetPrereqCount,
-        int totalPrereqCount)
-    {
-        var score = 0.0;
-
-        score += (100 - Math.Min(masteryLevel, 100)) * 0.3;
-
-        score += mistakeCount * 5.0;
-
-        score += severitySum * 2.0;
-
-        if (totalPrereqCount > 0)
-        {
-            var prereqRatio = (double)unmetPrereqCount / totalPrereqCount;
-            score -= prereqRatio * 20.0;
-        }
-        else
-        {
-            score += 10.0;
-        }
-
-        score += 5.0;
-
-        return Math.Max(0.0, score);
-    }
-
-    private static string BuildRecommendationHint(
-        int masteryLevel,
-        int mistakeCount,
-        int unmetPrereqCount)
-    {
-        if (masteryLevel >= 90 && mistakeCount == 0)
-        {
-            return "已熟练掌握，可跳过复习。";
-        }
-
-        if (masteryLevel >= 70 && mistakeCount <= 1)
-        {
-            return "基本掌握，建议偶尔回顾。";
-        }
-
-        if (unmetPrereqCount > 0)
-        {
-            return $"存在 {unmetPrereqCount} 个前置知识点未掌握，建议先学习前置内容。";
-        }
-
-        if (mistakeCount >= 3)
-        {
-            return $"错误次数较多（{mistakeCount}次），建议重点学习。";
-        }
-
-        if (masteryLevel < 30)
-        {
-            return "尚未掌握，建议系统学习。";
-        }
-
-        return "建议加强练习。";
-    }
-
-    private sealed class MasterySummary
-    {
-        public int MasteryLevel { get; set; }
-        public int PracticeCount { get; set; }
-        public int CorrectCount { get; set; }
-    }
-
-    private sealed class MistakeSummary
-    {
-        public int MistakeCount { get; set; }
-        public int SeveritySum { get; set; }
-        public string MostCommonMistakeTag { get; set; } = string.Empty;
     }
 }
